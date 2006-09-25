@@ -1,3 +1,8 @@
+"""The main part of the PSO code.
+
+Chris said that this was in the process of getting merged with neighborhood.
+"""
+
 from __future__ import division
 from varargs import VarArgs
 from random import Random
