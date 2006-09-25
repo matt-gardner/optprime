@@ -1,0 +1,298 @@
+#!/usr/bin/env python
+"""Run a PSO batch experiment.
+
+To find out how to use this program, run it with the '-h' or '--help' option
+""" 
+
+#------------------------------------------------------------------------------
+
+from __future__ import division
+from optparse import OptionParser
+
+from simulation import Simulation, functions, motions, neighborhoods
+
+import sys
+
+#------------------------------------------------------------------------------
+# Parse the program arguments
+#------------------------------------------------------------------------------
+def gen_simple_options( parser, optprefix, helpname, dct ):
+    """Generate options for a single set of varargs
+
+    arguments:
+    parser -- option parser object
+    optprefix -- prefix to be placed on the option name (--optprefix-arg)
+    helpname -- name of the argument thing in help (Function)
+    dct -- the actual dictionary from the simulation module
+    """
+
+    for aname, arg in dct.iteritems():
+        if isinstance(arg.default,bool):
+            nostr = ''
+            prefixhelp = ''
+            if arg.default == True:
+                prefixhelp = 'Turns off '
+                nostr = 'no'
+            parser.add_option('', '--%s-%s%s' % (optprefix,nostr,aname),
+                dest='%s_%s' % (optprefix,aname),
+                default=str(arg.default),
+                action="store_const", const=str(not arg.default),
+                help="%s%s optional setting: %s" % (
+                    prefixhelp, helpname, str(arg),)
+                )
+        else:
+            parser.add_option('', '--%s-%s' % (optprefix,aname),
+                    dest='%s_%s' % (optprefix,aname),
+                    default=str(arg.default),
+                    help="%s optional setting: %s" % (
+                        helpname,str(arg),)
+                    )
+
+#------------------------------------------------------------------------------
+def gen_varargs_options( parser, optprefix, helpname, dct ):
+    """Generate options for things that use varargs -- multiple mixed things
+
+    arguments:
+    parser -- option parser object
+    optprefix -- prefix to be placed on the option name (--optprefix-arg)
+    helpname -- name of the argument thing in help (Function)
+    dct -- the actual dictionary from the simulation module
+    """
+    args = {}
+    for tname, thing in dct.iteritems():
+        for aname, arg in thing.args.iteritems():
+            if aname not in args:
+                args[aname] = [arg, [tname]]
+            else:
+                args[aname][1].append( tname )
+
+    for aname, (arg, tnames) in args.iteritems():
+        if len(tnames) == len(dct):
+            availability = "all"
+        else:
+            availability = ", ".join(tnames)
+
+        if isinstance(arg.default,bool):
+            nostr = ''
+            prefixhelp = ''
+            if arg.default == True:
+                prefixhelp = 'Turns off '
+                nostr = 'no'
+            parser.add_option('', '--%s-%s%s' % (optprefix,nostr,aname),
+                dest='%s_%s' % (optprefix,aname),
+                default=str(arg.default),
+                action="store_const", const=str(not arg.default),
+                help="%s%s optional setting: %s (Available for %s)" % (
+                    prefixhelp,helpname,str(arg),availability,)
+                )
+        else:
+            parser.add_option('', '--%s-%s' % (optprefix,aname),
+                dest='%s_%s' % (optprefix,aname),
+                default=str(arg.default),
+                help="%s optional setting: %s (Available for %s)" % (
+                    helpname,str(arg),availability,)
+                )
+
+#------------------------------------------------------------------------------
+# BasicOutput class -- deals with output of the data
+#------------------------------------------------------------------------------
+class BasicOutput(object):
+    def __call__( self, soc, iters ):
+        """Output the current state of the simulation
+        
+        In this particular instance, it just dumps stuff out to stdout, and it
+        only outputs the globally best value in the swarm.
+        """
+        best = soc.bestparticle()
+
+        print best.bestval
+
+class PairOutput(object):
+    def __call__( self, soc, iters ):
+        best = soc.bestparticle()
+        print iters, best.bestval
+
+class IterNumValOutput(object):
+    def __call__( self, soc, iters ):
+        best = soc.bestparticle()
+        print iters, soc.numparticles(),  best.bestval
+
+#------------------------------------------------------------------------------
+class ExtendedOutput(object):
+    def __call__( self, soc, iters ):
+        best = soc.bestparticle()
+        print best.bestval, " ".join([str(x) for x in best.bestpos])
+
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+def main():
+    funcprefix = 'func'
+    motionprefix = 'motion'
+    neighborprefix = 'soc'
+    simprefix = 'sim'
+
+    versioninfo = '$Id$'
+
+    parser = OptionParser()
+    parser.add_option('-q', '--quiet',
+            dest='quiet',
+            action='store_true',
+            help='Refrain from printing version and option information'
+            )
+    parser.add_option('-v', '--version',
+            dest='version',
+            action='store_true',
+            help='Print version information and exit'
+            )
+    parser.add_option('-i', '--iterations',
+            dest='iterations',
+            default=100,
+            type='int',
+            help='Number of iterations to run'
+            )
+    parser.add_option('-e', '--evals',
+            dest='useevals',
+            default=False,
+            action='store_true',
+            help='Specify the number of function evaluations instead of batch iterations with the -i option',
+            )
+    parser.add_option('-o', '--outputfreq',
+            dest='outputfreq',
+            default=1,
+            type='int',
+            help='Number of iterations per value output',
+            )
+    parser.add_option('-t', '--outputtype',
+            dest='outputtype',
+            default='BasicOutput',
+            help='Style of output',
+            )
+    parser.add_option('-d', '--dimensions',
+            dest='dimensions',
+            default=2,
+            type='int',
+            help='Number of dimensions'
+            )
+    parser.add_option('-n','--num-particles',
+            dest='numparts',
+            default=2,
+            type='int',
+            help='Number of particles'
+            )
+    parser.add_option('-f','--function',
+            dest='function',
+            default='Sphere',
+            help='Function to optimize {%s}' % ", ".join(functions)
+            )
+    parser.add_option('-b','--batches',
+            dest='batches',
+            type='int',
+            default=1,
+            help='Number of complete experiments to run'
+            )
+    parser.add_option('-V','--verbose',
+            dest='verbose',
+            action='store_true',
+            default=False,
+            help="Print out verbose error messages",
+            )
+
+    gen_simple_options( parser, simprefix, 'Simulation', Simulation.args )
+
+    gen_varargs_options( parser, funcprefix, 'Function', functions )
+
+    parser.add_option('-m','--motion',
+            dest='motion',
+            default='Basic',
+            help='Particle motion type {%s}' % ", ".join(motions)
+            )
+    gen_varargs_options( parser, motionprefix, 'Motion', motions )
+
+    parser.add_option('-s','--sociometry',
+            dest='sociometry',
+            default='Star',
+            help='Particle sociometry {%s}' % ", ".join(neighborhoods)
+            )
+    gen_varargs_options( parser, neighborprefix, 'Sociometry', neighborhoods )
+
+    options, args = parser.parse_args()
+
+    if options.version:
+        print "%s" % versioninfo
+        sys.exit(0)
+
+    #--------------------------------------------------------------------------
+    # Create the simulation arguments, output header information
+    #--------------------------------------------------------------------------
+
+    if not options.quiet:
+        print "# %s" % (versioninfo,)
+        print "# ** OPTIONS **"
+        for o in parser.option_list:
+            if o.dest is not None:
+                print "#     %s = %r" % (o.dest, getattr(options,o.dest))
+
+    numparticles = options.numparts
+    numiters = options.iterations
+    numdims = options.dimensions
+
+    # Format the 'extra' arguments for the simulation object -- removing
+    # prefixes and such.
+    simargs = {}
+    for optname, opt in options.__dict__.iteritems():
+        for prefix in (motionprefix, funcprefix, neighborprefix, simprefix):
+            if optname.startswith( prefix + '_' ) and opt is not None:
+                # Skip dimensions, since we pass that in explicitly
+                suffix = optname[len(prefix)+1:]
+                if suffix == 'dims': continue
+                simargs[suffix] = eval(getattr(options, optname))
+
+    #--------------------------------------------------------------------------
+    # Perform the simulation in batches
+    #--------------------------------------------------------------------------
+    outputter = globals()[options.outputtype]()
+
+    freq = options.outputfreq
+
+    for batch in xrange(options.batches):
+        sim = Simulation(
+                options.dimensions,
+                options.numparts,
+                neighborhoods[options.sociometry],
+                functions[options.function],
+                motions[options.motion],
+
+                **simargs
+                )
+
+        if options.useevals:
+            simiter = sim.iterevals()
+        else:
+            simiter = sim.iterbatches()
+
+
+        # Separate by two blank lines and a header
+        print
+        print
+        if (options.batches > 1):
+            print "# Batch %d" % batch
+
+        # Perform the simulation
+        try:
+            for i in xrange(numiters):
+                soc, iters = simiter.next()
+                if 0 == (i+1) % freq:
+                    outputter(soc, iters)
+            print "# DONE" 
+        except KeyboardInterrupt, e:
+            print "# INTERRUPTED"
+        except Exception, e:
+            if options.verbose:
+                raise
+            else:
+                print "# ERROR"
+    #--------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+if __name__ == '__main__': main()
+#------------------------------------------------------------------------------
