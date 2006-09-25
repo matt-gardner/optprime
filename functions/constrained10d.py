@@ -88,7 +88,7 @@ class ConstrainedFunc10d(_general._Base):
     def __call__( self, vec ):
         realvec = vec[:5]
         if len(realvec) < 5:
-            realvec.extend([0.0] * 5-len(realvec))
+            realvec.extend([0.0] * (5-len(realvec)))
         realvec.extend([0.0] * 5)
         realvec.append(1.0)
 
