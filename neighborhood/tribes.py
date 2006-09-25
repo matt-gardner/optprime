@@ -1,5 +1,5 @@
 from __future__ import division
-from util import VarArgs
+from aml.opt.varargs import VarArgs
 from _base import _Base
 
 #------------------------------------------------------------------------------

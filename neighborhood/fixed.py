@@ -1,6 +1,6 @@
 from __future__ import division
 from _base import _Base
-from Vector import Vector
+from aml.opt.Vector import Vector
 
 #------------------------------------------------------------------------------
 

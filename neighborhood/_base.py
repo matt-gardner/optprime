@@ -1,10 +1,10 @@
 from __future__ import division
 
-from util import VarArgs
+from aml.opt.varargs import VarArgs
 from itertools import izip
 import operator
 from sets import Set
-from Vector import Vector
+from aml.opt.Vector import Vector
 
 class _Base(VarArgs):
     _args = [
