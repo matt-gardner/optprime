@@ -88,11 +88,11 @@ class Particle(object):
 
     def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
         if newpos is None:
-            self += newvel
+            self.pos += newvel
         else:
             # We use slice notation to make sure to only change the list
             # elements
-            self[:] = newpos
+            self.pos = Vector(newpos)
         self.vel = Vector(newvel)
         self.val = newval
         if isbetterfunc(self.val, self.bestval):
@@ -105,11 +105,12 @@ class Particle(object):
             self.improvedcount = 0
 
     def reset( self, pos, vel, val ):
-        self[:] = pos
+        self.pos = Vector(pos)
         self.vel = Vector(vel)
         self.val = val
         self.bestpos = Vector(pos)
         self.bestval = val
+        # we should probably reset gbest here, too.
         self.resetcounts()
 
     def resetcounts( self ):
