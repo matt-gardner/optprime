@@ -26,6 +26,7 @@ class Particle(object):
     """
     def __init__( self, param, vel=None, val=None, pid=None ):
         repr_state = None
+        gbest = None
         try:
             repr_id, repr_state = param.split('\t')
             pid = int(repr_id)
@@ -60,11 +61,12 @@ class Particle(object):
             val = float('inf')
 
         if repr_state is None:
+            deps = [self.id]
             bestpos = pos
             bestval = val
-            gbestpos = [0.0] * self.dims
-            gbestval = val
-            deps = [self.id]
+            gbest = self
+        else:
+            gbest = Particle(Vector(gbestpos), None, gbestval)
 
         self.deps = deps
         self.pos = Vector(pos)
@@ -72,8 +74,7 @@ class Particle(object):
         self.val = val
         self.bestpos = Vector(bestpos)
         self.bestval = bestval
-        self.gbestpos = Vector(gbestpos)
-        self.gbestval = gbestval
+        self.gbest = gbest
 
         self.stagnantcount = 0
         self.improvedcount = 0
@@ -129,8 +130,8 @@ class Particle(object):
                         str(self.val),
                         ','.join(str(x) for x in self.bestpos),
                         str(self.bestval),
-                        ','.join(str(x) for x in self.gbestpos),
-                        str(self.gbestval)))))
+                        ','.join(str(x) for x in self.gbest.bestpos),
+                        str(self.gbest.bestval)))))
 
     next_id = 0
 
