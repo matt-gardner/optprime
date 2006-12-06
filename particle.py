@@ -36,7 +36,10 @@ class Particle(object):
         if repr_state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
                     gbestpos_str, gbestval_str = repr_state.split(';')
-            deps = [int(field) for field in dep_str.split(',')]
+            if dep_str:
+                deps = [int(field) for field in dep_str.split(',')]
+            else:
+                deps = []
             pos = [float(field) for field in pos_str.split(',')]
             vel = [float(field) for field in vel_str.split(',')]
             val = float(val_str)
@@ -83,8 +86,8 @@ class Particle(object):
         p = Particle(self.pos, self.vel, self.val)
         p.bestpos = self.bestpos
         p.bestval = self.bestval
-        p.gbestpos = self.gbestpos
-        p.gbestval = self.gbestval
+        p.gbest = Particle(self.gbest.pos, self.gbest.vel, self.gbest.val)
+        p.deps = list(self.deps)
         return p
 
     def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
