@@ -1,5 +1,6 @@
 from __future__ import division
 from itertools import izip
+from scipy import stats
 import _general
 from iterextra import itergroup
 
@@ -11,6 +12,10 @@ class RBF(_general._Base):
 
     The 'dims' parameter should be num_bases * (1 + 2 * num_input_dimensions)
     where num_input_dimensions is defined by the data found in 'datafile'.
+    The portion of 'vec' for each basis ends up looking like:
+    (output_weight, weight1, center1, weight2, center2, ...)
+
+    Note: we do not yet set the deviation/variance for each basis function.
     """
     _args = [('datafile', '/var/hadoop/rbfdata.csv', \
                     'File with training data (CSV format)')]
@@ -29,7 +34,7 @@ class RBF(_general._Base):
             # first point in the file.
             if self.inputdims is None:
                 self.inputdims = len(point) - 1
-            output = datapoint[-1]
+            output = point[-1]
             sumsqerr += (output - self.net_value(vec, point)) ** 2
         return sumsqerr
 
@@ -47,3 +52,10 @@ class RBF(_general._Base):
                         izip(param_iter, point))
 
         return output_weight * stats.norm.pdf(sq_dist ** 0.5)
+
+
+if __name__ == '__main__':
+    rbf = RBF(dims=3, datafile='rbftest.csv')
+    #rbf.inputdims = 1
+    #rbf.net_value((1.0, 1.0, 0.0), 0.0)
+    print rbf((1.0, 1.0, 0.0))
