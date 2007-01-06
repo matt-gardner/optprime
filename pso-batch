@@ -245,7 +245,10 @@ def main():
                 # Skip dimensions, since we pass that in explicitly
                 suffix = optname[len(prefix)+1:]
                 if suffix == 'dims': continue
-                simargs[suffix] = eval(getattr(options, optname))
+                try:
+                    simargs[suffix] = eval(getattr(options, optname))
+                except SyntaxError:
+                    simargs[suffix] = getattr(options, optname)
 
     #--------------------------------------------------------------------------
     # Perform the simulation in batches
