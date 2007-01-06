@@ -66,6 +66,8 @@ from functions.keane import Keane
 from functions.gauss import Gauss
 from functions.financial import AlphaBeta
 from functions.constrained10d import ConstrainedSphere10d, ConstrainedRastrigin10d, ConstrainedRosenbrock10d, ConstrainedGriewank10d, ConstrainedQuadratic10d
+from functions.rbf import RBF
+from functions.art import Art
 functionlist = [
     Sphere,
     Distance,
@@ -91,6 +93,8 @@ functionlist = [
     ConstrainedRastrigin10d,
     ConstrainedRosenbrock10d,
     ConstrainedGriewank10d,
+    RBF,
+    Art
 ]
 functions = dict([(v.__name__, v) for v in functionlist])
 
