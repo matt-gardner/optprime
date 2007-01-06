@@ -56,24 +56,8 @@ class RBF(_general._Base):
         return output_weight * stats.norm.pdf(sq_dist ** 0.5, scale=RBF_STDDEV)
 
 
-if __name__ == '__main__':
-    # Generate data, picking a random RBF
-    import optparse
-    parser = optparse.OptionParser()
-    parser.add_option('-b', '--bases', dest='nbases', type='int',
-            help='Number of Basis Functions')
-    parser.add_option('-p', '--points', dest='npoints', type='int',
-            help='Number of Points')
-    parser.add_option('-d', '--inputdims', dest='inputdims', type='int',
-            help='Number of Input Dimensions')
-    parser.add_option('-r', '--randomseed', dest='rand', type='int',
-            help='Random Seed for Bases')
-    parser.set_defaults(nbases=2, npoints=1000, inputdims=1, rand=0)
-
-    options, args = parser.parse_args()
-    nbases = options.nbases
-    inputdims = options.inputdims
-    npoints = options.npoints
+def generate_points(bases, points, inputdims, randomseed):
+    """Create a random RBF and generate points with it."""
     import random
     rand = random.Random(options.rand)
 
@@ -101,6 +85,26 @@ if __name__ == '__main__':
     for i in xrange(npoints):
         point = inputs_cube.random_vec(rand)
         print ','.join(str(x) for x in chain(point, (rbf.net_value(vec, point),)))
+
+
+if __name__ == '__main__':
+    # Generate data, picking a random RBF
+    import optparse
+    parser = optparse.OptionParser()
+    parser.add_option('-b', '--bases', dest='nbases', type='int',
+            help='Number of Basis Functions')
+    parser.add_option('-p', '--points', dest='npoints', type='int',
+            help='Number of Points')
+    parser.add_option('-d', '--inputdims', dest='inputdims', type='int',
+            help='Number of Input Dimensions')
+    parser.add_option('-r', '--randomseed', dest='rand', type='int',
+            help='Random Seed for Bases')
+    parser.set_defaults(nbases=2, npoints=1000, inputdims=1, rand=0)
+
+    options, args = parser.parse_args()
+    nbases = options.nbases
+    inputdims = options.inputdims
+    npoints = options.npoints
 
     #rbf = RBF(dims=3, datafile='rbftest.csv')
     #rbf.inputdims = 1
