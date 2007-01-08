@@ -53,8 +53,7 @@ class Particle(object):
         if pid is not None:
             self.id = pid
         else:
-            self.id = self.next_id
-            self.next_id += 1
+            self.id = self.new_id()
 
         self.dims = len(pos)
 
@@ -81,6 +80,15 @@ class Particle(object):
 
         self.stagnantcount = 0
         self.improvedcount = 0
+
+
+    next_id = 0
+
+    @classmethod
+    def new_id(cls):
+        x = cls.next_id
+        cls.next_id += 1
+        return x
 
     def copy( self ):
         p = Particle(self.pos, self.vel, self.val)
@@ -135,8 +143,6 @@ class Particle(object):
                         str(self.bestval),
                         ','.join(str(x) for x in self.gbest.bestpos),
                         str(self.gbest.bestval)))))
-
-    next_id = 0
 
 
 #------------------------------------------------------------------------------
