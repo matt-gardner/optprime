@@ -10,6 +10,7 @@ from __future__ import division
 from optparse import OptionParser
 
 from simulation import Simulation, functions, motions, neighborhoods
+from output import outputtypes
 
 import sys
 
@@ -93,35 +94,6 @@ def gen_varargs_options( parser, optprefix, helpname, dct ):
                     helpname,str(arg),availability,)
                 )
 
-#------------------------------------------------------------------------------
-# BasicOutput class -- deals with output of the data
-#------------------------------------------------------------------------------
-class BasicOutput(object):
-    def __call__( self, soc, iters ):
-        """Output the current state of the simulation
-        
-        In this particular instance, it just dumps stuff out to stdout, and it
-        only outputs the globally best value in the swarm.
-        """
-        best = soc.bestparticle()
-
-        print best.bestval
-
-class PairOutput(object):
-    def __call__( self, soc, iters ):
-        best = soc.bestparticle()
-        print iters, best.bestval
-
-class IterNumValOutput(object):
-    def __call__( self, soc, iters ):
-        best = soc.bestparticle()
-        print iters, soc.numparticles(),  best.bestval
-
-#------------------------------------------------------------------------------
-class ExtendedOutput(object):
-    def __call__( self, soc, iters ):
-        best = soc.bestparticle()
-        print best.bestval, " ".join([str(x) for x in best.bestpos])
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -165,7 +137,7 @@ def main():
     parser.add_option('-t', '--outputtype',
             dest='outputtype',
             default='BasicOutput',
-            help='Style of output',
+            help='Style of output {%s}' % ", ".join(outputtypes),
             )
     parser.add_option('-d', '--dimensions',
             dest='dimensions',
@@ -253,7 +225,7 @@ def main():
     #--------------------------------------------------------------------------
     # Perform the simulation in batches
     #--------------------------------------------------------------------------
-    outputter = globals()[options.outputtype]()
+    outputter = outputtypes[options.outputtype]()
 
     freq = options.outputfreq
 
