@@ -30,7 +30,6 @@ neighborhoods = dict([(v.__name__, v) for v in neighborhoodlist])
 # Set up the known motion types
 from motion.basic import Basic, BasicGauss, BasicAdaptive
 from motion.bare import Bare
-from motion.kalman import Kalman
 from motion.link import Link1, Link2, Link3, Link4
 from motion.pivot import Pivot
 motionlist = [
@@ -39,12 +38,17 @@ motionlist = [
     BasicAdaptive,
     Bare,
     Pivot,
-    Kalman,
     Link1,
     Link2,
     Link3,
     Link4,
 ]
+# Some motions require scipy, Numeric, etc., and might not work everywhere.
+try:
+    from motion.kalman import Kalman
+    motionlist.append(Kalman)
+except ImportError:
+    pass
 motions = dict([(v.__name__, v) for v in motionlist])
 
 #------------------------------------------------------------------------------
@@ -65,7 +69,6 @@ from functions.pat import Pat
 from functions.keane import Keane
 from functions.gauss import Gauss
 from functions.financial import AlphaBeta
-from functions.constrained10d import ConstrainedSphere10d, ConstrainedRastrigin10d, ConstrainedRosenbrock10d, ConstrainedGriewank10d, ConstrainedQuadratic10d
 from functions.rbf import RBF
 from functions.art import Art
 functionlist = [
@@ -88,14 +91,24 @@ functionlist = [
     Keane,
     Gauss,
     AlphaBeta,
-    ConstrainedSphere10d,
-    ConstrainedQuadratic10d,
-    ConstrainedRastrigin10d,
-    ConstrainedRosenbrock10d,
-    ConstrainedGriewank10d,
     RBF,
     Art
 ]
+# Some functions require scipy, Numeric, etc., and might not work everywhere.
+try:
+    from functions.ackley import Ackley as x
+    from functions.constrained10d import ConstrainedSphere10d, \
+            ConstrainedRastrigin10d, ConstrainedRosenbrock10d, \
+            ConstrainedGriewank10d, ConstrainedQuadratic10d
+    functionlist += [
+        ConstrainedSphere10d,
+        ConstrainedQuadratic10d,
+        ConstrainedRastrigin10d,
+        ConstrainedRosenbrock10d,
+        ConstrainedGriewank10d,
+    ]
+except ImportError:
+    pass
 functions = dict([(v.__name__, v) for v in functionlist])
 
 #------------------------------------------------------------------------------
