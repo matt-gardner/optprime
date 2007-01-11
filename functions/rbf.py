@@ -26,7 +26,7 @@ class RBF(_general._Base):
 
     Note: we do not yet set the deviation/variance for each basis function.
     """
-    _args = [('datafile', '/var/hadoop/rbfdata.csv', \
+    _args = [('datafile', 'rbfdata.csv', \
                     'File with training data (CSV format)')]
     def __init__( self, *args, **kargs):
         super(RBF,self).__init__( *args, **kargs )
