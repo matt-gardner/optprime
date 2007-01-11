@@ -1,8 +1,15 @@
 from __future__ import division
 from itertools import izip, chain
-from scipy import stats
 import _general
 from iterextra import itergroup
+
+try:
+    from scipy import stats
+    gaussian = stats.norm.pdf
+except ImportError:
+    from math import sqrt, exp, pi
+    def gaussian(x,scale=1.0):
+        return 1.0/(scale*sqrt(2*pi))*exp(-(x/scale)**2/2.0)
 
 RBF_STDDEV = 10
 
@@ -53,7 +60,7 @@ class RBF(_general._Base):
         sq_dist = sum((abs(weight) * (x - center) ** 2) for
                 (weight, center), x in izip(param_iter, point))
 
-        return output_weight * stats.norm.pdf(sq_dist ** 0.5, scale=RBF_STDDEV)
+        return output_weight * gaussian(sq_dist ** 0.5, scale=RBF_STDDEV)
 
 
 def generate_points(bases, points, inputdims, randomseed):
