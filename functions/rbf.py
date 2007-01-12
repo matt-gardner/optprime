@@ -99,11 +99,20 @@ class RBF(_general._Base):
         inputs_cube = Cube(inputs_constraints)
         for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
-            self.datapoints.append(point)
-            print >>csvfile, ','.join(str(x) for x in
-                    chain(point, (self.net_value(vec, point),)))
+            point_and_value = tuple(chain(point, (self.net_value(vec, point),)))
+            self.datapoints.append(point_and_value)
+            print >>csvfile, ','.join(str(x) for x in point_and_value)
         csvfile.close()
         return (csvfilename,)
+
+def get_rbf_plot_func(inputdims, vec):
+    """Get an easy to use function for the given number of input dimensions and
+    the given vec."""
+    rbf = RBF()
+    rbf.data_dims = inputdims
+    def function(x):
+        return rbf.net_value(vec, (x,))
+    return function
 
 def generate_points(bases, points, inputdims, randomseed):
     """Create a random RBF and generate points with it."""
