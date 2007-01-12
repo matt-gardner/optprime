@@ -95,7 +95,6 @@ class RBF(_general._Base):
         import os, tempfile
         csvfd, csvfilename = tempfile.mkstemp()
         csvfile = os.fdopen(csvfd, 'w')
-        print 'CSV:', csvfilename
         inputs_constraints = ((-50, 50),) * self.data_dims
         inputs_cube = Cube(inputs_constraints)
         for i in xrange(self.npoints):
