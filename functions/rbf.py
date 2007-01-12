@@ -27,13 +27,13 @@ class RBF(_general._Base):
     Note: we do not yet set the deviation/variance for each basis function.
     """
     _args = [('datafiles', '', 'File with training data (CSV format)'),
-            ('points', '1000', 'Number of generated data points'),
-            ('inputdims', '1', 'Dimensionality of generated points'),
-            ('seed', '42', 'Random seed used to generate points')]
+            ('npoints', 1000, 'Number of generated data points'),
+            ('inputdims', 1, 'Dimensionality of generated points'),
+            ('seed', 42, 'Random seed used to generate points')]
     def __init__( self, *args, **kargs):
         super(RBF,self).__init__( *args, **kargs )
         self._set_constraints( ((-50,50),) * self.dims )
-        self.inputdims = None
+        self.data_dims = None
         try:
             datafile = self.datafiles.split()[0]
             self.datapoints = [tuple(float(field) for field in line.split(','))
@@ -44,11 +44,11 @@ class RBF(_general._Base):
     def __call__( self, vec ):
         """Evaluate sum squared error."""
         sumsqerr = 0.0
-        for point in datapoints:
+        for point in self.datapoints:
             # Figure out the dimensionality of our dataset by looking at the
             # first point in the file.
-            if self.inputdims is None:
-                self.inputdims = len(point) - 1
+            if self.data_dims is None:
+                self.data_dims = len(point) - 1
             output = point[-1]
             sumsqerr += (output - self.net_value(vec, point)) ** 2
         return sumsqerr
@@ -56,7 +56,7 @@ class RBF(_general._Base):
     def net_value( self, vec, point ):
         """Return the value of the RBF network at a given point."""
         return sum(self.rbf_value(func, point) for func in \
-                        itergroup(vec, 2 * self.inputdims + 1))
+                        itergroup(vec, 2 * self.data_dims + 1))
 
     def rbf_value( self, params, point ):
         """Return the value of a single basis function at a given point."""
@@ -73,13 +73,14 @@ class RBF(_general._Base):
         import random
         rand = random.Random(self.seed)
 
-        nbases = int(self.dims / (1 + 2 * self.inputdims))
+        self.data_dims = self.inputdims
+        nbases = int(self.dims / (1 + 2 * self.data_dims))
 
         # We'll limit constraints a bit for our generated data.
         center_constraints = []
         for i in xrange(nbases):
             center_constraints.append((0, 50))
-            for j in xrange(inputdims):
+            for j in xrange(self.data_dims):
                 center_constraints.append((0, 50))
                 center_constraints.append((-50, 50))
                 # Use this if you want to make the RBF centers more evenly spaced:
@@ -94,9 +95,10 @@ class RBF(_general._Base):
         import os, tempfile
         csvfd, csvfilename = tempfile.mkstemp()
         csvfile = os.fdopen(csvfd, 'w')
-        inputs_constraints = ((-50, 50),) * inputdims
+        print 'CSV:', csvfilename
+        inputs_constraints = ((-50, 50),) * self.data_dims
         inputs_cube = Cube(inputs_constraints)
-        for i in xrange(npoints):
+        for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
             self.datapoints.append(point)
             print >>csvfile, ','.join(str(x) for x in
@@ -126,7 +128,7 @@ if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option('-b', '--bases', dest='nbases', type='int',
             help='Number of Basis Functions')
-    parser.add_option('-p', '--points', dest='npoints', type='int',
+    parser.add_option('-n', '--npoints', dest='npoints', type='int',
             help='Number of Points')
     parser.add_option('-d', '--inputdims', dest='inputdims', type='int',
             help='Number of Input Dimensions')
