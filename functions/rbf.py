@@ -108,6 +108,18 @@ class RBF(_general._Base):
 def get_rbf_plot_func(inputdims, vec):
     """Get an easy to use function for the given number of input dimensions and
     the given vec."""
+    try:
+        split = vec.split(' ')
+        if len(split) < 2:
+            raise ValueError
+        vec = tuple(float(s) for s in split)
+    except (AttributeError, ValueError):
+        split = vec.split(',')
+        if len(split) < 2:
+            raise ValueError
+        vec = tuple(float(s) for s in split)
+    if len(vec) % (2 * inputdims + 1) != 0:
+        raise ValueError('Wrong number of input dimensions in given vec!')
     rbf = RBF()
     rbf.data_dims = inputdims
     def function(x):
@@ -120,7 +132,7 @@ def generate_points(bases, points, inputdims, randomseed):
     dims = nbases * (1 + 2 * inputdims)
     rbf = RBF(dims=dims)
     rbf.inputdims = inputdims
-    rbf.points = points
+    rbf.npoints = points
 
     csvfilename = rbf.tmpfiles()[0]
     csvfile = open(csvfilename)
