@@ -11,7 +11,8 @@ except ImportError:
     def gaussian(x,scale=1.0):
         return 1.0/(scale*sqrt(2*pi))*exp(-(x/scale)**2/2.0)
 
-RBF_STDDEV = 10
+#RBF_STDDEV = 10
+RBF_STDDEV = 40
 
 class RBF(_general._Base):
     """Radial Basis Function Network
@@ -122,8 +123,12 @@ def get_rbf_plot_func(inputdims, vec):
         raise ValueError('Wrong number of input dimensions in given vec!')
     rbf = RBF()
     rbf.data_dims = inputdims
-    def function(x):
-        return rbf.net_value(vec, (x,))
+    if inputdims == 1:
+        def function(x):
+            return rbf.net_value(vec, (x,))
+    else:
+        def function(x):
+            return rbf.net_value(vec, x)
     return function
 
 def generate_points(bases, points, inputdims, randomseed):
