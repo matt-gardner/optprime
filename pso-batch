@@ -12,7 +12,7 @@ from optparse import OptionParser
 from simulation import Simulation, functions, motions, neighborhoods
 from cli import outputtypes, gen_simple_options, gen_varargs_options
 
-import sys
+import sys, os
 
 
 #------------------------------------------------------------------------------
@@ -160,6 +160,11 @@ def main():
                 **simargs
                 )
 
+        try:
+            tmpfiles = sim.func.tmpfiles()
+        except AttributeError:
+            tmpfiles = []
+
         if options.useevals:
             simiter = sim.iterevals()
         else:
@@ -186,6 +191,9 @@ def main():
                 raise
             else:
                 print "# ERROR"
+
+        for f in tmpfiles:
+            os.unlink(f)
     #--------------------------------------------------------------------------
 
 #------------------------------------------------------------------------------
