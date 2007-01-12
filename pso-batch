@@ -10,89 +10,9 @@ from __future__ import division
 from optparse import OptionParser
 
 from simulation import Simulation, functions, motions, neighborhoods
-from output import outputtypes
+from cli import outputtypes, gen_simple_options, gen_varargs_options
 
 import sys
-
-#------------------------------------------------------------------------------
-# Parse the program arguments
-#------------------------------------------------------------------------------
-def gen_simple_options( parser, optprefix, helpname, dct ):
-    """Generate options for a single set of varargs
-
-    arguments:
-    parser -- option parser object
-    optprefix -- prefix to be placed on the option name (--optprefix-arg)
-    helpname -- name of the argument thing in help (Function)
-    dct -- the actual dictionary from the simulation module
-    """
-
-    for aname, arg in dct.iteritems():
-        if isinstance(arg.default,bool):
-            nostr = ''
-            prefixhelp = ''
-            if arg.default == True:
-                prefixhelp = 'Turns off '
-                nostr = 'no'
-            parser.add_option('', '--%s-%s%s' % (optprefix,nostr,aname),
-                dest='%s_%s' % (optprefix,aname),
-                default=str(arg.default),
-                action="store_const", const=str(not arg.default),
-                help="%s%s optional setting: %s" % (
-                    prefixhelp, helpname, str(arg),)
-                )
-        else:
-            parser.add_option('', '--%s-%s' % (optprefix,aname),
-                    dest='%s_%s' % (optprefix,aname),
-                    default=str(arg.default),
-                    help="%s optional setting: %s" % (
-                        helpname,str(arg),)
-                    )
-
-#------------------------------------------------------------------------------
-def gen_varargs_options( parser, optprefix, helpname, dct ):
-    """Generate options for things that use varargs -- multiple mixed things
-
-    arguments:
-    parser -- option parser object
-    optprefix -- prefix to be placed on the option name (--optprefix-arg)
-    helpname -- name of the argument thing in help (Function)
-    dct -- the actual dictionary from the simulation module
-    """
-    args = {}
-    for tname, thing in dct.iteritems():
-        for aname, arg in thing.args.iteritems():
-            if aname not in args:
-                args[aname] = [arg, [tname]]
-            else:
-                args[aname][1].append( tname )
-
-    for aname, (arg, tnames) in args.iteritems():
-        if len(tnames) == len(dct):
-            availability = "all"
-        else:
-            availability = ", ".join(tnames)
-
-        if isinstance(arg.default,bool):
-            nostr = ''
-            prefixhelp = ''
-            if arg.default == True:
-                prefixhelp = 'Turns off '
-                nostr = 'no'
-            parser.add_option('', '--%s-%s%s' % (optprefix,nostr,aname),
-                dest='%s_%s' % (optprefix,aname),
-                default=str(arg.default),
-                action="store_const", const=str(not arg.default),
-                help="%s%s optional setting: %s (Available for %s)" % (
-                    prefixhelp,helpname,str(arg),availability,)
-                )
-        else:
-            parser.add_option('', '--%s-%s' % (optprefix,aname),
-                dest='%s_%s' % (optprefix,aname),
-                default=str(arg.default),
-                help="%s optional setting: %s (Available for %s)" % (
-                    helpname,str(arg),availability,)
-                )
 
 
 #------------------------------------------------------------------------------
