@@ -108,6 +108,25 @@ class IterNumValOutput(object):
         best = soc.bestparticle()
         print iters, soc.numparticles(),  best.bestval
 
+class TimerOutput(object):
+    def __init__( self ):
+        from datetime import datetime
+        self.last_iter = 0
+        self.last_time = datetime.now()
+
+    def __call__( self, soc, iters ):
+        # Find time difference
+        from datetime import datetime
+        now = datetime.now()
+        delta = now - self.last_time
+        seconds = delta.days * 86400 + delta.seconds + delta.microseconds / 1000000
+
+        time_per_iter = seconds / (iters - self.last_iter)
+        print time_per_iter
+
+        self.last_time = now
+        self.last_iter = iters
+
 #------------------------------------------------------------------------------
 class ExtendedOutput(object):
     def __call__( self, soc, iters ):
@@ -115,7 +134,7 @@ class ExtendedOutput(object):
         print best.bestval, " ".join([str(x) for x in best.bestpos])
 
 outputtypes = dict((cls.__name__, cls) for cls in
-        (BasicOutput, PairOutput, IterNumValOutput, ExtendedOutput))
+        (BasicOutput, PairOutput, IterNumValOutput, TimerOutput, ExtendedOutput))
 
 
 # vim: et sw=4 sts=4

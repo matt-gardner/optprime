@@ -145,8 +145,6 @@ def main():
     #--------------------------------------------------------------------------
     # Perform the simulation in batches
     #--------------------------------------------------------------------------
-    outputter = outputtypes[options.outputtype]()
-
     freq = options.outputfreq
 
     for batch in xrange(options.batches):
@@ -176,6 +174,9 @@ def main():
         print
         if (options.batches > 1):
             print "# Batch %d" % batch
+
+        # Note: some output types really need to get initialized just in time.
+        outputter = outputtypes[options.outputtype]()
 
         # Perform the simulation
         try:
