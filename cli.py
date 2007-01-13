@@ -115,6 +115,7 @@ class TimerOutput(object):
         self.last_time = datetime.now()
 
     def __call__( self, soc, iters ):
+        if iters <= 0: return
         # Find time difference
         from datetime import datetime
         now = datetime.now()
