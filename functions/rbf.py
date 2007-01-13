@@ -12,7 +12,7 @@ except ImportError:
         return 1.0/(scale*sqrt(2*pi))*exp(-(x/scale)**2/2.0)
 
 #RBF_STDDEV = 10
-RBF_STDDEV = 40
+RBF_STDDEV = 25
 
 class RBF(_general._Base):
     """Radial Basis Function Network
