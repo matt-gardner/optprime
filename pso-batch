@@ -31,7 +31,7 @@ def main():
             action='store_true',
             help='Refrain from printing version and option information'
             )
-    parser.add_option('-v', '--version',
+    parser.add_option('-V', '--version',
             dest='version',
             action='store_true',
             help='Print version information and exit'
@@ -82,7 +82,7 @@ def main():
             default=1,
             help='Number of complete experiments to run'
             )
-    parser.add_option('-V','--verbose',
+    parser.add_option('-v','--verbose',
             dest='verbose',
             action='store_true',
             default=False,
