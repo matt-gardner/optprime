@@ -149,8 +149,9 @@ class Particle(object):
                 self.pos, self.vel, self.val, self.bestpos, self.bestval)
 
     def __repr__( self ):
+        # Note: We don't set the dep_str from self.deps anymore.
         return '\t'.join((str(self.id),
-                ';'.join((','.join(str(dep) for dep in self.deps),
+                ';'.join((self.dep_str,
                         ','.join(str(x) for x in self.pos),
                         ','.join(str(x) for x in self.vel),
                         str(self.val),
