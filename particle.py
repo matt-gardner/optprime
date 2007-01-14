@@ -53,6 +53,7 @@ class Particle(object):
                         raise Exception('Unknown deps mode: %s' % dep_mode)
             else:
                 deps = []
+                dep_str = ''
             pos = [float(field) for field in pos_str.split(',')]
             vel = [float(field) for field in vel_str.split(',')]
             val = float(val_str)
