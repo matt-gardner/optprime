@@ -40,8 +40,8 @@ class Particle(object):
         if repr_state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
                     gbestpos_str, gbestval_str = repr_state.split(';')
+            self.dep_str = dep_str
             if dep_str:
-                self.dep_str = dep_str
                 try:
                     deps = [int(field) for field in dep_str.split(',')]
                 except ValueError:
@@ -53,7 +53,6 @@ class Particle(object):
                         raise Exception('Unknown deps mode: %s' % dep_mode)
             else:
                 deps = []
-                dep_str = ''
             pos = [float(field) for field in pos_str.split(',')]
             vel = [float(field) for field in vel_str.split(',')]
             val = float(val_str)
