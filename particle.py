@@ -111,6 +111,7 @@ class Particle(object):
         p.bestval = self.bestval
         p.gbest = Particle(self.gbest.pos, self.gbest.vel, self.gbest.val)
         p.deps = list(self.deps)
+        p.dep_str = self.dep_str
         return p
 
     def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
