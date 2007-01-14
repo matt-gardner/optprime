@@ -15,6 +15,10 @@ class Particle(object):
     Interpretation of repr:
     id     deps     pos       vel    val     pbpos   pbval  gbpos   gbval
 
+    Alternatively, the 'deps' may be given by a string like 'all-500', in
+    which case the system algorithmically figures out who the neighbors are
+    (to reduce space requirements).
+
     Note: A particle's global best is only used in the MapReduce
     implementation--the neighborhood stuff for the normal PSO implementation
     needs to be converted over somehow.
@@ -37,7 +41,16 @@ class Particle(object):
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
                     gbestpos_str, gbestval_str = repr_state.split(';')
             if dep_str:
-                deps = [int(field) for field in dep_str.split(',')]
+                self.dep_str = dep_str
+                try:
+                    deps = [int(field) for field in dep_str.split(',')]
+                except ValueError:
+                    terms = dep_str.split('-')
+                    dep_mode, total_particles = terms[0], int(terms[1])
+                    if dep_mode == 'all':
+                        deps = xrange(total_particles)
+                    else:
+                        raise Exception('Unknown deps mode: %s' % dep_mode)
             else:
                 deps = []
             pos = [float(field) for field in pos_str.split(',')]
@@ -64,6 +77,7 @@ class Particle(object):
 
         if repr_state is None:
             deps = [self.id]
+            self.dep_str = str(self.id)
             bestpos = pos
             bestval = val
             gbest = self
