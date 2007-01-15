@@ -138,8 +138,10 @@ def main():
                 suffix = optname[len(prefix)+1:]
                 if suffix == 'dims': continue
                 try:
+                    # For the record, I think that this way of processing
+                    # options is evil.
                     simargs[suffix] = eval(getattr(options, optname))
-                except SyntaxError:
+                except (SyntaxError, NameError):
                     simargs[suffix] = getattr(options, optname)
 
     #--------------------------------------------------------------------------
