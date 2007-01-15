@@ -1,6 +1,7 @@
 #!/usr/bin/python -tt
 
 from __future__ import division
+import sys
 
 
 #------------------------------------------------------------------------------
@@ -97,16 +98,19 @@ class BasicOutput(object):
         best = soc.bestparticle()
 
         print best.bestval
+        sys.stdout.flush()
 
 class PairOutput(object):
     def __call__( self, soc, iters ):
         best = soc.bestparticle()
         print iters, best.bestval
+        sys.stdout.flush()
 
 class IterNumValOutput(object):
     def __call__( self, soc, iters ):
         best = soc.bestparticle()
         print iters, soc.numparticles(),  best.bestval
+        sys.stdout.flush()
 
 class TimerOutput(object):
     def __init__( self ):
@@ -124,6 +128,7 @@ class TimerOutput(object):
 
         time_per_iter = seconds / (iters - self.last_iter)
         print time_per_iter
+        sys.stdout.flush()
 
         self.last_time = now
         self.last_iter = iters
@@ -133,6 +138,7 @@ class ExtendedOutput(object):
     def __call__( self, soc, iters ):
         best = soc.bestparticle()
         print best.bestval, " ".join([str(x) for x in best.bestpos])
+        sys.stdout.flush()
 
 outputtypes = dict((cls.__name__, cls) for cls in
         (BasicOutput, PairOutput, IterNumValOutput, TimerOutput, ExtendedOutput))
