@@ -39,8 +39,16 @@ class RBF(_general._Base):
             datafile = self.datafiles.split()[0]
             self.datapoints = [tuple(float(field) for field in line.split(','))
                             for line in open(datafile)]
-        except (IndexError, IOError):
+        except IndexError:
             self.datapoints = []
+
+        # Debugging:
+        #import os, tempfile
+        #from subprocess import Popen, PIPE
+        #self.debug_proc = Popen(('%s/bin/hadoop' % os.environ['HADOOP_HOME'],
+        #    'dfs', '-put', '-', tempfile.mktemp()), stdin=PIPE)
+        #example: print >>self.debug_proc.stdin, 'Hello!'
+
 
     def __call__( self, vec ):
         """Evaluate sum squared error."""
