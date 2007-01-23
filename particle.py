@@ -113,6 +113,13 @@ class Particle(object):
         p.dep_str = self.dep_str
         return p
 
+    def make_message( self ):
+        p = Particle(self.pos, self.vel, self.val)
+        p.bestpos = self.bestpos
+        p.bestval = self.bestval
+        p.gbest = Particle(self.gbest.pos, self.gbest.vel, self.gbest.val)
+        return p
+
     def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
         if newpos is None:
             self.pos += newvel
