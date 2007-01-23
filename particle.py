@@ -138,6 +138,14 @@ class Particle(object):
             self.stagnantcount += 1
             self.improvedcount = 0
 
+    def gbest_candidate( potential_pos, potential_val ):
+        """Update gbest if the given value is better than the current gbest."""
+        if potential_val < self.gbest.bestval:
+            self.gbest.bestpos = potential_pos
+            self.gbest.bestval = potential_val
+            return True
+        return False
+
     def reset( self, pos, vel, val ):
         self.pos = Vector(pos)
         self.vel = Vector(vel)
