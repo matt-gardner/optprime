@@ -32,7 +32,7 @@ class Particle(object):
         repr_state = None
         gbest = None
         try:
-            repr_id, repr_state = param.split('\t')
+            repr_id, repr_state = param.strip().split('\t')
             pid = int(repr_id)
         except AttributeError:
             pos = param
@@ -121,12 +121,7 @@ class Particle(object):
         return p
 
     def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
-        if newpos is None:
-            self.pos += newvel
-        else:
-            # We use slice notation to make sure to only change the list
-            # elements
-            self.pos = Vector(newpos)
+        self.pos = Vector(newpos)
         self.vel = Vector(newvel)
         self.val = newval
         if isbetterfunc(self.val, self.bestval):
@@ -145,6 +140,10 @@ class Particle(object):
             self.gbest.bestval = potential_val
             return True
         return False
+
+    def is_message( self ):
+        """Is this a message (True) or a full-fledged particle (False)"""
+        return self.dep_str == ''
 
     def reset( self, pos, vel, val ):
         self.pos = Vector(pos)

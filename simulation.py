@@ -331,8 +331,6 @@ class Simulation(VarArgs):
             yield newpos, newvel
 
     def update_particle( self, particle, newpos, newvel ):
-        if newpos is None:
-            newpos = particle.pos + newvel
         if self.wrap:
             self.cube.wrap(particle.pos)
         particle.update( newpos, newvel, self.func(newpos), self.comparator )

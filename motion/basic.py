@@ -122,7 +122,7 @@ class Basic(_Base):
 
         self.momentum = m
 
-        return None, newvel
+        return particle.pos + newvel, newvel
 
     def _setsign( self, soc ):
         if not self.arpso:

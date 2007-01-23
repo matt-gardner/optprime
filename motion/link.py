@@ -209,7 +209,7 @@ class Link2(basic._Base):
         if self.restrictvel:
             self.cube.constrain_vec( nvel, True )
 
-        return None, nvel
+        return particle.pos + nvel, nvel
 
 #------------------------------------------------------------------------------
 class Link3(basic._Base):
