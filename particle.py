@@ -117,7 +117,7 @@ class Particle(object):
         p = Particle(self.pos, self.vel, self.val)
         p.bestpos = self.bestpos
         p.bestval = self.bestval
-        p.gbest = Particle(self.gbest.pos, self.gbest.vel, self.gbest.val)
+        p.gbest = Particle(self.bestpos, val=self.bestval)
         p.dep_str = ''
         p.deps = []
         return p
