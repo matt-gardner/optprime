@@ -133,15 +133,26 @@ class TimerOutput(object):
         self.last_time = now
         self.last_iter = iters
 
-#------------------------------------------------------------------------------
 class ExtendedOutput(object):
     def __call__( self, soc, iters ):
         best = soc.bestparticle()
         print best.bestval, " ".join([str(x) for x in best.bestpos])
         sys.stdout.flush()
 
+class SwarmOutput(object):
+    def __call__( self, soc, iters ):
+        print iters, len(soc.particles),
+        for part in soc.particles:
+            print part.val, ' '.join(str(x) for x in part.pos), \
+                    part.bestval, ' '.join(str(x) for x in part.bestpos),
+        print
+
+
+#------------------------------------------------------------------------------
+
 outputtypes = dict((cls.__name__, cls) for cls in
-        (BasicOutput, PairOutput, IterNumValOutput, TimerOutput, ExtendedOutput))
+        (BasicOutput, PairOutput, IterNumValOutput, TimerOutput,
+            ExtendedOutput, SwarmOutput))
 
 
 # vim: et sw=4 sts=4
