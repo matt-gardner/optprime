@@ -40,7 +40,7 @@ class Basic(_Base):
         ( 'phi1', 2.05, "Max of phi_1" ),
         ( 'phi2', 2.05, "Max of phi_2" ),
         ( 'kappa', 1.0, "Clerc's Kappa value, always in (0,1)" ),
-        ( 'randvecs', False, "Use random vectors instead of random constants "),
+        ( 'randvecs', True, "Use random vectors instead of random constants "),
         ( 'arpso', False, "Use ARPSO diversity guided behavior" ),
         ( 'constricted', True, "Use constricted PSO, per Clerc" ),
         ( 'arpso_high', 0.25, "High water mark for ARPSO" ),
