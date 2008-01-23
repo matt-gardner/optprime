@@ -70,6 +70,7 @@ from functions.keane import Keane
 from functions.gauss import Gauss
 from functions.financial import AlphaBeta
 from functions.rbf import RBF
+from functions.butterfly import Butterfly
 #from functions.art import Art
 functionlist = [
     Sphere,
@@ -91,7 +92,8 @@ functionlist = [
     Keane,
     Gauss,
     AlphaBeta,
-    RBF
+    RBF,
+    Butterfly
 #    ,Art
 ]
 # Some functions require scipy, Numeric, etc., and might not work everywhere.
