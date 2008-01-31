@@ -8,12 +8,13 @@ class Particle(object):
     """Particle for Particle Swarm Optimization.
     
     Initialization can be done by either a repr string or a position (with
-    optional velocity, value, and particle id).
+    optional velocity, value).  If a particle id is not specified, one will be
+    generated.
 
     Sample repr:
-    14  0,1,2,3,4;4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
+    0,1,2,3,4;4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
     Interpretation of repr:
-    id     deps     pos       vel    val     pbpos   pbval  gbpos   gbval
+       deps     pos       vel    val     pbpos   pbval  gbpos   gbval
 
     Alternatively, the 'deps' may be given by a string like 'all-500', in
     which case the system algorithmically figures out who the neighbors are
@@ -28,18 +29,17 @@ class Particle(object):
     awkward, so we stopped doing that.  Hopefully other code won't depend
     on it too much.
     """
-    def __init__( self, param, vel=None, val=None, pid=None ):
-        repr_state = None
+    def __init__( self, pos=None, vel=None, val=None, pid=None, state=None ):
         gbest = None
-        try:
-            repr_id, repr_state = param.strip().split('\t')
-            pid = int(repr_id)
-        except AttributeError:
-            pos = param
 
-        if repr_state is not None:
+        if pid is not None:
+            self.id = pid
+        else:
+            self.id = self.new_id()
+
+        if state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
-                    gbestpos_str, gbestval_str = repr_state.split(';')
+                    gbestpos_str, gbestval_str = state.split(';')
             self.dep_str = dep_str
             if dep_str:
                 try:
@@ -63,11 +63,6 @@ class Particle(object):
 
         #super(Particle, self).__init__( pos )
 
-        if pid is not None:
-            self.id = pid
-        else:
-            self.id = self.new_id()
-
         self.dims = len(pos)
 
         if vel is None:
@@ -75,14 +70,14 @@ class Particle(object):
         if val is None:
             val = float('inf')
 
-        if repr_state is None:
+        if state is None:
             deps = [self.id]
             self.dep_str = str(self.id)
             bestpos = pos
             bestval = val
             gbest = self
         else:
-            gbest = Particle(Vector(gbestpos), None, gbestval)
+            gbest = Particle(Vector(gbestpos), None, gbestval, pid=-1)
 
         self.deps = deps
         self.pos = Vector(pos)
@@ -117,7 +112,7 @@ class Particle(object):
         p = Particle(self.pos, self.vel, self.val)
         p.bestpos = self.bestpos
         p.bestval = self.bestval
-        p.gbest = Particle(self.bestpos, val=self.bestval)
+        p.gbest = Particle(self.bestpos, val=self.bestval, pid=-1)
         p.dep_str = ''
         p.deps = []
         return p
@@ -166,15 +161,14 @@ class Particle(object):
 
     def __repr__( self ):
         # Note: We don't set the dep_str from self.deps anymore.
-        return '\t'.join((str(self.id),
-                ';'.join((self.dep_str,
+        return ';'.join((self.dep_str,
                         ','.join(str(x) for x in self.pos),
                         ','.join(str(x) for x in self.vel),
                         str(self.val),
                         ','.join(str(x) for x in self.bestpos),
                         str(self.bestval),
                         ','.join(str(x) for x in self.gbest.bestpos),
-                        str(self.gbest.bestval)))))
+                        str(self.gbest.bestval)))
 
 
 #------------------------------------------------------------------------------
