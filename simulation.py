@@ -71,6 +71,7 @@ from functions.gauss import Gauss
 from functions.financial import AlphaBeta
 from functions.rbf import RBF
 from functions.butterfly import Butterfly
+from functions.psocryst import Crystal
 #from functions.art import Art
 functionlist = [
     Sphere,
@@ -93,7 +94,8 @@ functionlist = [
     Gauss,
     AlphaBeta,
     RBF,
-    Butterfly
+    Butterfly,
+    Crystal
 #    ,Art
 ]
 # Some functions require scipy, Numeric, etc., and might not work everywhere.
