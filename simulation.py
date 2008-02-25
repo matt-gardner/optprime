@@ -134,7 +134,7 @@ class Simulation(VarArgs):
         ]
 
     def __init__( self,
-            dims, nparts, neighborcls, funcls, motioncls, *args, **kargs
+            nparts, neighborcls, funcls, motioncls, *args, **kargs
             ):
         super(Simulation,self).__init__( *args, **kargs )
 
@@ -143,9 +143,9 @@ class Simulation(VarArgs):
 
         self.rand = kargs.get('rand', Random())
 
-        self.dims = dims
+        self.dims = kargs['dims']
         self.nparts = nparts
-        self.func = func = funcls(dims=dims, **kargs)
+        self.func = func = funcls(**kargs)
         self.neighborcls = neighborcls
         self.comparator = self.maximize and gt or lt
         self.motion = motioncls(

@@ -10,7 +10,8 @@ from __future__ import division
 from optparse import OptionParser
 
 from simulation import Simulation, functions, motions, neighborhoods
-from cli import outputtypes, gen_simple_options, gen_varargs_options
+from cli import outputtypes, gen_simple_options, gen_varargs_options, \
+        prefix_args
 
 import sys, os
 
@@ -131,18 +132,8 @@ def main():
     # Format the 'extra' arguments for the simulation object -- removing
     # prefixes and such.
     simargs = {}
-    for optname, opt in options.__dict__.iteritems():
-        for prefix in (motionprefix, funcprefix, neighborprefix, simprefix):
-            if optname.startswith( prefix + '_' ) and opt is not None:
-                # Skip dimensions, since we pass that in explicitly
-                suffix = optname[len(prefix)+1:]
-                if suffix == 'dims': continue
-                try:
-                    # For the record, I think that this way of processing
-                    # options is evil.
-                    simargs[suffix] = eval(getattr(options, optname))
-                except (SyntaxError, NameError):
-                    simargs[suffix] = getattr(options, optname)
+    for prefix in (motionprefix, funcprefix, neighborprefix, simprefix):
+        simargs.update(prefix_args(prefix, options))
 
     #--------------------------------------------------------------------------
     # Perform the simulation in batches
@@ -151,7 +142,6 @@ def main():
 
     for batch in xrange(options.batches):
         sim = Simulation(
-                options.dimensions,
                 options.numparts,
                 neighborhoods[options.sociometry],
                 functions[options.function],

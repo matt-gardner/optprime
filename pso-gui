@@ -401,9 +401,9 @@ class MainFrame(psoframe):
         scls = self.get_sociometry()
 
         valdict = dict([(k, a.value) for k, a in self.simargs.iteritems()])
+        valdict['dims'] = self.dimensions
 
         self.simulation = Simulation(
-                self.dimensions,
                 self.numparts,
                 self.get_sociometry(),
                 self.get_function(),

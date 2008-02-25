@@ -84,6 +84,26 @@ def gen_varargs_options( parser, optprefix, helpname, dct ):
                     helpname,str(arg),availability,)
                 )
 
+#------------------------------------------------------------------------------
+# BasicOutput class -- deals with output of the data
+#------------------------------------------------------------------------------
+
+# TODO: Exorcism needed.  I like Chris, but eval()ing input strings is evil!
+def prefix_args(prefix, options):
+    """Create a dictionary of args for the given prefix.
+
+    Currently prefix is one of: func, motion, soc, sim.
+    """
+    args = {}
+    for optname, opt in options.__dict__.iteritems():
+        if optname.startswith( prefix + '_' ) and opt is not None:
+            suffix = optname[len(prefix)+1:]
+            try:
+                args[suffix] = eval(getattr(options, optname))
+            except (SyntaxError, NameError):
+                args[suffix] = getattr(options, optname)
+
+    return args
 
 #------------------------------------------------------------------------------
 # BasicOutput class -- deals with output of the data
