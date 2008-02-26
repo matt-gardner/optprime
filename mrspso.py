@@ -130,6 +130,11 @@ def reducer(key, value_iter):
 # POPULATION
 
 class Population(object):
+    """Population of particles.
+
+    A Population in Mrs PSO is much like a neighborhood in Chris' PSO, but
+    the interface is a little different.
+    """
     def __init__(self, func, **kargs):
         """Initialize Population instance using a function instance."""
         self.particles = []
@@ -137,11 +142,19 @@ class Population(object):
         self.is_better = kargs.get('comparator', operator.lt)
         self.rand = kargs.get('rand', random.Random())
 
+    def mrsdataset(self):
+        nparticles = len(self)
+        dataset = mrs.datasets.Output(partition, nparticles)
+        #dataset.collect([
+
     def get_particles(self):
         """Return a list of all particles in the population."""
         return self.particles
 
     def __len__(self):
+        return len(self.particles)
+
+    def numparticles(self):
         return len(self.particles)
 
     def __iter__(self):
