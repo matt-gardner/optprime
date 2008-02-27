@@ -27,25 +27,27 @@ def run(job, args, opts):
     This is run on the master.
     """
 
-    # Create the initial population:
-    pop = Population(function)
-    pop.add_random(opts.nparts)
-
     # Note: some output types really need to get initialized just in time.
     from aml.opt.cli import outputtypes
     outputter = outputtypes[opts.outputtype]()
 
+    # Create the initial population:
+    pop = Population(function)
+    pop.add_random(opts.nparts)
+    new_data = pop.mrsdataset()
+
     iters = 0
     while (opts.iterations < 0) or (iters <= opts.iterations):
-        jobname = 'MRPSO_%s_%s' % (self.funcname, iters)
-        dirname = '%s/%s' % (workingdir, jobname)
+        interm_data = job.map_data(new_data, mapper)
+        new_data = job.reduce_data(inter_data, reducer)
 
         # FIXME
         if 0 == (iters+1) % opts.outputfreq:
-            outputter(pop, iters)
+            pass
+            # TODO: make it so pop can read from a dataset
+            #outputter(pop, iters)
 
         iters += 1
-        lastdir = dirname
 
     print "# DONE"
 
@@ -143,9 +145,13 @@ class Population(object):
         self.rand = kargs.get('rand', random.Random())
 
     def mrsdataset(self):
-        nparticles = len(self)
-        dataset = mrs.datasets.Output(partition, nparticles)
-        #dataset.collect([
+        """Create a Mrs DataSet for the particles in the population."""
+        particles = self.particles
+        nparticles = len(particles)
+        dataset = mrs.datasets.Output(mrs.mod_partition, nparticles)
+        dataset.collect(particles)
+        # TODO: this should eventually happen automatically in Mrs:
+        dataset.dump()
 
     def get_particles(self):
         """Return a list of all particles in the population."""
@@ -161,12 +167,11 @@ class Population(object):
         return iter(self.particles)
 
     def bestparticle(self):
-        bestparticle = None
+        best = None
         for p in self:
-            if (bestparticle is None) or \
-                    (self.is_better(p.bestval, bestparticle.bestval)):
-                bestparticle = p
-        return bestparticle
+            if (best is None) or (self.is_better(p.bestval, best.bestval)):
+                best = p
+        return best
 
     def add_random(self, n=1):
         """Add n new random particles to the population."""
