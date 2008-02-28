@@ -7,6 +7,7 @@ import mrs
 from aml.opt.particle import Particle
 from aml.opt.motion.basic import Basic
 from aml.opt.simulation import functions
+from aml.opt.cli import outputtypes
 
 
 # TODO: The fact that we're minimizing instead of maximizing is currently
@@ -28,12 +29,11 @@ def run(job, args, opts):
     """
 
     # Note: some output types really need to get initialized just in time.
-    from aml.opt.cli import outputtypes
     outputter = outputtypes[opts.outputtype]()
 
     # Create the initial population:
     pop = Population(function)
-    pop.add_random(opts.nparts)
+    pop.add_random(opts.numparts)
     new_data = pop.mrsdataset()
 
     iters = 0
@@ -69,7 +69,7 @@ def main():
 
     # Report parameters
     if mrs.primary_impl(opts.mrs_impl) and not opts.quiet:
-        print "# %s" % (versioninfo,)
+        #print "# %s" % (versioninfo,)
         print "# ** OPTIONS **"
         for o in parser.option_list:
             if o.dest is not None:
@@ -142,16 +142,21 @@ class Population(object):
         self.particles = []
         self.func = func
         self.is_better = kargs.get('comparator', operator.lt)
-        self.rand = kargs.get('rand', random.Random())
+        try:
+            self.rand = kargs['rand']
+        except KeyError:
+            import random
+            self.rand = random.Random()
 
     def mrsdataset(self):
         """Create a Mrs DataSet for the particles in the population."""
-        particles = self.particles
+        particles = [(str(p.id), str(p)) for p in self.particles]
         nparticles = len(particles)
         dataset = mrs.datasets.Output(mrs.mod_partition, nparticles)
         dataset.collect(particles)
         # TODO: this should eventually happen automatically in Mrs:
         dataset.dump()
+        return dataset
 
     def get_particles(self):
         """Return a list of all particles in the population."""
@@ -163,12 +168,9 @@ class Population(object):
     def numparticles(self):
         return len(self.particles)
 
-    def __iter__(self):
-        return iter(self.particles)
-
     def bestparticle(self):
         best = None
-        for p in self:
+        for p in self.particles:
             if (best is None) or (self.is_better(p.bestval, best.bestval)):
                 best = p
         return best
@@ -193,7 +195,7 @@ class Population(object):
             self.particles.append(p)
 
     def __str__(self):
-        return '\n'.join(str(p) for p in self)
+        return '\n'.join(str(p) for p in self.particles)
 
     def __repr__(self):
         return str(self)
