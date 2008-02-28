@@ -32,10 +32,7 @@ class Particle(object):
     def __init__( self, pos=None, vel=None, val=None, pid=None, state=None ):
         gbest = None
 
-        if pid is not None:
-            self.id = pid
-        else:
-            self.id = self.new_id()
+        self.id = pid
 
         if state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
