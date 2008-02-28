@@ -39,7 +39,10 @@ def run(job, args, opts):
     iters = 0
     while (opts.iterations < 0) or (iters <= opts.iterations):
         interm_data = job.map_data(new_data, mapper)
-        new_data = job.reduce_data(inter_data, reducer)
+        new_data = job.reduce_data(interm_data, reducer)
+        # TODO: write an outputter reduce function and wait for it instead.
+        job.wait(new_data)
+        print "# done 1"
 
         # FIXME
         if 0 == (iters+1) % opts.outputfreq:
@@ -78,7 +81,7 @@ def main():
     # TODO: at some point, we probably want to call func.tmpfiles()
 
     # Do MapReduce
-    mrs.main(globals(), run, parser)
+    mrs.main(mrs.Registry(globals()), run, parser)
 
 
 ##############################################################################
