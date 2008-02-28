@@ -19,7 +19,7 @@ from aml.opt.cli import outputtypes
 # TODO: allow the initial set of particles to be given (use --sim-maximize)
 
 function = None
-motion = Basic(operator.lt, ((-100, 100),))
+motion = None
 
 
 def run(job, args, opts):
@@ -27,6 +27,13 @@ def run(job, args, opts):
     
     This is run on the master.
     """
+    # Report parameters
+    if not opts.quiet:
+        #print "# %s" % (versioninfo,)
+        print "# ** OPTIONS **"
+        for o in parser.option_list:
+            if o.dest is not None:
+                print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
 
     # Note: some output types really need to get initialized just in time.
     outputter = outputtypes[opts.outputtype]()
@@ -40,8 +47,12 @@ def run(job, args, opts):
     while (opts.iterations < 0) or (iters <= opts.iterations):
         interm_data = job.map_data(new_data, mapper)
         new_data = job.reduce_data(interm_data, reducer)
+
         # TODO: write an outputter reduce function and wait for it instead.
-        job.wait(new_data)
+        ready = []
+        while not ready:
+            ready = job.wait(new_data, timeout=2.0)
+            job.print_status()
         print "# done 1"
 
         # FIXME
@@ -55,33 +66,18 @@ def run(job, args, opts):
     print "# DONE"
 
 
-def main():
-    """Mrs PSO Main
-
-    This is run on both master and slave.
-    """
-    global function
-
-    parser = option_parser()
-    opts, args = parser.parse_args()
+def setup(opts):
+    """Mrs Setup (run on both master and slave)"""
+    global function, motion
 
     funcls = functions[opts.function]
     from aml.opt.cli import prefix_args
     funcargs = prefix_args(FUNCPREFIX, opts)
     function = funcls(**funcargs)
 
-    # Report parameters
-    if mrs.primary_impl(opts.mrs_impl) and not opts.quiet:
-        #print "# %s" % (versioninfo,)
-        print "# ** OPTIONS **"
-        for o in parser.option_list:
-            if o.dest is not None:
-                print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
+    # FIXME:
+    motion = Basic(operator.lt, ((-100, 100),))
 
-    # TODO: at some point, we probably want to call func.tmpfiles()
-
-    # Do MapReduce
-    mrs.main(mrs.Registry(globals()), run, parser)
 
 
 ##############################################################################
@@ -153,7 +149,7 @@ class Population(object):
 
     def mrsdataset(self):
         """Create a Mrs DataSet for the particles in the population."""
-        particles = [(str(p.id), str(p)) for p in self.particles]
+        particles = [(str(p.id), repr(p)) for p in self.particles]
         nparticles = len(particles)
         dataset = mrs.datasets.Output(mrs.mod_partition, nparticles)
         dataset.collect(particles)
@@ -192,7 +188,7 @@ class Population(object):
         for i in xrange(n):
             newpos = c.random_vec(self.rand)
             newvel = vc.random_vec(self.rand)
-            p = Particle(newpos, newvel)
+            p = Particle(newpos, newvel, pid=i)
             p.deps = deps
             p.dep_str = dep_str
             self.particles.append(p)
@@ -209,8 +205,7 @@ class Population(object):
 
 FUNCPREFIX = 'func'
 
-def option_parser():
-    parser = mrs.option_parser()
+def update_parser(parser):
     parser.add_option('-q', '--quiet', dest='quiet', action='store_true',
             help='Refrain from printing version and option information')
     parser.add_option('-i', '--iterations', dest='iterations', type='int',
@@ -235,7 +230,8 @@ def option_parser():
 
     return parser
 
+
 if __name__ == '__main__':
-    main()
+    mrs.main(mrs.Registry(globals()), run, setup, update_parser)
 
 # vim: et sw=4 sts=4
