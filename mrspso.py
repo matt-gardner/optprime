@@ -73,10 +73,12 @@ def setup(opts):
     funcls = functions[opts.function]
     from aml.opt.cli import prefix_args
     funcargs = prefix_args(FUNCPREFIX, opts)
+    funcargs['dims'] = opts.dims
     function = funcls(**funcargs)
 
+    #comparator = opts.soc_maximize and operator.gt or operator.lt
     # FIXME:
-    motion = Basic(operator.lt, ((-100, 100),))
+    motion = Basic(operator.lt, function.constraints)
 
 
 
