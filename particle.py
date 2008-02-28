@@ -60,6 +60,7 @@ class Particle(object):
 
         #super(Particle, self).__init__( pos )
 
+        #print pos
         self.dims = len(pos)
 
         if vel is None:
@@ -86,15 +87,6 @@ class Particle(object):
 
         self.stagnantcount = 0
         self.improvedcount = 0
-
-
-    next_id = 0
-
-    @classmethod
-    def new_id(cls):
-        x = cls.next_id
-        cls.next_id += 1
-        return x
 
     def copy( self ):
         p = Particle(self.pos, self.vel, self.val)
