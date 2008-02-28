@@ -134,6 +134,7 @@ def main():
     simargs = {}
     for prefix in (motionprefix, funcprefix, neighborprefix, simprefix):
         simargs.update(prefix_args(prefix, options))
+    simargs['dims'] = numdims
 
     #--------------------------------------------------------------------------
     # Perform the simulation in batches

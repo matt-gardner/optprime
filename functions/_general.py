@@ -4,11 +4,11 @@ from itertools import izip
 
 class _Base(VarArgs):
     _args = [
-        ('dims', 2, 'Number of dimensions' ),
         ('center',0.5,'Center of function (0,1), can be a tuple)',lambda x:x),
         ]
     def __init__( self, *args, **kargs ):
         super(_Base,self).__init__( *args, **kargs )
+        self.dims = kargs['dims']
         self._set_constraints(((0,0),)*2)
 
     def _set_constraints( self, constraints ):
