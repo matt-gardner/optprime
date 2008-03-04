@@ -91,7 +91,7 @@ def mapper(key, value):
 
     # Update the particle:
     newpos, newvel = motion(particle, particle.gbest)
-    value = func(newpos)
+    value = function(newpos)
     particle.update(newpos, newvel, value, motion.comparator)
 
     # Emit a message for each dependent particle:
@@ -227,8 +227,8 @@ def update_parser(parser):
             help='Function to optimize {%s}' % ', '.join(functions))
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
             default=False, help='Print out verbose error messages')
-    parser.set_defaults(iterations=100, outputfreq=1, outputtype='BasicOutput',
-            dims=2, numparts=2, function='Sphere')
+    parser.set_defaults(quiet=False, iterations=100, outputfreq=1,
+            outputtype='BasicOutput', dims=2, numparts=2, function='Sphere')
 
     from aml.opt.cli import gen_varargs_options
     gen_varargs_options(parser, FUNCPREFIX, 'Function', functions)
