@@ -20,6 +20,7 @@ from aml.opt.cli import outputtypes
 
 function = None
 motion = None
+cli_parser = None
 
 
 def run(job, args, opts):
@@ -31,7 +32,7 @@ def run(job, args, opts):
     if not opts.quiet:
         #print "# %s" % (versioninfo,)
         print "# ** OPTIONS **"
-        for o in parser.option_list:
+        for o in cli_parser.option_list:
             if o.dest is not None:
                 print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
 
@@ -208,6 +209,8 @@ class Population(object):
 FUNCPREFIX = 'func'
 
 def update_parser(parser):
+    global cli_parser
+    cli_parser = parser
     parser.add_option('-q', '--quiet', dest='quiet', action='store_true',
             help='Refrain from printing version and option information')
     parser.add_option('-i', '--iterations', dest='iterations', type='int',
