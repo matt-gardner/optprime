@@ -39,15 +39,19 @@ def run(job, args, opts):
     # Note: some output types really need to get initialized just in time.
     outputter = outputtypes[opts.outputtype]()
 
+    numparts = opts.numparts
+
     # Create the initial population:
     pop = Population(function)
-    pop.add_random(opts.numparts)
+    pop.add_random(numparts)
     new_data = pop.mrsdataset()
 
     iters = 0
     while (opts.iterations < 0) or (iters <= opts.iterations):
-        interm_data = job.map_data(new_data, mapper)
-        new_data = job.reduce_data(interm_data, reducer)
+        interm_data = job.map_data(new_data, mapper, nparts=numparts,
+                parter=mrs.mod_partition)
+        new_data = job.reduce_data(interm_data, reducer, nparts=numparts,
+                parter=mrs.mod_partition)
 
         # TODO: write an outputter reduce function and wait for it instead.
         ready = []
@@ -237,6 +241,8 @@ def update_parser(parser):
 
 
 if __name__ == '__main__':
-    mrs.main(mrs.Registry(globals()), run, setup, update_parser)
+    registry = mrs.Registry(globals())
+    registry.add(mrs.mod_partition)
+    mrs.main(registry, run, setup, update_parser)
 
 # vim: et sw=4 sts=4
