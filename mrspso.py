@@ -34,6 +34,7 @@ def run(job, args, opts):
                 print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
 
     # Note: some output types really need to get initialized just in time.
+    from aml.opt.cli import outputtypes
     outputter = outputtypes[opts.outputtype]()
 
     numparts = opts.numparts
