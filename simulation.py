@@ -72,6 +72,7 @@ from functions.financial import AlphaBeta
 from functions.rbf import RBF
 from functions.butterfly import Butterfly
 from functions.psocryst import Crystal
+from functions.dap_opt import DapOpt
 #from functions.art import Art
 functionlist = [
     Sphere,
@@ -95,7 +96,8 @@ functionlist = [
     AlphaBeta,
     RBF,
     Butterfly,
-    Crystal
+    Crystal,
+    DapOpt
 #    ,Art
 ]
 # Some functions require scipy, Numeric, etc., and might not work everywhere.
