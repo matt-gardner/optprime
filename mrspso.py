@@ -5,9 +5,6 @@ import optparse, operator
 
 import mrs
 from aml.opt.particle import Particle
-from aml.opt.motion.basic import Basic
-from aml.opt.simulation import functions
-from aml.opt.cli import outputtypes
 
 
 # TODO: The fact that we're minimizing instead of maximizing is currently
@@ -73,10 +70,13 @@ def run(job, args, opts):
 
 def setup(opts):
     """Mrs Setup (run on both master and slave)"""
+    from aml.opt.motion.basic import Basic
+    from aml.opt.simulation import functions
+    from aml.opt.cli import prefix_args
+
     global function, motion
 
     funcls = functions[opts.function]
-    from aml.opt.cli import prefix_args
     funcargs = prefix_args(FUNCPREFIX, opts)
     funcargs['dims'] = opts.dims
     function = funcls(**funcargs)
@@ -213,7 +213,10 @@ class Population(object):
 FUNCPREFIX = 'func'
 
 def update_parser(parser):
+    from aml.opt.simulation import functions
+    from aml.opt.cli import outputtypes
     global cli_parser
+
     cli_parser = parser
     parser.add_option('-q', '--quiet', dest='quiet', action='store_true',
             help='Refrain from printing version and option information')
