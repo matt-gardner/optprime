@@ -45,17 +45,21 @@ def run(job, args, opts):
     outputter = outputtypes[opts.outputtype]()
 
     numparts = opts.numparts
+    numtasks = opts.numtasks
+    if numtasks == 0:
+        numtasks = numparts
 
     # Create the initial population:
     pop = Population(function)
     pop.add_random(numparts)
-    new_data = pop.mrsdataset()
+
+    new_data = pop.mrsdataset(numtasks)
 
     iters = 0
     while (opts.iterations < 0) or (iters <= opts.iterations):
-        interm_data = job.map_data(new_data, mapper, nparts=numparts,
+        interm_data = job.map_data(new_data, mapper, nparts=numtasks,
                 parter=mrs.mod_partition)
-        new_data = job.reduce_data(interm_data, reducer, nparts=numparts,
+        new_data = job.reduce_data(interm_data, reducer, nparts=numtasks,
                 parter=mrs.mod_partition)
 
         # TODO: write an outputter reduce function and wait for it instead.
@@ -178,11 +182,17 @@ class Population(object):
             import random
             self.rand = random.Random()
 
-    def mrsdataset(self):
-        """Create a Mrs DataSet for the particles in the population."""
+    def mrsdataset(self, partitions=None):
+        """Create a Mrs DataSet for the particles in the population.
+        
+        The number of partitions may be specified.
+        """
         particles = [(str(p.id), repr(p)) for p in self.particles]
-        nparticles = len(particles)
-        dataset = mrs.datasets.Output(mrs.mod_partition, nparticles)
+
+        if partitions is None:
+            partitions = len(particles)
+
+        dataset = mrs.datasets.Output(mrs.mod_partition, partitions)
         dataset.collect(particles)
         # TODO: this should eventually happen automatically in Mrs:
         dataset.dump()
@@ -241,6 +251,8 @@ def update_parser(parser):
             help='Number of iterations to run')
     parser.add_option('-n', '--num-particles', dest='numparts', type='int',
             help='Number of particles')
+    parser.add_option('-N', '--num-tasks', dest='numtasks', type='int',
+            help='Number of tasks (if 0, create 1 task per particle)')
     parser.add_option('-o', '--outputfreq', dest='outputfreq', type='int',
             help='Number of iterations per value output')
     parser.add_option('-t', '--outputtype', dest='outputtype',
@@ -252,7 +264,8 @@ def update_parser(parser):
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
             default=False, help='Print out verbose error messages')
     parser.set_defaults(quiet=False, iterations=100, outputfreq=1,
-            outputtype='BasicOutput', dims=2, numparts=2, function='Sphere')
+            outputtype='BasicOutput', dims=2, numtasks=0, numparts=2,
+            function='Sphere')
 
     from aml.opt.cli import gen_varargs_options
     gen_varargs_options(parser, FUNCPREFIX, 'Function', functions)
