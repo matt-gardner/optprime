@@ -35,6 +35,11 @@ def run(job, args, opts):
             if o.dest is not None:
                 print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
 
+    try:
+        tty = open('/dev/tty', 'w')
+    except IOError:
+        tty = None
+
     # Note: some output types really need to get initialized just in time.
     from aml.opt.cli import outputtypes
     outputter = outputtypes[opts.outputtype]()
@@ -56,8 +61,11 @@ def run(job, args, opts):
         # TODO: write an outputter reduce function and wait for it instead.
         ready = []
         while not ready:
-            ready = job.wait(new_data, timeout=2.0)
-            job.print_status()
+            if tty:
+                ready = job.wait(new_data, timeout=1.0)
+                print >>tty, job.status()
+            else:
+                ready = job.wait(new_data)
         print "# done 1"
 
         # FIXME
