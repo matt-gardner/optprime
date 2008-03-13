@@ -50,7 +50,9 @@ def run(job, args, opts):
         numtasks = numparts
 
     # Create the initial population:
-    pop = Population(function)
+    import tempfile
+    directory = tempfile.mkdtemp(dir=opts.mrs_shared, prefix=('population_'))
+    pop = Population(function, directory)
     pop.add_random(numparts)
 
     new_data = pop.mrsdataset(numtasks)
@@ -196,8 +198,9 @@ class Population(object):
     A Population in Mrs PSO is much like a neighborhood in Chris' PSO, but
     the interface is a little different.
     """
-    def __init__(self, func, **kargs):
+    def __init__(self, func, directory, **kargs):
         """Initialize Population instance using a function instance."""
+        self.directory = directory
         self.particles = []
         self._bestparticle = None
         self.func = func
@@ -218,7 +221,8 @@ class Population(object):
         if partitions is None:
             partitions = len(particles)
 
-        dataset = mrs.datasets.Output(mrs.mod_partition, partitions)
+        dataset = mrs.datasets.Output(mrs.mod_partition, partitions,
+                directory=self.directory)
         dataset.collect(particles)
         # TODO: this should eventually happen automatically in Mrs:
         dataset.dump()
