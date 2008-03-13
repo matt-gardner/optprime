@@ -8,16 +8,18 @@ from aml.opt.particle import Particle
 
 
 # TODO: The fact that we're minimizing instead of maximizing is currently
-# hardcoded in.  Also note that we currently assume that your gbest is the
-# best pbest you've ever seen among all of your neighbors; an alternative
-# interpretation might be that it's the best pbest among all of your current
-# neighbors.
+# hardcoded in. (use --sim-maximize)
 
-# TODO: allow the initial set of particles to be given (use --sim-maximize)
+# TODO: We currently assume that your gbest is the best pbest you've ever seen
+# among all of your neighbors; an alternative interpretation might be that
+# it's the best pbest among all of your current neighbors.
+
+# TODO: allow the initial set of particles to be given
 
 function = None
 motion = None
 cli_parser = None
+comparator = None
 
 
 def run(job, args, opts):
@@ -75,21 +77,21 @@ def setup(opts):
     from aml.opt.simulation import functions
     from aml.opt.cli import prefix_args
 
-    global function, motion
+    global function, motion, comparator
 
     funcls = functions[opts.function]
     funcargs = prefix_args(FUNCPREFIX, opts)
     funcargs['dims'] = opts.dims
     function = funcls(**funcargs)
 
-    #comparator = opts.soc_maximize and operator.gt or operator.lt
-    # FIXME:
-    motion = Basic(operator.lt, function.constraints)
+    #TODO: comparator = opts.soc_maximize and operator.gt or operator.lt
+    comparator = operator.lt
+    motion = Basic(comparator, function.constraints)
 
 
 
 ##############################################################################
-# MAP FUNCTION
+# PRIMARY MAPREDUCE
 
 def mapper(key, value):
     particle = Particle(pid=int(key), state=value)
@@ -110,9 +112,6 @@ def mapper(key, value):
     # Emit the particle without changing its id:
     yield (str(key), repr(particle))
 
-
-##############################################################################
-# REDUCE FUNCTION
 
 def reducer(key, value_iter):
     particle = None
@@ -136,7 +135,23 @@ def reducer(key, value_iter):
 
 
 ##############################################################################
+# MAPREDUCE TO FIND BEST PARTICLE
+
+def collapse_map(key, value):
+    yield '0', value
+
+def findbest_reduce(key, value_iter):
+    best = None
+    for value in value_iter:
+        p = Particle(state=value)
+        if (best is None) or (comparator(p.bestval, best.bestval)):
+            best = p
+    yield repr(best)
+
+
+##############################################################################
 # POPULATION
+
 
 class Population(object):
     """Population of particles.
@@ -148,7 +163,7 @@ class Population(object):
         """Initialize Population instance using a function instance."""
         self.particles = []
         self.func = func
-        self.is_better = kargs.get('comparator', operator.lt)
+        #self.is_better = kargs.get('comparator', operator.lt)
         try:
             self.rand = kargs['rand']
         except KeyError:
@@ -174,13 +189,6 @@ class Population(object):
 
     def numparticles(self):
         return len(self.particles)
-
-    def bestparticle(self):
-        best = None
-        for p in self.particles:
-            if (best is None) or (self.is_better(p.bestval, best.bestval)):
-                best = p
-        return best
 
     def add_random(self, n=1):
         """Add n new random particles to the population."""
