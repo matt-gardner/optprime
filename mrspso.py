@@ -55,28 +55,53 @@ def run(job, args, opts):
 
     new_data = pop.mrsdataset(numtasks)
 
-    iters = 0
-    while (opts.iterations < 0) or (iters <= opts.iterations):
-        interm_data = job.map_data(new_data, mapper, nparts=numtasks,
-                parter=mrs.mod_partition)
-        new_data = job.reduce_data(interm_data, reducer, nparts=numtasks,
-                parter=mrs.mod_partition)
+    iters = 1
+    wait = False
+    running = True
+    while True:
+        if (opts.iterations >= 0) and (iters > opts.iterations):
+            running = False
 
-        # TODO: write an outputter reduce function and wait for it instead.
-        ready = []
-        while not ready:
-            if tty:
-                ready = job.wait(new_data, timeout=1.0)
-                print >>tty, job.status()
-            else:
-                ready = job.wait(new_data)
-        print "# done 1"
+        if (opts.iterations < 0) or (iters <= opts.iterations):
+            # Submit one PSO iteration to the job:
+            interm_data = job.map_data(new_data, pso_map, nparts=numtasks,
+                    parter=mrs.mod_partition)
+            new_data = job.reduce_data(interm_data, pso_reduce,
+                    nparts=numtasks, parter=mrs.mod_partition)
 
-        # FIXME
+        if wait:
+            # Wait until output_data are computed.
+            ready = []
+            while not ready:
+                if tty:
+                    ready = job.wait(output_data, timeout=1.0)
+                    print >>tty, job.status()
+                else:
+                    ready = job.wait(new_data)
+
+            # Download output_data and update population accordingly.
+            output_data.fetchall()
+            reduce_id, first_item = output_data[0, 0][0]
+            pop.set_bestparticle(Particle(state=first_item))
+
+            # Print out the results.
+            outputter(pop, iters)
+            wait = False
+
+        if not running:
+            break
+
         if 0 == (iters+1) % opts.outputfreq:
-            pass
-            # TODO: make it so pop can read from a dataset
-            #outputter(pop, iters)
+            # Create a new output_data MapReduce phase to find the best
+            # particle in the population.
+            collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
+            output_data = job.reduce_data(collapsed_data, findbest_reduce,
+                    nparts=1)
+
+            # The next PSO iteration will be computed concurrently with the
+            # output phase (they both depend on the same data).  We will wait
+            # for our results after the PSO iteration is submitted.
+            wait = True
 
         iters += 1
 
@@ -105,7 +130,7 @@ def setup(opts):
 ##############################################################################
 # PRIMARY MAPREDUCE
 
-def mapper(key, value):
+def pso_map(key, value):
     particle = Particle(pid=int(key), state=value)
 
     # Update the particle:
@@ -125,7 +150,7 @@ def mapper(key, value):
     yield (str(key), repr(particle))
 
 
-def reducer(key, value_iter):
+def pso_reduce(key, value_iter):
     particle = None
     best = None
     bestval = float('inf')
@@ -174,6 +199,7 @@ class Population(object):
     def __init__(self, func, **kargs):
         """Initialize Population instance using a function instance."""
         self.particles = []
+        self._bestparticle = None
         self.func = func
         #self.is_better = kargs.get('comparator', operator.lt)
         try:
@@ -201,6 +227,12 @@ class Population(object):
     def get_particles(self):
         """Return a list of all particles in the population."""
         return self.particles
+
+    def bestparticle(self):
+        return self._bestparticle
+
+    def set_bestparticle(self, particle):
+        self._bestparticle = particle
 
     def __len__(self):
         return len(self.particles)
