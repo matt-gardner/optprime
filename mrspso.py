@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import optparse, operator
+import sys, optparse, operator
 
 import mrs
 from aml.opt.particle import Particle
@@ -34,6 +34,7 @@ def run(job, args, opts):
         for o in cli_parser.option_list:
             if o.dest is not None:
                 print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
+        sys.stdout.flush()
 
     try:
         tty = open('/dev/tty', 'w')
@@ -77,7 +78,10 @@ def run(job, args, opts):
             while not ready:
                 if tty:
                     ready = job.wait(output_data, timeout=1.0)
-                    print >>tty, job.status()
+                    if ready:
+                        print >>tty, "Finished iteration", iters-1
+                    else:
+                        print >>tty, job.status()
                 else:
                     ready = job.wait(new_data)
 
@@ -88,6 +92,7 @@ def run(job, args, opts):
 
             # Print out the results.
             outputter(pop, iters)
+            sys.stdout.flush()
             wait = False
 
         if not running:
