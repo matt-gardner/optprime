@@ -95,7 +95,7 @@ class RBF(_general._Base):
                 # Use this if you want to make the RBF centers more evenly spaced:
                 #center_constraints.append((-50 + 100 * i / nbases,
                 #    -50 + 100 * (i + 1) / nbases))
-        from aml.opt.cubes.cube import Cube
+        from amlpso.cubes.cube import Cube
         vec = Cube(center_constraints).random_vec(rand)
         from sys import stderr
         print >>stderr, 'Vector used to generate points:', \

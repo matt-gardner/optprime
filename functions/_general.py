@@ -1,5 +1,5 @@
 from __future__ import division
-from aml.opt.varargs import VarArgs
+from amlpso.varargs import VarArgs
 from itertools import izip
 
 class _Base(VarArgs):

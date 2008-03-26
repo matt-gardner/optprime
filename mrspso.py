@@ -4,7 +4,7 @@ from __future__ import division
 import sys, optparse, operator
 
 import mrs
-from aml.opt.particle import Particle
+from particle import Particle
 
 
 # TODO: The fact that we're minimizing instead of maximizing is currently
@@ -42,7 +42,7 @@ def run(job, args, opts):
         tty = None
 
     # Note: some output types really need to get initialized just in time.
-    from aml.opt.cli import outputtypes
+    from cli import outputtypes
     outputter = outputtypes[opts.outputtype]()
 
     numparts = opts.numparts
@@ -117,9 +117,9 @@ def run(job, args, opts):
 
 def setup(opts):
     """Mrs Setup (run on both master and slave)"""
-    from aml.opt.motion.basic import Basic
-    from aml.opt.simulation import functions
-    from aml.opt.cli import prefix_args
+    from motion.basic import Basic
+    from simulation import functions
+    from cli import prefix_args
 
     global function, motion, comparator
 
@@ -251,7 +251,7 @@ class Population(object):
 
     def add_random(self, n=1):
         """Add n new random particles to the population."""
-        from aml.opt.cubes.cube import Cube
+        from cubes.cube import Cube
         # Fully connected sociometry:
         #deps = range(Particle.next_id, Particle.next_id + n)
         deps = range(n)
@@ -284,8 +284,8 @@ class Population(object):
 FUNCPREFIX = 'func'
 
 def update_parser(parser):
-    from aml.opt.simulation import functions
-    from aml.opt.cli import outputtypes
+    from simulation import functions
+    from cli import outputtypes
     global cli_parser
 
     cli_parser = parser
@@ -311,7 +311,7 @@ def update_parser(parser):
             outputtype='BasicOutput', dims=2, numtasks=0, numparts=2,
             function='Sphere')
 
-    from aml.opt.cli import gen_varargs_options
+    from cli import gen_varargs_options
     gen_varargs_options(parser, FUNCPREFIX, 'Function', functions)
 
     return parser

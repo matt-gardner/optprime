@@ -1,9 +1,9 @@
 from __future__ import division
 import random
-from aml.opt.varargs import VarArgs
-from aml.opt.Vector import Vector
+from amlpso.varargs import VarArgs
+from amlpso.Vector import Vector
 from math import sqrt
-from aml.opt.cubes.cube import Cube
+from amlpso.cubes.cube import Cube
 
 #------------------------------------------------------------------------------
 class _Base(VarArgs):

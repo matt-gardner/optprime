@@ -1,6 +1,6 @@
 from __future__ import division
 import basic
-from aml.opt.Vector import Vector
+from amlpso.Vector import Vector
 from itertools import izip
 
 class Bare(basic._Base):
