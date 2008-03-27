@@ -9,6 +9,8 @@ are many!) can just assume access to a class of this kind.
 #---------------------------------------------------------------------------
 
 from __future__ import division
+from copy import deepcopy
+from math import sqrt
 from itertools import izip
 from math import floor, ceil
 import sys
@@ -22,7 +24,7 @@ class Cube(object):
     def __init__( self, constraints, values=None ):
         """Creates a new cube object.  Requires constraints at a minimum,
         but also allows values (of unspecified format) to be passed in."""
-        self.constraints = copy.deepcopy( constraints )
+        self.constraints = deepcopy( constraints )
         self.center = Vertex( [(cl + cr) / 2 for cl, cr in constraints] )
         self.lengths = [abs(cr - cl) for cl, cr in constraints]
         self.dims = len(constraints)
@@ -56,7 +58,7 @@ class Cube(object):
     def constrained_vec( self, vec, use_abs=False ):
         """Returns a new vector that is constrained to be in bounds.
         """
-        vec = copy.deepcopy(vec)
+        vec = deepcopy(vec)
         self.constrain_vec( vec, use_abs )
         return vec
 
@@ -90,7 +92,7 @@ class Cube(object):
     def wrapped_vec( self, vec ):
         """Wraps a vector so that it appears to be on a torus.
         """
-        vec = copy.deepcopy(vec)
+        vec = deepcopy(vec)
         self.wrap( vec )
         return vec
 
@@ -207,6 +209,23 @@ class Vertex(list):
         else:
             self.value += error
 
+    def dot( self, other ):
+        s = 0
+        for x1, x2 in izip( self, other ):
+            s += x1 * x2
+        return s
+
+    def norm( self ):
+        # Normalize this vector.
+        div = self.magnitude()
+        if div > 0:
+            return self / div
+        else:
+            return self
+
+    def magnitude( self ):
+        return sqrt(self.dot(self))
+
     def __lt__( self, other ):
         return self.value < other.value
 
@@ -221,6 +240,11 @@ class Vertex(list):
 
     def __ge__( self, other ):
         return self.value >= other.value
+
+    '''
+    def __str__( self ):
+        return " ".join(["%0.2f" % float(x) for x in self])
+    '''
 
     def __init__( self, *args, **kargs ):
         # Call the original constructor (try not to mess list up too much)
@@ -334,7 +358,7 @@ class Vertex(list):
         return newvert
 
     def __div__( self, val ):
-        newvert = copy.deepcopy(self)
+        newvert = deepcopy(self)
         if isinstance(val, (int, long, float)):
             for i, x in enumerate(self):
                 newvert[i] = x / val
@@ -343,9 +367,46 @@ class Vertex(list):
         return newvert
 
     __truediv__ = __div__
+    def __idiv__( self, val ):
+        newvert = self
+        if isinstance(val, (int, long, float)):
+            for i, x in enumerate(self):
+                newvert[i] = x / val
+        else:
+            raise RuntimeError, "Can't divide a vertex by anything but a scalar"
+        return newvert
+
+    __itruediv__ = __idiv__
+
+    def __pow__( self, val, mval ):
+        newvert = deepcopy( self )
+        if isinstance(val, (int, long, float)):
+            for i, x in enumerate(self):
+                newvert[i] = pow(x,val,mval)
+        else:
+            raise RuntimeError, "Can't use pow with anything but a scalar"
+        return newvert
+
+    def __ipow__( self, mval ):
+        newvert = self
+        if isinstance(val, (int, long, float)):
+            for i, x in enumerate(self):
+                newvert[i] = pow(x,val,mval)
+        else:
+            raise RuntimeError, "Can't use pow with anything but a scalar"
+        return newvert
 
     def __mul__( self, val ):
-        newvert = copy.deepcopy(self)
+        newvert = deepcopy(self)
+        if isinstance(val, (int, long, float)):
+            for i, x in enumerate(self):
+                newvert[i] = x * val
+        else:
+            raise RuntimeError, "Can't multiply a vertex by anything but a scalar"
+        return newvert
+
+    def __imul__( self, val ):
+        newvert = deepcopy(self)
         if isinstance(val, (int, long, float)):
             for i, x in enumerate(self):
                 newvert[i] = x * val
