@@ -59,7 +59,6 @@ def run(job, args, opts):
     new_data = pop.mrsdataset(numtasks)
 
     iters = 1
-    wait = False
     running = True
     while True:
         if (opts.iterations >= 0) and (iters > opts.iterations):
@@ -72,43 +71,31 @@ def run(job, args, opts):
             new_data = job.reduce_data(interm_data, pso_reduce,
                     nparts=numtasks, parter=mrs.mod_partition)
 
-        if wait:
-            # Wait until output_data are computed.
-            ready = []
-            while not ready:
-                if tty:
-                    ready = job.wait(output_data, timeout=1.0)
-                    if ready:
-                        print >>tty, "Finished iteration", iters-1
-                    else:
-                        print >>tty, job.status()
+        # Wait until output_data are computed.
+        ready = []
+        while not ready:
+            if tty:
+                ready = job.wait(output_data, timeout=1.0)
+                if ready:
+                    print >>tty, "Finished iteration", iters-1
                 else:
-                    ready = job.wait(new_data)
+                    print >>tty, job.status()
+            else:
+                ready = job.wait(new_data)
 
             # Download output_data and update population accordingly.
             output_data.fetchall()
-            reduce_id, first_item = output_data[0, 0][0]
-            pop.set_bestparticle(Particle(state=first_item))
+            pop.particles = []
+            for bucket in output_data:
+                for reduce_id, particle in bucket:
+                pop.particles.append(Particle(state=particle))
 
             # Print out the results.
             outputter(pop, iters)
             sys.stdout.flush()
-            wait = False
 
         if not running:
             break
-
-        if 0 == (iters+1) % opts.outputfreq:
-            # Create a new output_data MapReduce phase to find the best
-            # particle in the population.
-            collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
-            output_data = job.reduce_data(collapsed_data, findbest_reduce,
-                    nparts=1)
-
-            # The next PSO iteration will be computed concurrently with the
-            # output phase (they both depend on the same data).  We will wait
-            # for our results after the PSO iteration is submitted.
-            wait = True
 
         iters += 1
 
