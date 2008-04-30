@@ -161,10 +161,10 @@ class ExtendedOutput(object):
 
 class SwarmOutput(object):
     def __call__( self, soc, iters ):
-        print iters, len(soc.particles),
+        print iters, len(soc.particles)
         for part in soc.particles:
             print part.val, ' '.join(str(x) for x in part.pos), \
-                    part.bestval, ' '.join(str(x) for x in part.bestpos),
+                    part.bestval, ' '.join(str(x) for x in part.bestpos)
         print
 
 

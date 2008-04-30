@@ -251,11 +251,14 @@ class Population(object):
             newpos = c.random_vec(self.rand)
             newvel = vc.random_vec(self.rand)
             p = Particle(newpos, newvel, pid=i)
-            #p.deps = deps
-            #p.dep_str = dep_str
+            p.deps = deps
+            p.dep_str = dep_str
             # Loosely connected ring sociometry:
-            p.deps = [(i-1)%n,(i+1)%n]
-            p.dep_str = str((i-1)%n) + ',' + str((i+1)%n)
+            #p.deps = [i%n for i in xrange(i-20,i+20)]
+            #p.dep_str = ''
+            #for i in xrange(len(p.deps)):
+            #    p.dep_str  += str(p.deps[i]) + ','
+            #p.dep_str = p.dep_str[:-1]
             self.particles.append(p)
 
     def __str__(self):
