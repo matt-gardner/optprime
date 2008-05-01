@@ -63,8 +63,7 @@ def run(job, args, opts):
     while True:
         if (opts.iterations >= 0) and (iters > opts.iterations):
             running = False
-
-        if (opts.iterations < 0) or (iters <= opts.iterations):
+        else:
             # Submit one PSO iteration to the job:
             interm_data = job.map_data(new_data, pso_map, nparts=numtasks,
                     parter=mrs.mod_partition)
