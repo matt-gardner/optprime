@@ -61,7 +61,20 @@ def run(job, args, opts):
     iters = 1
     running = True
     while True:
+        # Check whether we need to collect output for the previous iteration.
+        output_data = None
+        if (iters != 1) and (((iters+1) % opts.outputfreq) == 0):
+            if outputter.require_all:
+                output_data = new_data
+            else:
+                # Create a new output_data MapReduce phase to find the best
+                # particle in the population.
+                collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
+                output_data = job.reduce_data(collapsed_data, findbest_reduce,
+                        nparts=1)
+
         if (opts.iterations >= 0) and (iters > opts.iterations):
+            # The previous iteration was the last iteration.
             running = False
         else:
             # Submit one PSO iteration to the job:
@@ -70,17 +83,20 @@ def run(job, args, opts):
             new_data = job.reduce_data(interm_data, pso_reduce,
                     nparts=numtasks, parter=mrs.mod_partition)
 
-        # Wait until output_data are computed.
-        ready = []
-        while not ready:
-            if tty:
-                ready = job.wait(output_data, timeout=1.0)
-                if ready:
-                    print >>tty, "Finished iteration", iters-1
+        if output_data:
+            # Note: The next PSO iteration is being computed concurrently with
+            # the output phase (they both depend on the same data).
+
+            ready = []
+            while not ready:
+                if tty:
+                    ready = job.wait(output_data, timeout=1.0)
+                    if ready:
+                        print >>tty, "Finished iteration", iters-1
+                    else:
+                        print >>tty, job.status()
                 else:
-                    print >>tty, job.status()
-            else:
-                ready = job.wait(new_data)
+                    ready = job.wait(new_data)
 
             # Download output_data and update population accordingly.
             output_data.fetchall()
@@ -88,6 +104,9 @@ def run(job, args, opts):
             for bucket in output_data:
                 for reduce_id, particle in bucket:
                     pop.particles.append(Particle(state=particle))
+
+            if not outputter.require_all:
+                pop.set_bestparticle(pop.particles[0])
 
             # Print out the results.
             outputter(pop, iters)
