@@ -88,7 +88,7 @@ def run(job, args, opts):
             pop.particles = []
             for bucket in output_data:
                 for reduce_id, particle in bucket:
-                pop.particles.append(Particle(state=particle))
+                    pop.particles.append(Particle(state=particle))
 
             # Print out the results.
             outputter(pop, iters)
