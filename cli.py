@@ -171,6 +171,28 @@ class ExtendedOutput(Output):
         print best.bestval, " ".join([str(x) for x in best.bestpos])
         sys.stdout.flush()
 
+class OutputEverything(Output):
+    def __init__(self):
+        from datetime import datetime
+        self.last_iter = 0
+        self.last_time = datetime.now()
+
+    def __call__( self, soc, iters ):
+        if iters <= 0: return
+        from datetime import datetime
+        now = datetime.now()
+        delta = now - self.last_time
+        seconds = delta.days * 86400 + delta.seconds + delta.microseconds / 1000000
+
+        time_per_iter = seconds / (iters - self.last_iter)
+        best = soc.bestparticle()
+        print best.bestval, " ".join([str(x) for x in best.bestpos]), "; Time: ", time_per_iter
+        sys.stdout.flush()
+
+        self.last_time = now
+        self.last_iter = iters
+
+
 class SwarmOutput(Output):
     require_all = True
 
@@ -186,7 +208,7 @@ class SwarmOutput(Output):
 
 outputtypes = dict((cls.__name__, cls) for cls in
         (BasicOutput, PairOutput, IterNumValOutput, TimerOutput,
-            ExtendedOutput, SwarmOutput))
+            ExtendedOutput, SwarmOutput, OutputEverything))
 
 
 # vim: et sw=4 sts=4

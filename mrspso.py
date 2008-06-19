@@ -20,6 +20,7 @@ function = None
 motion = None
 cli_parser = None
 comparator = None
+versioninfo = '$Id: mrspso.py 100 2008-6-17 12:23PM mjg82 $'
 
 
 def run(job, args, opts):
@@ -29,11 +30,16 @@ def run(job, args, opts):
     """
     # Report parameters
     if not opts.quiet:
-        #print "# %s" % (versioninfo,)
+        from datetime import datetime
+        date = datetime.now()
+        print "# %s" % (versioninfo,)
+        print "# Date run: %d-%d-%d" %(date.year, date.month, date.day)
+        print "#"
         print "# ** OPTIONS **"
         for o in cli_parser.option_list:
             if o.dest is not None:
                 print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
+        print ""
         sys.stdout.flush()
 
     try:
