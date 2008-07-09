@@ -186,7 +186,7 @@ class OutputEverything(Output):
 
         time_per_iter = seconds / (iters - self.last_iter)
         best = soc.bestparticle()
-        print best.bestval, " ".join([str(x) for x in best.bestpos]), "; Time: ", time_per_iter
+        print iters, best.bestval, " ".join([str(x) for x in best.bestpos]), "; Time: ", time_per_iter
         sys.stdout.flush()
 
         self.last_time = now
