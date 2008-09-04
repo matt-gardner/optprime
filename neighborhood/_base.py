@@ -250,11 +250,12 @@ class _Base(VarArgs):
         """Returns the best neighbor for this particle"""
         niter = self.iterneighbors( particle )
         try:
-            best = niter.next()
+            best = self.particles[niter.next()]
         except StopIteration:
             return None
 
-        for p in niter:
+        for i in niter:
+            p = self.particles[i]
             if self.is_better( p.bestval, best.bestval ):
                 best = p
         return best

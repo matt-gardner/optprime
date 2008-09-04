@@ -20,6 +20,7 @@ function = None
 motion = None
 cli_parser = None
 comparator = None
+versioninfo = '$Id: mrspso.py 100 2008-6-17 12:23PM mjg82 $'
 
 
 def run(job, args, opts):
@@ -29,11 +30,16 @@ def run(job, args, opts):
     """
     # Report parameters
     if not opts.quiet:
-        #print "# %s" % (versioninfo,)
+        from datetime import datetime
+        date = datetime.now()
+        print "# %s" % (versioninfo,)
+        print "# Date run: %d-%d-%d" %(date.year, date.month, date.day)
+        print "#"
         print "# ** OPTIONS **"
         for o in cli_parser.option_list:
             if o.dest is not None:
                 print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
+        print ""
         sys.stdout.flush()
 
     try:
@@ -59,21 +65,34 @@ def run(job, args, opts):
     new_data = pop.mrsdataset(numtasks)
 
     iters = 1
-    wait = False
     running = True
     while True:
-        if (opts.iterations >= 0) and (iters > opts.iterations):
-            running = False
+        # Check whether we need to collect output for the previous iteration.
+        output_data = None
+        if (iters != 1) and (((iters+1) % opts.outputfreq) == 0):
+            if outputter.require_all:
+                output_data = new_data
+            else:
+                # Create a new output_data MapReduce phase to find the best
+                # particle in the population.
+                collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
+                output_data = job.reduce_data(collapsed_data, findbest_reduce,
+                        nparts=1)
 
-        if (opts.iterations < 0) or (iters <= opts.iterations):
+        if (opts.iterations >= 0) and (iters > opts.iterations):
+            # The previous iteration was the last iteration.
+            running = False
+        else:
             # Submit one PSO iteration to the job:
             interm_data = job.map_data(new_data, pso_map, nparts=numtasks,
                     parter=mrs.mod_partition)
             new_data = job.reduce_data(interm_data, pso_reduce,
                     nparts=numtasks, parter=mrs.mod_partition)
 
-        if wait:
-            # Wait until output_data are computed.
+        if output_data:
+            # Note: The next PSO iteration is being computed concurrently with
+            # the output phase (they both depend on the same data).
+
             ready = []
             while not ready:
                 if tty:
@@ -87,28 +106,20 @@ def run(job, args, opts):
 
             # Download output_data and update population accordingly.
             output_data.fetchall()
-            reduce_id, first_item = output_data[0, 0][0]
-            pop.set_bestparticle(Particle(state=first_item))
+            pop.particles = []
+            for bucket in output_data:
+                for reduce_id, particle in bucket:
+                    pop.particles.append(Particle(state=particle))
+
+            if not outputter.require_all:
+                pop.set_bestparticle(pop.particles[0])
 
             # Print out the results.
             outputter(pop, iters)
             sys.stdout.flush()
-            wait = False
 
         if not running:
             break
-
-        if 0 == (iters+1) % opts.outputfreq:
-            # Create a new output_data MapReduce phase to find the best
-            # particle in the population.
-            collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
-            output_data = job.reduce_data(collapsed_data, findbest_reduce,
-                    nparts=1)
-
-            # The next PSO iteration will be computed concurrently with the
-            # output phase (they both depend on the same data).  We will wait
-            # for our results after the PSO iteration is submitted.
-            wait = True
 
         iters += 1
 
@@ -264,11 +275,14 @@ class Population(object):
             newpos = c.random_vec(self.rand)
             newvel = vc.random_vec(self.rand)
             p = Particle(newpos, newvel, pid=i)
-            #p.deps = deps
-            #p.dep_str = dep_str
+            p.deps = deps
+            p.dep_str = dep_str
             # Loosely connected ring sociometry:
-            p.deps = [(i-1)%n,(i+1)%n]
-            p.dep_str = str((i-1)%n) + ',' + str((i+1)%n)
+            #p.deps = [i%n for i in xrange(i-20,i+20)]
+            #p.dep_str = ''
+            #for i in xrange(len(p.deps)):
+            #    p.dep_str  += str(p.deps[i]) + ','
+            #p.dep_str = p.dep_str[:-1]
             self.particles.append(p)
 
     def __str__(self):

@@ -73,6 +73,7 @@ from functions.rbf import RBF
 from functions.butterfly import Butterfly
 from functions.psocryst import Crystal
 from functions.dap_opt import DapOpt
+from functions.test import Test
 #from functions.art import Art
 functionlist = [
     Sphere,
@@ -97,7 +98,8 @@ functionlist = [
     RBF,
     Butterfly,
     Crystal,
-    DapOpt
+    DapOpt,
+    Test
 #    ,Art
 ]
 # Some functions require scipy, Numeric, etc., and might not work everywhere.
