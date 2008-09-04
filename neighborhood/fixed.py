@@ -56,18 +56,21 @@ class Wheel(_FixedBase):
 
 #------------------------------------------------------------------------------
 
-class Random(_FixedBase):
+class Rand(_FixedBase):
+    _args = [( 'probability', .5, 'Probability of sending a message to a given '
+        + 'particle' )]
     def iterneighbors( self, particle ):
+        from random import random
         # Yield all of the particles up to this one, and all after, then this
-        # one last.
+        # one last, with probability equal to self.probability.
         idx = particle.idx
         num = len(self.particles)
         for i in xrange(0,idx):
-            #if random: continue
-            yield i
+            if random() < self.probability: 
+                yield i
         for i in xrange(idx+1,num):
-            #if random: continue
-            yield i
+            if random() < self.probability: 
+                yield i
         if self.selflink:
             yield idx
 

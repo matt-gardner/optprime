@@ -16,13 +16,14 @@ from cubes.cube import Cube
 
 #------------------------------------------------------------------------------
 # Set up the known neighborhoods
-from neighborhood.fixed import Star, Ring, Wheel
+from neighborhood.fixed import Star, Ring, Wheel, Rand
 from neighborhood.tribes import TRIBES
 neighborhoodlist = [
     Star,
     Ring,
     Wheel,
     TRIBES,
+    Rand,
 ]
 neighborhoods = dict([(v.__name__, v) for v in neighborhoodlist])
 
