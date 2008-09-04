@@ -3,6 +3,8 @@
 from __future__ import division
 import sys
 
+# TODO: start using optparse's "type='choice'" and "choices=[]"
+
 
 #------------------------------------------------------------------------------
 # Parse the program arguments
