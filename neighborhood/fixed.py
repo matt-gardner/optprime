@@ -18,11 +18,11 @@ class Ring(_FixedBase):
     def iterneighbors( self, particle ):
         idx = particle.idx
         num = len(self.particles)
-        yield self.particles[(idx+1) % num]
+        yield (idx+1) % num
         if self.double:
-            yield self.particles[(idx-1) % num]
+            yield (idx-1) % num
         if self.selflink:
-            yield particle
+            yield idx
 
 #------------------------------------------------------------------------------
 
@@ -33,11 +33,11 @@ class Star(_FixedBase):
         idx = particle.idx
         num = len(self.particles)
         for i in xrange(0,idx):
-            yield self.particles[i]
+            yield i
         for i in xrange(idx+1,num):
-            yield self.particles[i]
+            yield i
         if self.selflink:
-            yield particle
+            yield idx
 
 #------------------------------------------------------------------------------
 
@@ -46,13 +46,30 @@ class Wheel(_FixedBase):
         if particle.idx == 0:
             # If this is the leader, emit everyone else
             for i in xrange(1,len(self.particles)):
-                yield self.particles[i]
+                yield i
         else:
             # Otherwise, only connect to the leader
-            yield self.particles[0]
+            yield 0
 
         if self.selflink:
-            yield particle
+            yield particle.idx
+
+#------------------------------------------------------------------------------
+
+class Random(_FixedBase):
+    def iterneighbors( self, particle ):
+        # Yield all of the particles up to this one, and all after, then this
+        # one last.
+        idx = particle.idx
+        num = len(self.particles)
+        for i in xrange(0,idx):
+            #if random: continue
+            yield i
+        for i in xrange(idx+1,num):
+            #if random: continue
+            yield i
+        if self.selflink:
+            yield idx
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
