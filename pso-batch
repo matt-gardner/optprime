@@ -7,10 +7,9 @@ To find out how to use this program, run it with the '-h' or '--help' option
 #------------------------------------------------------------------------------
 
 from __future__ import division
-from optparse import OptionParser
 from mrs import param
 
-from simulation import Simulation, functions, motions, neighborhoods
+from simulation import Simulation, motions, neighborhoods
 from cli import outputtypes, gen_simple_options, gen_varargs_options, \
         prefix_args
 
@@ -27,7 +26,7 @@ def main():
 
     versioninfo = '$Id$'
 
-    parser = OptionParser(option_class=param.Option)
+    parser = param.OptionParser()
     parser.add_option('-q', '--quiet',
             dest='quiet',
             action='store_true',
@@ -74,9 +73,11 @@ def main():
             help='Number of particles'
             )
     parser.add_option('-f','--function',
+            action='instantiate',
             dest='function',
-            default='Sphere',
-            help='Function to optimize {%s}' % ", ".join(functions)
+            default='sphere.Sphere',
+            search=['functions'],
+            help='Function to optimize.'
             )
     parser.add_option('-b','--batches',
             dest='batches',
@@ -92,8 +93,6 @@ def main():
             )
 
     gen_simple_options( parser, simprefix, 'Simulation', Simulation.args )
-
-    gen_varargs_options( parser, funcprefix, 'Function', functions )
 
     parser.add_option('-m','--motion',
             dest='motion',
@@ -146,7 +145,7 @@ def main():
         sim = Simulation(
                 options.numparts,
                 neighborhoods[options.sociometry],
-                functions[options.function],
+                options.function,
                 motions[options.motion],
 
                 **simargs

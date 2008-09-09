@@ -53,74 +53,6 @@ except ImportError:
 motions = dict([(v.__name__, v) for v in motionlist])
 
 #------------------------------------------------------------------------------
-# Set up the known functions (only useful benchmarks, please)
-from functions.ackley import Ackley
-from functions.dejong import DeJongF4
-from functions.griewank import Griewank
-from functions.easom import Easom
-from functions.rastrigin import Rastrigin
-from functions.rosenbrock import Rosenbrock
-from functions.schaffer import SchafferF6, SchafferF7
-from functions.sphere import Sphere
-from functions.monson import TwoGaussians, ValleyNeedle, AsymmetricCone
-from functions.quadratic import Quadratic
-from functions.distance import Distance
-from functions.schwefel import Schwefel
-from functions.pat import Pat
-from functions.keane import Keane
-from functions.gauss import Gauss
-from functions.financial import AlphaBeta
-from functions.rbf import RBF
-from functions.butterfly import Butterfly
-from functions.psocryst import Crystal
-from functions.dap_opt import DapOpt
-from functions.test import Test
-#from functions.art import Art
-functionlist = [
-    Sphere,
-    Distance,
-    Quadratic,
-    DeJongF4,
-    Rosenbrock,
-    Rastrigin,
-    Griewank,
-    Ackley,
-    SchafferF6,
-    SchafferF7,
-    TwoGaussians,
-    ValleyNeedle,
-    AsymmetricCone,
-    Schwefel,
-    Easom,
-    Pat,
-    Keane,
-    Gauss,
-    AlphaBeta,
-    RBF,
-    Butterfly,
-    Crystal,
-    DapOpt,
-    Test
-#    ,Art
-]
-# Some functions require scipy, Numeric, etc., and might not work everywhere.
-try:
-    from functions.ackley import Ackley as x
-    from functions.constrained10d import ConstrainedSphere10d, \
-            ConstrainedRastrigin10d, ConstrainedRosenbrock10d, \
-            ConstrainedGriewank10d, ConstrainedQuadratic10d
-    functionlist += [
-        ConstrainedSphere10d,
-        ConstrainedQuadratic10d,
-        ConstrainedRastrigin10d,
-        ConstrainedRosenbrock10d,
-        ConstrainedGriewank10d,
-    ]
-except ImportError:
-    pass
-functions = dict([(v.__name__, v) for v in functionlist])
-
-#------------------------------------------------------------------------------
 # The simulation class
 
 class Simulation(VarArgs):
@@ -139,7 +71,7 @@ class Simulation(VarArgs):
         ]
 
     def __init__( self,
-            nparts, neighborcls, funcls, motioncls, *args, **kargs
+            nparts, neighborcls, function, motioncls, *args, **kargs
             ):
         super(Simulation,self).__init__( *args, **kargs )
 
@@ -150,7 +82,7 @@ class Simulation(VarArgs):
 
         self.dims = kargs['dims']
         self.nparts = nparts
-        self.func = func = funcls(**kargs)
+        self.func = function
         self.neighborcls = neighborcls
         self.comparator = self.maximize and gt or lt
         self.motion = motioncls(
@@ -164,9 +96,9 @@ class Simulation(VarArgs):
 
         constraints = [
             (cl+abs(cr-cl)*ioffset,cl + abs(cr-cl)*ioffset + (cr-cl)*ispace)
-            for cl,cr in func.constraints
+            for cl,cr in self.func.constraints
             ]
-        sizes = [abs(cr-cl) * ispace for cl, cr in func.constraints]
+        sizes = [abs(cr-cl) * ispace for cl, cr in self.func.constraints]
         vconstraints = [(-s,s) for s in sizes]
 
         self.cube = Cube( constraints )
