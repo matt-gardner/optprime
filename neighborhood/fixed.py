@@ -21,8 +21,6 @@ class Ring(_FixedBase):
     def iterneighbors( self, particle ):
         idx = particle.idx
         num = len(self.particles)
-        if self.neighbors > num/2 or self.neighbors < 1:
-            raise IllegalArgumentError('Bad number of neighbors in Ring!')
         for i in range(idx+1, idx+self.neighbors+1):
             yield (idx+i) % num
         if self.double:
@@ -80,6 +78,26 @@ class Rand(_FixedBase):
                 yield i
         if self.selflink:
             yield idx
+
+#------------------------------------------------------------------------------
+
+class Islands(_FixedBase):
+    _args = [( 'num_islands', 5, 'Number of islands to use')]
+
+    def iterneighbors( self, particle ):
+        # Particles are grouped into n islands, and communicate with all members
+        # on the island, and no one else
+        idx = particle.idx
+        num_particles = len(self.particles)
+        islands = self.num_islands
+        if num_particles % islands != 0:
+            raise IllegalArgumentError('Uneven split between islands!')
+        step_size = int(num_particles/islands)
+        for i in xrange(islands):
+            if idx in xrange(i*step_size, i*step_size + step_size):
+                for j in xrange(i*step_size, i*step_size + step_size):
+                    yield j
+
 
 #------------------------------------------------------------------------------
 
