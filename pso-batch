@@ -8,6 +8,7 @@ To find out how to use this program, run it with the '-h' or '--help' option
 
 from __future__ import division
 from optparse import OptionParser
+from mrs import param
 
 from simulation import Simulation, functions, motions, neighborhoods
 from cli import outputtypes, gen_simple_options, gen_varargs_options, \
@@ -26,7 +27,7 @@ def main():
 
     versioninfo = '$Id$'
 
-    parser = OptionParser()
+    parser = OptionParser(option_class=param.Option)
     parser.add_option('-q', '--quiet',
             dest='quiet',
             action='store_true',
