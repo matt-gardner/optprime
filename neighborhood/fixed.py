@@ -9,7 +9,7 @@ class _FixedBase(_Base):
     _params = dict(
             selflink=Param(doc='Include self in neighborhood', default=True),
             )
-    #[
+        #[
         #( 'selflink', True, 'Include self in neighborhood' ),
         #]
 
@@ -18,9 +18,9 @@ class _FixedBase(_Base):
 class Ring(_FixedBase):
     _params = dict(
             double=Param(doc='Doubly linked ring (True/False)', default=False),
-            neighbors=Param(doc='How many neighbors to send to on each side', default=1),
+            neighbors=Param(doc='Percent of neighbors to send to on each side', default=.5),
             )
-    #[
+            #[
             #( 'double', False, 'Doubly linked ring (True/False)' ),
             #( 'neighbors', 1, 'How many neighbors to send to on one side' )
             #]
@@ -28,10 +28,11 @@ class Ring(_FixedBase):
     def iterneighbors( self, particle ):
         idx = particle.idx
         num = len(self.particles)
-        for i in range(idx+1, idx+self.neighbors+1):
+        num_neighbors = int(self.neighbors*num)
+        for i in range(idx+1, idx+num_neighbors+1):
             yield (idx+i) % num
         if self.double:
-            for i in range(idx-self.neighbors, idx):
+            for i in range(idx-num_neighbors, idx):
                 yield (idx-1) % num
         if self.selflink:
             yield idx
@@ -73,7 +74,7 @@ class Rand(_FixedBase):
             probability=Param(doc='Probability of sending a message to a given particle',
                 default=.5),
             )
-    #[( 'probability', .5, 'Probability of sending a message to a given '
+        #[( 'probability', .5, 'Probability of sending a message to a given '
         #+ 'particle' )]
     def iterneighbors( self, particle ):
         from random import random
@@ -96,7 +97,7 @@ class Islands(_FixedBase):
     _params = dict(
             num_islands=Param(doc='Number of islands to use', default=5),
             )
-    #[( 'num_islands', 5, 'Number of islands to use')]
+        #[( 'num_islands', 5, 'Number of islands to use')]
 
     def iterneighbors( self, particle ):
         # Particles are grouped into n islands, and communicate with all members
