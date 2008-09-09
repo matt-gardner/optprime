@@ -6,17 +6,24 @@ from amlpso.Vector import Vector
 
 class _FixedBase(_Base):
     # All fixed sociometries have this option
-    _args = [
-        ( 'selflink', True, 'Include self in neighborhood' ),
-        ]
+    _params = dict(
+            selflink=Param(doc='Include self in neighborhood', default=True),
+            )
+    #[
+        #( 'selflink', True, 'Include self in neighborhood' ),
+        #]
 
 #------------------------------------------------------------------------------
 
 class Ring(_FixedBase):
-    _args = [
-            ( 'double', False, 'Doubly linked ring (True/False)' ),
-            ( 'neighbors', 1, 'How many neighbors to send to on one side' )
-            ]
+    _params = dict(
+            double=Param(doc='Doubly linked ring (True/False)', default=False),
+            neighbors=Param(doc='How many neighbors to send to on each side', default=1),
+            )
+    #[
+            #( 'double', False, 'Doubly linked ring (True/False)' ),
+            #( 'neighbors', 1, 'How many neighbors to send to on one side' )
+            #]
 
     def iterneighbors( self, particle ):
         idx = particle.idx
@@ -62,8 +69,12 @@ class Wheel(_FixedBase):
 #------------------------------------------------------------------------------
 
 class Rand(_FixedBase):
-    _args = [( 'probability', .5, 'Probability of sending a message to a given '
-        + 'particle' )]
+    _params = dict(
+            probability=Param(doc='Probability of sending a message to a given particle',
+                default=.5),
+            )
+    #[( 'probability', .5, 'Probability of sending a message to a given '
+        #+ 'particle' )]
     def iterneighbors( self, particle ):
         from random import random
         # Yield all of the particles up to this one, and all after, then this
@@ -82,7 +93,10 @@ class Rand(_FixedBase):
 #------------------------------------------------------------------------------
 
 class Islands(_FixedBase):
-    _args = [( 'num_islands', 5, 'Number of islands to use')]
+    _params = dict(
+            num_islands=Param(doc='Number of islands to use', default=5),
+            )
+    #[( 'num_islands', 5, 'Number of islands to use')]
 
     def iterneighbors( self, particle ):
         # Particles are grouped into n islands, and communicate with all members
