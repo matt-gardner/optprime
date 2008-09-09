@@ -13,14 +13,21 @@ class _FixedBase(_Base):
 #------------------------------------------------------------------------------
 
 class Ring(_FixedBase):
-    _args = [( 'double', False, 'Doubly linked ring (True/False)' )]
+    _args = [
+            ( 'double', False, 'Doubly linked ring (True/False)' ),
+            ( 'neighbors', 1, 'How many neighbors to send to on one side' )
+            ]
 
     def iterneighbors( self, particle ):
         idx = particle.idx
         num = len(self.particles)
-        yield (idx+1) % num
+        if self.neighbors > num/2 or self.neighbors < 1:
+            raise IllegalArgumentError('Bad number of neighbors in Ring!')
+        for i in range(idx+1, idx+self.neighbors+1):
+            yield (idx+i) % num
         if self.double:
-            yield (idx-1) % num
+            for i in range(idx-self.neighbors, idx):
+                yield (idx-1) % num
         if self.selflink:
             yield idx
 
@@ -74,5 +81,13 @@ class Rand(_FixedBase):
         if self.selflink:
             yield idx
 
+#------------------------------------------------------------------------------
+
+class Dynamic(_FixedBase):
+    def iterneighbors( self, particle ):
+        idx = particle.idx
+        num = len(self.particles)
+
+    
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
