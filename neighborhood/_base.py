@@ -7,22 +7,37 @@ from sets import Set
 from amlpso.Vector import Vector
 
 class _Base(VarArgs):
-    _args = [
-        ('stagcount', 0,
-        'Number of stagnations to trigger a relocation test (0 means no test)'),
-        ('stagsize', 0.0,
-        'Fraction of swarm that triggers relocation when tested'),
-        ('bounceradius', 0.0,
-        'Distance to other particles (relative to longest diagonal) '
-        'that causes a bounce, 0 means no bounce'),
-        ('bounceadapt', 1.0,
-        'Use an adaptive bounce radius, one that decreases with every bounce'),
-        ('bouncetournament', False,
-        'The biggest particle in a bounce competition does not move'),
-        ('bouncedistance', False,
-        'Alter the bounce distance based on the adaptive parameter'),
-        ('relocatebest', False, 'Always move the best differently',),
-        ]
+    _params = dict(
+            stagcount=Param(doc='Number of stagnations to trigger a relocation test'+
+                ' (0 means no test)', default=0),
+            stagsize=Param(doc='Fraction of swarm that triggers relocation when tested',
+                default=0.0),
+            bounceradius=Param(doc='Distance to other particles (relative to longest '+
+                'diagonal) that causes a bounce, 0 means no bounce', default=0.0),
+            bounceadapt=Param(doc='Use an adaptive bounce radius, one that decreases '+
+                'with every bounce', default=1.0),
+            bouncetournament=Param(doc='The biggest particle in a bounce competition '+
+                'does not move', default=False),
+            bouncedistance=Param(doc='Alter the bounce distance based on the adaptive '+
+                'parameter', default=False),
+            relocatebest=Param(doc='Always move the best differently',default=False),
+            )
+        #[
+        #('stagcount', 0,
+        #'Number of stagnations to trigger a relocation test (0 means no test)'),
+        #('stagsize', 0.0,
+        #'Fraction of swarm that triggers relocation when tested'),
+        #('bounceradius', 0.0,
+        #'Distance to other particles (relative to longest diagonal) '
+        #'that causes a bounce, 0 means no bounce'),
+        #('bounceadapt', 1.0,
+        #'Use an adaptive bounce radius, one that decreases with every bounce'),
+        #('bouncetournament', False,
+        #'The biggest particle in a bounce competition does not move'),
+        #('bouncedistance', False,
+        #'Alter the bounce distance based on the adaptive parameter'),
+        #('relocatebest', False, 'Always move the best differently',),
+        #]
     def __init__( self, simulation, numparticles, *args, **kargs ):
         """Creates a sociometry object, which maintains particles and
         relationships.
