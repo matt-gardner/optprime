@@ -8,20 +8,24 @@ from amlpso.Vector import Vector
 
 class _Base(ParamObj):
     _params = dict(
-            stagcount=Param(doc='Number of stagnations to trigger a relocation test'+
-                ' (0 means no test)', default=0),
-            stagsize=Param(doc='Fraction of swarm that triggers relocation when tested',
-                default=0.0),
-            bounceradius=Param(doc='Distance to other particles (relative to longest '+
-                'diagonal) that causes a bounce, 0 means no bounce', default=0.0),
-            bounceadapt=Param(doc='Use an adaptive bounce radius, one that decreases '+
-                'with every bounce', default=1.0),
-            bouncetournament=Param(doc='The biggest particle in a bounce competition '+
-                'does not move', default=False),
-            bouncedistance=Param(doc='Alter the bounce distance based on the adaptive '+
-                'parameter', default=False),
-            relocatebest=Param(doc='Always move the best differently',default=False),
-            )
+        stagcount=Param(default=0, type='int',
+            doc='Number of stagnations to trigger a relocation test'
+                ' (0 means no test)'),
+        stagsize=Param(default=0, type='float',
+            doc='Fraction of swarm that triggers relocation when tested'),
+        bounceradius=Param(default=0, type='float',
+            doc='Distance to other particles (relative to longest diagonal)'
+                ' that causes a bounce, 0 means no bounce'),
+        bounceadapt=Param(default=1, type='float',
+            doc='Use an adaptive bounce radius, one that decreases with'
+                ' every bounce'),
+        bouncetournament=Param(default=0, type='int',
+            doc='The biggest particle in a bounce competition does not move'),
+        bouncedistance=Param(default=0, type='int',
+            doc='Alter the bounce distance based on the adaptive parameter'),
+        relocatebest=Param(default=0, type='int',
+            doc='Always move the best differently'),
+        )
 
     def setup(self, simulation, numparticles, *args, **kargs):
         """Creates a sociometry object, which maintains particles and
@@ -64,17 +68,17 @@ class _Base(ParamObj):
     # ------------------------------
     # Iterator protocol
 
-    def __iter__( self ):
+    def __iter__(self):
         return self
 
-    def next( self ):
+    def next(self):
         p, soc = self.evaliter.next()
         self.last_updated_particle = p
         return p, soc
 
     # ------------------------------
 
-    def _iterevals( self ):
+    def _iterevals(self):
         # First create the particles:
         n = self.startparticles
         sim = self.simulation
@@ -229,24 +233,24 @@ class _Base(ParamObj):
                 yield p, self
                 self.start_of_batch = False
 
-    def addparticle( self, particle ):
-        self.particles.append( particle )
+    def addparticle(self, particle):
+        self.particles.append(particle)
 
-    def iterparticles( self ):
+    def iterparticles(self):
         return iter(self.particles)
 
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         if not self.is_initialized:
-            raise ValueError( 'Swarm is not yet initialized!' )
+            raise ValueError('Swarm is not yet initialized!')
         if self.__class__ is _Base:
-            raise NotImplementedError( 'iterneighbors' )
+            raise NotImplementedError('iterneighbors')
 
-    def bestparticle( self ):
+    def bestparticle(self):
         return self._bestparticle
 
-    def bestneighbor( self, particle ):
+    def bestneighbor(self, particle):
         """Returns the best neighbor for this particle"""
-        niter = self.iterneighbors( particle )
+        niter = self.iterneighbors(particle)
         try:
             best = self.particles[niter.next()]
         except StopIteration:
@@ -254,11 +258,11 @@ class _Base(ParamObj):
 
         for i in niter:
             p = self.particles[i]
-            if self.is_better( p.bestval, best.bestval ):
+            if self.is_better(p.bestval, best.bestval):
                 best = p
         return best
 
-    def numparticles( self ):
+    def numparticles(self):
         return len(self.particles)
 
 

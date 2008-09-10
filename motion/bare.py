@@ -4,10 +4,7 @@ from amlpso.Vector import Vector
 from itertools import izip
 
 class Bare(basic._Base):
-    def __init__( self, *args, **kargs ):
-        super(Bare,self).__init__( *args, **kargs )
-
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle, neighbor):
         """Implements the Bare Bones motion approach"""
         # Simply take the midpoint of the two as the mean and calculate the
         # standard deviation as the absolue value of the distance between them

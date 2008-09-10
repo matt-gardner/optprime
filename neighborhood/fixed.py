@@ -3,27 +3,22 @@ from _base import _Base
 from amlpso.Vector import Vector
 from mrs.param import Param
 
-#------------------------------------------------------------------------------
 
 class _FixedBase(_Base):
     # All fixed sociometries have this option
     _params = dict(
-            selflink=Param(doc='Include self in neighborhood', default=True),
-            )
+        selflink=Param(doc='Include self in neighborhood', default=True),
+        )
 
-#------------------------------------------------------------------------------
 
 class Ring(_FixedBase):
     _params = dict(
-            double=Param(doc='Doubly linked ring (True/False)', default=False),
-            neighbors=Param(doc='Percent of neighbors to send to on each side', default=.5),
-            )
-            #[
-            #( 'double', False, 'Doubly linked ring (True/False)' ),
-            #( 'neighbors', 1, 'How many neighbors to send to on one side' )
-            #]
+        double=Param(default=0, type='int', doc='Doubly linked ring'),
+        neighbors=Param(default=0.5, type='float',
+            doc='Fraction of neighbors to send to on each side'),
+        )
 
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         idx = particle.idx
         num = len(self.particles)
         num_neighbors = int(self.neighbors*num)
@@ -35,10 +30,9 @@ class Ring(_FixedBase):
         if self.selflink:
             yield idx
 
-#------------------------------------------------------------------------------
 
 class Star(_FixedBase):
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
         idx = particle.idx
@@ -50,7 +44,6 @@ class Star(_FixedBase):
         if self.selflink:
             yield idx
 
-#------------------------------------------------------------------------------
 
 class Wheel(_FixedBase):
     def iterneighbors( self, particle ):
@@ -65,16 +58,14 @@ class Wheel(_FixedBase):
         if self.selflink:
             yield particle.idx
 
-#------------------------------------------------------------------------------
 
 class Rand(_FixedBase):
     _params = dict(
-            probability=Param(doc='Probability of sending a message to a given particle',
-                default=.5),
-            )
-        #[( 'probability', .5, 'Probability of sending a message to a given '
-        #+ 'particle' )]
-    def iterneighbors( self, particle ):
+        probability=Param(default=0.5, type='float',
+            doc='Probability of sending a message to a given particle'),
+        )
+
+    def iterneighbors(self, particle):
         from random import random
         # Yield all of the particles up to this one, and all after, then this
         # one last, with probability equal to self.probability.
@@ -89,15 +80,14 @@ class Rand(_FixedBase):
         if self.selflink:
             yield idx
 
-#------------------------------------------------------------------------------
 
 class Islands(_FixedBase):
     _params = dict(
-            num_islands=Param(doc='Number of islands to use', default=5),
-            )
-        #[( 'num_islands', 5, 'Number of islands to use')]
+        num_islands=Param(default=5, type='int',
+            doc='Number of islands to use'),
+        )
 
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         # Particles are grouped into n islands, and communicate with all members
         # on the island, and no one else
         idx = particle.idx
@@ -112,13 +102,8 @@ class Islands(_FixedBase):
                     yield j
 
 
-#------------------------------------------------------------------------------
-
 class Dynamic(_FixedBase):
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         idx = particle.idx
         num = len(self.particles)
 
-    
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------

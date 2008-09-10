@@ -5,7 +5,7 @@ import basic
 from itertools import izip
 from amlpso.Vector import Vector
 
-#------------------------------------------------------------------------------
+
 class Link1(basic._Base):
     """This particle is the first linear kalman approximation -- the one that
     makes mathematical sense"""
@@ -20,15 +20,15 @@ class Link1(basic._Base):
         ( 'vecsdev', False, 'Use a vector of standard deviations, not just a constant' ),
         ]
 
-    def __init__( self, *args, **kargs ):
-        super( Link1, self ).__init__( *args, **kargs )
+    def __init__(self, *args, **kargs):
+        super(Link1, self).__init__(*args, **kargs)
 
         if self.dimdiv:
             self.sdev = math.sqrt( self.variance / self.dims )
         else:
             self.sdev = math.sqrt( self.variance )
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle, neighbor):
         # Here we get the new gnorm dependent on whether we include pbest or not
         if self.usepbest:
             gnorm1 = neighbor.bestpos - particle.pos
@@ -97,11 +97,11 @@ class Link1(basic._Base):
                 nvel = Vector([gauss(x,nmag*sdev) for x in nvel])
 
         if self.restrictvel:
-            self.vcube.constrain_vec( nvel, True )
+            self.vcube.constrain_vec(nvel, True)
 
         return None, nvel
 
-#------------------------------------------------------------------------------
+
 class Link2(basic._Base):
     """This particle is the second linear kalman approximation -- the one that
     is a terrible hack"""
@@ -114,13 +114,13 @@ class Link2(basic._Base):
         ( 'pweight', 0.45, 'Weight applied to pbest/gbest combination' ),
         ]
 
-    def __init__( self, *args, **kargs ):
-        super( Link2, self ).__init__( *args, **kargs )
+    def __init__(self, *args, **kargs):
+        super(Link2, self).__init__(*args, **kargs)
 
-        self.sdev = math.sqrt( self.variance )
+        self.sdev = math.sqrt(self.variance)
         self.sizes = [abs(r-l) for l,r in self.constraints]
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle, neighbor):
         if self.usepbest:
             gnorm1 = neighbor.bestpos - particle.pos
             gnorm2 = particle.bestpos - particle.pos
@@ -178,7 +178,7 @@ class Link2(basic._Base):
                 weight = 0
         else:
             weight = self.weight
-        pw = self.rand.gauss( weight, self.sdev )
+        pw = self.rand.gauss(weight, self.sdev)
         gw = 1 - pw
 
         # We create a new normal vector and then give it the right magnitude by
@@ -200,18 +200,18 @@ class Link2(basic._Base):
             nvel = Vector([self.rand.gauss(x,max(abs(x)/2,s*0.00001)) for x,s in izip(nvel,self.sizes)])
         else:
             sdev = self.sdev * self.craziness
-            nvel[elidx] = self.rand.gauss( nvel[elidx], sdev )
+            nvel[elidx] = self.rand.gauss(nvel[elidx], sdev)
 
 
         nvel.normalize()
         nvel *= (pw * pmag + gw * gmag)
 
         if self.restrictvel:
-            self.cube.constrain_vec( nvel, True )
+            self.cube.constrain_vec(nvel, True)
 
         return particle.pos + nvel, nvel
 
-#------------------------------------------------------------------------------
+
 class Link3(basic._Base):
     """This is a very simple hack on the Kalman stuff, making the new position
     a weighted average of the old position, rather than an average over
@@ -223,13 +223,13 @@ class Link3(basic._Base):
         ( 'craziness', 0.5, 'How much of the velocity to apply to sampling' ),
         ]
 
-    def __init__( self, *args, **kargs ):
-        super( Link3, self ).__init__( *args, **kargs )
+    def __init__(self, *args, **kargs):
+        super(Link3, self).__init__(*args, **kargs)
 
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdevs = [math.sqrt(self.cfac * s) for s in self.sizes]
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle, neighbor):
         predpos = particle.pos + particle.vel
         goodpos = neighbor.bestpos
 
@@ -258,7 +258,7 @@ class Link3(basic._Base):
 
         return None, newvel
 
-#------------------------------------------------------------------------------
+
 class Link4(basic._Base):
     """This is a very simple hack on the Kalman stuff, making the new position
     a weighted average of the old position, rather than an average over
@@ -269,13 +269,13 @@ class Link4(basic._Base):
         ( 'weight', 0.45, 'Weight applied to predictions' ),
         ]
 
-    def __init__( self, *args, **kargs ):
-        super( Link4, self ).__init__( *args, **kargs )
+    def __init__(self, *args, **kargs):
+        super( Link4, self ).__init__(*args, **kargs)
 
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdev = math.sqrt(self.variance)
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle, neighbor):
         predpos = particle.pos + particle.vel
         goodpos = neighbor.bestpos
 
@@ -286,7 +286,7 @@ class Link4(basic._Base):
                 weight = 0
         else:
             weight = self.weight
-        pw = self.rand.gauss( weight, self.sdev )
+        pw = self.rand.gauss(weight, self.sdev)
         gw = 1 - pw
 
         newpos = pw * predpos + gw * goodpos
@@ -294,5 +294,3 @@ class Link4(basic._Base):
 
         return None, newvel
 
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------

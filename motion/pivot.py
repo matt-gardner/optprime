@@ -4,9 +4,6 @@ from amlpso.Vector import Vector
 from itertools import izip
 
 class Pivot(basic._Base):
-    def __init__( self, *args, **kargs ):
-        super(Pivot,self).__init__( *args, **kargs )
-
     def hyperspherevariate(self, radius, uniformity=1):
         """Based on Clerc's sampling code.
 
@@ -33,7 +30,7 @@ class Pivot(basic._Base):
         frac = radius * r / abs(vec)
         return vec * frac
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle, neighbor):
         """Implements the Simple Pivot motion approach"""
         distance = abs(particle.bestpos - neighbor.bestpos)
 
@@ -49,7 +46,7 @@ class Pivot(basic._Base):
 
         # If we are maximizing rather than minimizing, we need to reverse the
         # weights.
-        if self.comparator( 1, 0 ):
+        if self.comparator(1, 0):
             pw = 1-pw
 
         newpos = pw * ppart + (1-pw) * pbest

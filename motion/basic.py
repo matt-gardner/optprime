@@ -5,7 +5,7 @@ from amlpso.Vector import Vector
 from math import sqrt
 from amlpso.cubes.cube import Cube
 
-#------------------------------------------------------------------------------
+
 class _Base(ParamObj):
     __slots__ = ['rand']
 
@@ -30,7 +30,7 @@ class _Base(ParamObj):
     def post_batch(self, soc):
         pass
 
-#------------------------------------------------------------------------------
+
 class Basic(_Base):
     _params = dict(
         m1=Param(default=1.0, type='float', doc='Momentum start'),
@@ -138,7 +138,7 @@ class Basic(_Base):
         dh = self.arpso_high
         dl = self.arpso_low
 
-#------------------------------------------------------------------------------
+
 class BasicAdaptive(_Base):
     _params = dict(
         k=Param(default=-0.5, type='float',
@@ -205,12 +205,9 @@ class BasicAdaptive(_Base):
 
         return newpos, newvel
 
-#------------------------------------------------------------------------------
-class BasicGauss(_Base):
-    def __init__( self, *args, **kargs ):
-        super(BasicGauss, self).__init__( *args, **kargs )
 
-    def __call__( self, particle, neighbor ):
+class BasicGauss(_Base):
+    def __call__(self, particle, neighbor):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -231,5 +228,3 @@ class BasicGauss(_Base):
 
         return None, newvel
 
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------

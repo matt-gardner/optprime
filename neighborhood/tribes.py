@@ -2,11 +2,10 @@ from __future__ import division
 from mrs.param import Param
 from _base import _Base
 
-#------------------------------------------------------------------------------
 
 class _Tribe(object):
-    def __init__( self, soc, idx, *args, **kargs ):
-        super(_Tribe,self).__init__( *args, **kargs )
+    def __init__(self, soc, idx, *args, **kargs):
+        super(_Tribe,self).__init__(*args, **kargs)
         self.idx = idx
         self.soc = soc
         self.simulation = soc.simulation
@@ -15,38 +14,37 @@ class _Tribe(object):
 
         self.particles = {}
 
-    def is_notworse( self, v1, v2 ):
-        return v1 == v2 or self.is_better( v1, v2 )
+    def is_notworse(self, v1, v2):
+        return v1 == v2 or self.is_better(v1, v2)
 
-    def add_particle( self, p ):
+    def add_particle(self, p):
         self.particles[p.idx] = p
         p.tribe = self
 
-    def del_particle( self, p ):
+    def del_particle(self, p):
         del self.particles[p.idx]
 
-    def is_good( self ):
+    def is_good(self):
         numgood = 0
         for p in self.particles.itervalues():
             if p.improvedcount >= 1:
                 numgood += 1
         return self.rand.randrange(0,len(self.particles)) < numgood
 
-    def extreme_particles( self ):
+    def extreme_particles(self):
         piter = self.particles.itervalues()
         best = worst = piter.next()
         for p in piter:
-            if self.is_better( p.bestval, best.bestval ):
+            if self.is_better(p.bestval, best.bestval):
                 best = p
-            if self.is_notworse( worst.bestval, p.bestval ):
+            if self.is_notworse(worst.bestval, p.bestval):
                 worst = p
         return best, worst
 
-#------------------------------------------------------------------------------
 
 class TRIBES(_Base):
-    def __init__( self, *args, **kargs ):
-        super(TRIBES,self).__init__( *args, **kargs )
+    def __init__(self, *args, **kargs):
+        super(TRIBES,self).__init__(*args, **kargs)
 
         self.rand = self.simulation.rand
         self.curtribe = 0
@@ -54,7 +52,7 @@ class TRIBES(_Base):
         self.tribes = {}
         self.particles = {}
 
-    def _iterevals( self ):
+    def _iterevals(self):
         # We are overriding this function, but we really only want to intervene
         # in strategic locations, so we mostly leave the functionality intact.
 
@@ -99,7 +97,7 @@ class TRIBES(_Base):
                 for p in self._restructure():
                     yield p, self
 
-    def addparticle( self, particle ):
+    def addparticle(self, particle):
         """Overridden to ensure that the particle has appropriate structures in
         it and add it to the main list of particles.
         """
@@ -111,8 +109,8 @@ class TRIBES(_Base):
         if not self.is_initialized:
             self.firsttribe.add_particle( particle )
 
-    def make_particle( self, tribe, constraints=None ):
-        p = self.simulation.newparticle( constraints=constraints )
+    def make_particle(self, tribe, constraints=None):
+        p = self.simulation.newparticle(constraints=constraints)
 
         p.idx = self.curparticle
         self.curparticle += 1
@@ -120,14 +118,14 @@ class TRIBES(_Base):
         tribe.add_particle( p )
         return p
 
-    def kill_particle( self, particle ):
-        particle.tribe.del_particle( particle )
+    def kill_particle(self, particle):
+        particle.tribe.del_particle(particle)
         del self.particles[particle.idx]
 
-    def iterparticles( self ):
+    def iterparticles(self):
         return self.particles.itervalues()
 
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         # All of the members of the tribe are informers
         for p in particle.tribe.particles.itervalues():
             yield p
@@ -137,25 +135,25 @@ class TRIBES(_Base):
         for p in particle.ext_informers.itervalues():
             yield p
 
-    def new_tribe( self ):
-        t = _Tribe( self, self.curtribe )
+    def new_tribe(self):
+        t = _Tribe(self, self.curtribe)
         self.curtribe += 1
         self.tribes[t.idx] = t
         return t
 
-    def kill_tribe( self, tribe ):
+    def kill_tribe(self, tribe):
         del self.tribes[tribe.idx]
 
-    def num_neighbors( self, particle ):
+    def num_neighbors(self, particle):
         return 1 + len(particle.tribe.particles) + len(particle.ext_informers)
 
-    def num_connections( self ):
+    def num_connections(self):
         nc = 0
         for p in self.particles.itervalues():
-            nc += self.num_neighbors( p )
+            nc += self.num_neighbors(p)
         return nc
 
-    def _restructure( self ):
+    def _restructure(self):
         """Perform tribal restructuring based on goodness and badness of tribes
         and particles.
         """
@@ -178,7 +176,7 @@ class TRIBES(_Base):
                 if new_tribe is None:
                     new_tribe = self.new_tribe()
 
-                new_particle = self.make_particle( new_tribe )
+                new_particle = self.make_particle(new_tribe)
 
                 # Now add them as external informers to each other
                 new_particle.ext_informers[best.idx] = best
@@ -202,8 +200,8 @@ class TRIBES(_Base):
                     # Only one particle, so remove only if it has a better
                     # informer.  Also, set that external informer to the new
                     # best, which would normally belong to the tribe.
-                    best = self.bestneighbor( worst )
-                    do_removal = self.is_better( best.bestval, worst.bestval )
+                    best = self.bestneighbor(worst)
+                    do_removal = self.is_better(best.bestval, worst.bestval)
                     deltribes.append(t)
 
                 if do_removal:
@@ -224,6 +222,5 @@ class TRIBES(_Base):
                             best.ext_informers[neighbor.idx] = neighbor
 
         for t in deltribes:
-            self.kill_tribe( t )
+            self.kill_tribe(t)
 
-#------------------------------------------------------------------------------
