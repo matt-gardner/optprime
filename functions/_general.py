@@ -13,6 +13,7 @@ class _Base(ParamObj):
         self._set_constraints(((0,0),)*2)
 
     def _set_constraints(self, constraints):
+        self.dims = len(constraints)
         if ',' in self.center:
             center = [float(x) for x in self.center.split(',')]
         else:
