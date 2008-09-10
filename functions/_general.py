@@ -5,7 +5,7 @@ from itertools import izip
 
 class _Base(ParamObj):
     _params = dict(
-            center=Param(default='0.5',
+            center=Param(default='0.5', type='float',
                 doc='Relative center of function, between 0 and 1.'),
             )
 

@@ -4,7 +4,8 @@ import _general
 
 class Distance(_general._Base):
     _params = dict(
-                norm=Param(default=2.0, doc='Default norm (2 is Euclidian)'),
+                norm=Param(default=2.0, type='float', 
+                    doc='Default norm (2 is Euclidian)'),
             )
     def __init__( self, *args, **kargs):
         super(Distance,self).__init__( *args, **kargs )

@@ -11,14 +11,18 @@ class Link1(basic._Base):
     makes mathematical sense"""
 
     _params = dict(
-            variance=Param(default=0.6, doc='Sample variance' ),
-            weight=Param(default=0.45, doc='Weight applied to predictions' ),
-            usepbest=Param(default=False, doc='Use pbest' ),
-            pweight=Param(default=0.1, doc='Weight applied to pbest/gbest combination' ),
-            dimdiv=Param(default=False, doc='Divide variance by number of dimensions' ),
-            norm=Param(default=True, doc='Normalize vectors instead of just combining' ),
-            vecsdev=Param(default=False, 
-                doc='Use a vector of standard deviations, not just a constant' ),
+            variance=Param(default=0.6, type='float', doc='Sample variance' ),
+            weight=Param(default=0.45, type='float', 
+                doc='Weight applied to predictions' ),
+            usepbest=Param(default=0, type='int', doc='Use pbest' ),
+            pweight=Param(default=0.1, type='float', 
+                doc='Weight applied to pbest/gbest combination' ),
+            dimdiv=Param(default=0, type='int', 
+                doc='Divide variance by number of dimensions' ),
+            norm=Param(default=1, type='int', 
+                doc='Normalize vectors instead of just combining' ),
+            vecsdev=Param(default=0, type='int', 
+                doc='Use a vector of standard deviations, not just a constant'),
         )
 
     def __init__(self, *args, **kargs):
@@ -108,11 +112,15 @@ class Link2(basic._Base):
     is a terrible hack"""
 
     _params = dict(
-            variance=Param(default=0.6, doc='Sample variance' ),
-            weight=Param(default=0.45, doc='Weight applied to predictions' ),
-            craziness=Param(default=0.1, doc='Variance multiplier for craziness' ),
-            usepbest=Param(default=False, doc='Use pbest' ),
-            pweight=Param(default=0.45, doc='Weight applied to pbest/gbest combination' ),
+            variance=Param(default=0.6, type='float', 
+                doc='Sample variance' ),
+            weight=Param(default=0.45, type='float', 
+                doc='Weight applied to predictions' ),
+            craziness=Param(default=0.1, type='float', 
+                doc='Variance multiplier for craziness' ),
+            usepbest=Param(default=0, type='int', doc='Use pbest' ),
+            pweight=Param(default=0.45, type='float', 
+                doc='Weight applied to pbest/gbest combination' ),
         )
 
     def __init__(self, *args, **kargs):
@@ -134,7 +142,8 @@ class Link2(basic._Base):
             if self.pweight == -1:
                 try:
                     # Minimizing -- weight applies to self
-                    weight = neighbor.bestval / (particle.bestval + neighbor.bestval)
+                    weight = neighbor.bestval \
+                            / (particle.bestval + neighbor.bestval)
                     # Maximizing -- invert the weight -- still applies to self
                     if self.comparator(1,0):
                         weight = 1 - weight
@@ -198,7 +207,8 @@ class Link2(basic._Base):
         # Pick a random element of the vector and randomize it.
         elidx = self.rand.randrange(0,len(nvel))
         if self.craziness == -1:
-            nvel = Vector([self.rand.gauss(x,max(abs(x)/2,s*0.00001)) for x,s in izip(nvel,self.sizes)])
+            nvel = Vector([self.rand.gauss(x,max(abs(x)/2,s*0.00001)) 
+                for x,s in izip(nvel,self.sizes)])
         else:
             sdev = self.sdev * self.craziness
             nvel[elidx] = self.rand.gauss(nvel[elidx], sdev)
@@ -219,9 +229,11 @@ class Link3(basic._Base):
     velocities."""
 
     _params = dict(
-            cfac=Param(default=0.0001, doc='Covariance factor' ),
-            weight=Param(default=0.45, doc='Weight applied to predictions' ),
-            craziness=Param(default=0.5, doc='How much of the velocity to apply to sampling' ),
+            cfac=Param(default=0.0001, type='float', doc='Covariance factor' ),
+            weight=Param(default=0.45, type='float', 
+                doc='Weight applied to predictions' ),
+            craziness=Param(default=0.5, type='float', 
+                doc='How much of the velocity to apply to sampling' ),
         )
 
     def __init__(self, *args, **kargs):
@@ -239,7 +251,8 @@ class Link3(basic._Base):
         #pw = self.rand.gauss( self.weight, self.cfac )
         if self.weight == -1:
             try:
-                weight = neighbor.bestval / (particle.bestval + neighbor.bestval)
+                weight = neighbor.bestval 
+                    / (particle.bestval + neighbor.bestval)
             except ZeroDivisionError, e:
                 weight = 0
         else:
@@ -251,7 +264,8 @@ class Link3(basic._Base):
         meanvel = particle.pos - meanpos
         #sdevs = self.sdevs
         #sdevs = [max(math.sqrt(self.cfac * abs(s)),0.001) for s in diffpos]
-        sdevs = [max(self.craziness*s,sdev) for s,sdev in izip(diffpos,self.sdevs)]
+        sdevs = [max(self.craziness*s,sdev) 
+                for s,sdev in izip(diffpos,self.sdevs)]
 
         gauss = self.rand.gauss
         newpos = Vector([gauss(x,sdev) for x,sdev in izip(meanpos,sdevs)])
@@ -266,8 +280,9 @@ class Link4(basic._Base):
     velocities."""
 
     _params = dict(
-            variance=Param(default=0.6, doc='Weight variance' ),
-            weight=Param(default=0.45, doc='Weight applied to predictions' ),
+            variance=Param(default=0.6, type='float', doc='Weight variance' ),
+            weight=Param(default=0.45, type='float', 
+                doc='Weight applied to predictions' ),
         )
 
     def __init__(self, *args, **kargs):
@@ -282,7 +297,8 @@ class Link4(basic._Base):
 
         if self.weight == -1:
             try:
-                weight = neighbor.bestval / (particle.bestval + neighbor.bestval)
+                weight = neighbor.bestval \
+                        / (particle.bestval + neighbor.bestval)
             except ZeroDivisionError, e:
                 weight = 0
         else:

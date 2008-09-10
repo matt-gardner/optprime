@@ -11,13 +11,18 @@ import sys
 
 class Kalman(basic._Base):
     _params = dict(
-            cfac=Param(default=0.01, doc='Covariance factor' ),
-            predict=Param(default=True, doc='Predict instead of just filtering' ),
-            randinit=Param(default=False, doc='Initialize to random priors' ),
-            velmultiplier=Param(default=1.0, doc='Multiplier for velocities' ),
-            norandscale=Param(default=False, doc='Remove random scaling from the process' ),
-            usepbest=Param(default=False, doc='Add the use of pbest to the mix' ),
-            pgrelationship=Param(default=0.7, 
+            cfac=Param(default=0.01, type='float', doc='Covariance factor' ),
+            predict=Param(default=1, type='int', 
+                doc='Predict instead of just filtering' ),
+            randinit=Param(default=0, type='int', 
+                doc='Initialize to random priors' ),
+            velmultiplier=Param(default=1.0, type='float', 
+                doc='Multiplier for velocities' ),
+            norandscale=Param(default=0, type='int', 
+                doc='Remove random scaling from the process' ),
+            usepbest=Param(default=0, type='int', 
+                doc='Add the use of pbest to the mix' ),
+            pgrelationship=Param(default=0.7, type='float', 
                 doc='Strength of the relationship between gbest and pbest' ),
         )
 
