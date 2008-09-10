@@ -15,31 +15,6 @@ from kdtree import KDTree
 from cubes.cube import Cube
 
 #------------------------------------------------------------------------------
-# Set up the known motion types
-from motion.basic import Basic, BasicGauss, BasicAdaptive
-from motion.bare import Bare
-from motion.link import Link1, Link2, Link3, Link4
-from motion.pivot import Pivot
-motionlist = [
-    Basic,
-    BasicGauss,
-    BasicAdaptive,
-    Bare,
-    Pivot,
-    Link1,
-    Link2,
-    Link3,
-    Link4,
-]
-# Some motions require scipy, Numeric, etc., and might not work everywhere.
-try:
-    from motion.kalman import Kalman
-    motionlist.append(Kalman)
-except ImportError:
-    pass
-motions = dict([(v.__name__, v) for v in motionlist])
-
-#------------------------------------------------------------------------------
 # The simulation class
 
 class Simulation(VarArgs):
@@ -58,7 +33,7 @@ class Simulation(VarArgs):
         ]
 
     def __init__( self,
-            nparts, neighborhood, function, motioncls, *args, **kargs
+            nparts, neighborhood, function, motion, *args, **kargs
             ):
         super(Simulation,self).__init__( *args, **kargs )
 
@@ -71,15 +46,11 @@ class Simulation(VarArgs):
         self.nparts = nparts
         self.func = function
         self.neighborhood = neighborhood
+        self.motion = motion
         self.comparator = self.maximize and gt or lt
 
         self.func.setup(self.dims)
-
-        self.motion = motioncls(
-                self.comparator,
-                self.func.constraints,
-                **kargs
-                )
+        self.motion.setup(self.comparator, self.func.constraints)
 
         ispace = self.initspace
         ioffset = self.initoffset

@@ -9,7 +9,7 @@ To find out how to use this program, run it with the '-h' or '--help' option
 from __future__ import division
 from mrs import param
 
-from simulation import Simulation, motions
+from simulation import Simulation
 from cli import outputtypes, gen_simple_options, gen_varargs_options, \
         prefix_args
 
@@ -19,8 +19,6 @@ import sys, os
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 def main():
-    motionprefix = 'motion'
-    neighborprefix = 'soc'
     simprefix = 'sim'
 
     versioninfo = '$Id$'
@@ -94,11 +92,12 @@ def main():
     gen_simple_options( parser, simprefix, 'Simulation', Simulation.args )
 
     parser.add_option('-m','--motion',
+            action='instantiate',
             dest='motion',
+            search=['motion.basic', 'motion'],
             default='Basic',
-            help='Particle motion type {%s}' % ", ".join(motions)
+            help='Particle motion type',
             )
-    gen_varargs_options( parser, motionprefix, 'Motion', motions )
 
     parser.add_option('-s','--sociometry',
             action='instantiate',
@@ -132,8 +131,7 @@ def main():
     # Format the 'extra' arguments for the simulation object -- removing
     # prefixes and such.
     simargs = {}
-    for prefix in (motionprefix, neighborprefix, simprefix):
-        simargs.update(prefix_args(prefix, options))
+    simargs.update(prefix_args(simprefix, options))
     simargs['dims'] = numdims
 
     #--------------------------------------------------------------------------
@@ -146,7 +144,7 @@ def main():
                 options.numparts,
                 options.sociometry,
                 options.function,
-                motions[options.motion],
+                options.motion,
 
                 **simargs
                 )
