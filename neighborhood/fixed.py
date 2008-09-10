@@ -1,6 +1,7 @@
 from __future__ import division
 from _base import _Base
 from amlpso.Vector import Vector
+from mrs.param import Param
 
 #------------------------------------------------------------------------------
 
@@ -9,9 +10,6 @@ class _FixedBase(_Base):
     _params = dict(
             selflink=Param(doc='Include self in neighborhood', default=True),
             )
-        #[
-        #( 'selflink', True, 'Include self in neighborhood' ),
-        #]
 
 #------------------------------------------------------------------------------
 

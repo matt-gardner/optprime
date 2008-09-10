@@ -15,20 +15,6 @@ from kdtree import KDTree
 from cubes.cube import Cube
 
 #------------------------------------------------------------------------------
-# Set up the known neighborhoods
-from neighborhood.fixed import Star, Ring, Wheel, Rand, Islands
-from neighborhood.tribes import TRIBES
-neighborhoodlist = [
-    Star,
-    Ring,
-    Wheel,
-    TRIBES,
-    Rand,
-    Islands,
-]
-neighborhoods = dict([(v.__name__, v) for v in neighborhoodlist])
-
-#------------------------------------------------------------------------------
 # Set up the known motion types
 from motion.basic import Basic, BasicGauss, BasicAdaptive
 from motion.bare import Bare
@@ -72,7 +58,7 @@ class Simulation(VarArgs):
         ]
 
     def __init__( self,
-            nparts, neighborcls, function, motioncls, *args, **kargs
+            nparts, neighborhood, function, motioncls, *args, **kargs
             ):
         super(Simulation,self).__init__( *args, **kargs )
 
@@ -84,8 +70,11 @@ class Simulation(VarArgs):
         self.dims = kargs['dims']
         self.nparts = nparts
         self.func = function
-        self.neighborcls = neighborcls
+        self.neighborhood = neighborhood
         self.comparator = self.maximize and gt or lt
+
+        self.func.setup(self.dims)
+
         self.motion = motioncls(
                 self.comparator,
                 self.func.constraints,
@@ -283,13 +272,13 @@ class Simulation(VarArgs):
     def iterevals( self ):
         comp = self.comparator
         kargs = self.keywordargs
-        soc = self.neighborcls( self, self.nparts, comparator=comp, **kargs )
+        self.neighborhood.setup(self, self.nparts, comparator=comp, **kargs)
 
         constraints = self.cube.constraints
 
         self.tree = KDTree( constraints )
 
-        for i, (particle, soc) in enumerate(soc):
+        for i, (particle, soc) in enumerate(self.neighborhood):
             if self.kdtreeinit:
                 if self.kdrebuild > 0 and i % self.kdrebuild == 0:
                     points = list(self.tree.iterpoints())

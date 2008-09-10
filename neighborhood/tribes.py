@@ -1,5 +1,5 @@
 from __future__ import division
-from amlpso.varargs import VarArgs
+from mrs.param import Param
 from _base import _Base
 
 #------------------------------------------------------------------------------

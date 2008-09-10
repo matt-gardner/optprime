@@ -9,7 +9,7 @@ To find out how to use this program, run it with the '-h' or '--help' option
 from __future__ import division
 from mrs import param
 
-from simulation import Simulation, motions, neighborhoods
+from simulation import Simulation, motions
 from cli import outputtypes, gen_simple_options, gen_varargs_options, \
         prefix_args
 
@@ -19,7 +19,6 @@ import sys, os
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
 def main():
-    funcprefix = 'func'
     motionprefix = 'motion'
     neighborprefix = 'soc'
     simprefix = 'sim'
@@ -102,11 +101,12 @@ def main():
     gen_varargs_options( parser, motionprefix, 'Motion', motions )
 
     parser.add_option('-s','--sociometry',
+            action='instantiate',
             dest='sociometry',
+            search=['neighborhood.fixed', 'neighborhood'],
             default='Star',
-            help='Particle sociometry {%s}' % ", ".join(neighborhoods)
+            help='Particle sociometry'
             )
-    gen_varargs_options( parser, neighborprefix, 'Sociometry', neighborhoods )
 
     options, args = parser.parse_args()
 
@@ -132,7 +132,7 @@ def main():
     # Format the 'extra' arguments for the simulation object -- removing
     # prefixes and such.
     simargs = {}
-    for prefix in (motionprefix, funcprefix, neighborprefix, simprefix):
+    for prefix in (motionprefix, neighborprefix, simprefix):
         simargs.update(prefix_args(prefix, options))
     simargs['dims'] = numdims
 
@@ -144,7 +144,7 @@ def main():
     for batch in xrange(options.batches):
         sim = Simulation(
                 options.numparts,
-                neighborhoods[options.sociometry],
+                options.sociometry,
                 options.function,
                 motions[options.motion],
 

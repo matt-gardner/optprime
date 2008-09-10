@@ -1,12 +1,12 @@
 from __future__ import division
 
-from amlpso.varargs import VarArgs
 from itertools import izip
 import operator
 from sets import Set
+from mrs.param import Param, ParamObj
 from amlpso.Vector import Vector
 
-class _Base(VarArgs):
+class _Base(ParamObj):
     _params = dict(
             stagcount=Param(doc='Number of stagnations to trigger a relocation test'+
                 ' (0 means no test)', default=0),
@@ -22,23 +22,8 @@ class _Base(VarArgs):
                 'parameter', default=False),
             relocatebest=Param(doc='Always move the best differently',default=False),
             )
-        #[
-        #('stagcount', 0,
-        #'Number of stagnations to trigger a relocation test (0 means no test)'),
-        #('stagsize', 0.0,
-        #'Fraction of swarm that triggers relocation when tested'),
-        #('bounceradius', 0.0,
-        #'Distance to other particles (relative to longest diagonal) '
-        #'that causes a bounce, 0 means no bounce'),
-        #('bounceadapt', 1.0,
-        #'Use an adaptive bounce radius, one that decreases with every bounce'),
-        #('bouncetournament', False,
-        #'The biggest particle in a bounce competition does not move'),
-        #('bouncedistance', False,
-        #'Alter the bounce distance based on the adaptive parameter'),
-        #('relocatebest', False, 'Always move the best differently',),
-        #]
-    def __init__( self, simulation, numparticles, *args, **kargs ):
+
+    def setup(self, simulation, numparticles, *args, **kargs):
         """Creates a sociometry object, which maintains particles and
         relationships.
 
@@ -48,13 +33,11 @@ class _Base(VarArgs):
         keyword arguments:
             comparator -- defaults to operator.lt (minimization)
         """
-        super(_Base,self).__init__( *args, **kargs )
-
         self.simulation = simulation
         self.rand = self.simulation.rand
         self.startparticles = numparticles
 
-        self.is_better = kargs.get( 'comparator', operator.lt )
+        self.is_better = kargs.get('comparator', operator.lt)
 
         # We create a nice simple id structure for the particles, where they
         # just have the id of their position in a list.
