@@ -18,29 +18,19 @@ from cubes.cube import Cube
 # The simulation class
 
 class Simulation(VarArgs):
-    _params = dict(
-            maximize=Param(default=False, doc='If true, maximizes the function'),
-            wrap=Param(default=False, 
-                doc='Particles wrap around the constraints when True'),
-            initspace=Param(default=1.0, 
-                doc='Size of initialization space (per dimension)'),
-            initoffset=Param(default=0.0, 
-                doc='Offset of initialization space (per dimension)'),
-            kmeaniters=Param(default=0, 
-                doc='K-Means initialization iterations'),
-            kdtreeinit=Param(default=False, 
-                doc='Use a k-d tree to reset or init new particles'),
-            kdminsize=Param(default=0.01, 
-                doc='Minimum fraction of feasible space for a cell'),
-            kdusefitness=Param(default=True, 
-                doc='Balance fitness with volume'),
-            kdrebuild=Param(default=0, 
-                doc='Rebuild every so many evaluations'),
-            kdrandvel=Param(default=False, 
-                doc='Use a random velocity when reinitializing'),
-            kdaddonlynew=Param(default=False, 
-                doc='Add only the relocated particles to the tree'),
-        )
+    _args = [
+        ('maximize',False,'If true, maximizes the function'),
+        ('wrap', False, 'Particles wrap around the constraints when True'),
+        ('initspace', 1.0, 'Size of initialization space (per dimension)'),
+        ('initoffset', 0.0, 'Offset of initialization space (per dimension)'),
+        ('kmeaniters', 0, 'K-Means initialization iterations'),
+        ('kdtreeinit', False, 'Use a k-d tree to reset or init new particles'),
+        ('kdminsize', 0.01, 'Minimum fraction of feasible space for a cell'),
+        ('kdusefitness', True, 'Balance fitness with volume'),
+        ('kdrebuild', 0, 'Rebuild every so many evaluations'),
+        ('kdrandvel', False, 'Use a random velocity when reinitializing'),
+        ('kdaddonlynew', False, 'Add only the relocated particles to the tree'),
+        ]
 
     def __init__( self,
             nparts, neighborhood, function, motion, *args, **kargs
