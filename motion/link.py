@@ -10,15 +10,16 @@ class Link1(basic._Base):
     """This particle is the first linear kalman approximation -- the one that
     makes mathematical sense"""
 
-    _args = [
-        ( 'variance', 0.6, 'Sample variance' ),
-        ( 'weight', 0.45, 'Weight applied to predictions' ),
-        ( 'usepbest', False, 'Use pbest' ),
-        ( 'pweight', 0.1, 'Weight applied to pbest/gbest combination' ),
-        ( 'dimdiv', False, 'Divide variance by number of dimensions' ),
-        ( 'norm', True, 'Normalize vectors instead of just combining' ),
-        ( 'vecsdev', False, 'Use a vector of standard deviations, not just a constant' ),
-        ]
+    _params = dict(
+            variance=Param(default=0.6, doc='Sample variance' ),
+            weight=Param(default=0.45, doc='Weight applied to predictions' ),
+            usepbest=Param(default=False, doc='Use pbest' ),
+            pweight=Param(default=0.1, doc='Weight applied to pbest/gbest combination' ),
+            dimdiv=Param(default=False, doc='Divide variance by number of dimensions' ),
+            norm=Param(default=True, doc='Normalize vectors instead of just combining' ),
+            vecsdev=Param(default=False, 
+                doc='Use a vector of standard deviations, not just a constant' ),
+        )
 
     def __init__(self, *args, **kargs):
         super(Link1, self).__init__(*args, **kargs)
@@ -106,13 +107,13 @@ class Link2(basic._Base):
     """This particle is the second linear kalman approximation -- the one that
     is a terrible hack"""
 
-    _args = [
-        ( 'variance', 0.6, 'Sample variance' ),
-        ( 'weight', 0.45, 'Weight applied to predictions' ),
-        ( 'craziness', 0.1, 'Variance multiplier for craziness' ),
-        ( 'usepbest', False, 'Use pbest' ),
-        ( 'pweight', 0.45, 'Weight applied to pbest/gbest combination' ),
-        ]
+    _params = dict(
+            variance=Param(default=0.6, doc='Sample variance' ),
+            weight=Param(default=0.45, doc='Weight applied to predictions' ),
+            craziness=Param(default=0.1, doc='Variance multiplier for craziness' ),
+            usepbest=Param(default=False, doc='Use pbest' ),
+            pweight=Param(default=0.45, doc='Weight applied to pbest/gbest combination' ),
+        )
 
     def __init__(self, *args, **kargs):
         super(Link2, self).__init__(*args, **kargs)
@@ -217,11 +218,11 @@ class Link3(basic._Base):
     a weighted average of the old position, rather than an average over
     velocities."""
 
-    _args = [
-        ( 'cfac', 0.0001, 'Covariance factor' ),
-        ( 'weight', 0.45, 'Weight applied to predictions' ),
-        ( 'craziness', 0.5, 'How much of the velocity to apply to sampling' ),
-        ]
+    _params = dict(
+            cfac=Param(default=0.0001, doc='Covariance factor' ),
+            weight=Param(default=0.45, doc='Weight applied to predictions' ),
+            craziness=Param(default=0.5, doc='How much of the velocity to apply to sampling' ),
+        )
 
     def __init__(self, *args, **kargs):
         super(Link3, self).__init__(*args, **kargs)
@@ -264,10 +265,10 @@ class Link4(basic._Base):
     a weighted average of the old position, rather than an average over
     velocities."""
 
-    _args = [
-        ( 'variance', 0.6, 'Weight variance' ),
-        ( 'weight', 0.45, 'Weight applied to predictions' ),
-        ]
+    _params = dict(
+            variance=Param(default=0.6, doc='Weight variance' ),
+            weight=Param(default=0.45, doc='Weight applied to predictions' ),
+        )
 
     def __init__(self, *args, **kargs):
         super( Link4, self ).__init__(*args, **kargs)

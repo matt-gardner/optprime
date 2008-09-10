@@ -3,7 +3,9 @@ from itertools import izip
 import _general
 
 class Distance(_general._Base):
-    _args = [('norm', 2.0, 'Default norm (2 is Euclidian)'),]
+    _params = dict(
+                norm=Param(default=2.0, doc='Default norm (2 is Euclidian)'),
+            )
     def __init__( self, *args, **kargs):
         super(Distance,self).__init__( *args, **kargs )
         self._set_constraints( ((-50,50),) * self.dims )

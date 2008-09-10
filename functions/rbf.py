@@ -27,10 +27,12 @@ class RBF(_general._Base):
 
     Note: we do not yet set the deviation/variance for each basis function.
     """
-    _args = [('datafiles', '', 'File with training data (CSV format)'),
-            ('npoints', 1000, 'Number of generated data points'),
-            ('inputdims', 1, 'Dimensionality of generated points'),
-            ('seed', 42, 'Random seed used to generate points')]
+    _params = dict(
+            datafiles=Param(default='', doc='File with training data (CSV format)'),
+            npoints=Param(default=1000, doc='Number of generated data points'),
+            inputdims=Param(default=1, doc='Dimensionality of generated points'),
+            seed=Param(default=42, doc='Random seed used to generate points')
+            )
     def __init__( self, *args, **kargs):
         super(RBF,self).__init__( *args, **kargs )
         self._set_constraints( ((-50,50),) * self.dims )

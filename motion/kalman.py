@@ -10,15 +10,16 @@ import sys
 
 
 class Kalman(basic._Base):
-    _args = [
-        ( 'cfac', 0.01, 'Covariance factor' ),
-        ( 'predict', True, 'Predict instead of just filtering' ),
-        ( 'randinit', False, 'Initialize to random priors' ),
-        ( 'velmultiplier', 1.0, 'Multiplier for velocities' ),
-        ( 'norandscale', False, 'Remove random scaling from the process' ),
-        ( 'usepbest', False, 'Add the use of pbest to the mix' ),
-        ( 'pgrelationship', 0.7, 'Strength of the relationship between gbest and pbest' ),
-        ]
+    _params = dict(
+            cfac=Param(default=0.01, doc='Covariance factor' ),
+            predict=Param(default=True, doc='Predict instead of just filtering' ),
+            randinit=Param(default=False, doc='Initialize to random priors' ),
+            velmultiplier=Param(default=1.0, doc='Multiplier for velocities' ),
+            norandscale=Param(default=False, doc='Remove random scaling from the process' ),
+            usepbest=Param(default=False, doc='Add the use of pbest to the mix' ),
+            pgrelationship=Param(default=0.7, 
+                doc='Strength of the relationship between gbest and pbest' ),
+        )
 
     def __init__(self, *args, **kargs):
         super(Kalman, self).__init__(*args, **kargs)
