@@ -5,8 +5,8 @@ from operator import mul
 import _general
 
 class Easom(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(Easom,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Easom,self).setup(dims)
         self._set_constraints( ((-100,100),) * self.dims )
 
     # fEaso(x1,x2)=-cos(x1) cos(x2) exp(-((x1-pi)^2+(x2-pi)^2));

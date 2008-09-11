@@ -5,8 +5,8 @@ import _general
 
 
 class Pat(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super( Pat, self ).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Pat, self).setup(dims)
         self._set_constraints( ((0.0,3.0),) * self.dims )
 
         self.alpha = kargs.get( 'alpha', 8.0 )

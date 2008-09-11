@@ -4,8 +4,8 @@ import _general
 from math import sqrt, sin
 
 class Schwefel(_general._Base):
-    def __init__( self, *args, **kargs):
-        super(Schwefel,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Schwefel,self).setup(dims)
         self._set_constraints( ((-500,500),) * self.dims )
 
     def __call__( self, vec ):

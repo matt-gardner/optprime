@@ -3,8 +3,8 @@ from itertools import izip
 import _general
 
 class Rosenbrock(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(Rosenbrock,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Rosenbrock,self).setup(dims)
         self._set_constraints( ((-100,100),) * self.dims )
 
     def __call__( self, vec ):

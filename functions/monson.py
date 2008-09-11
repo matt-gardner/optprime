@@ -4,8 +4,8 @@ from math import sqrt, exp, cos, sin, pi
 import _general
 
 class TwoGaussians(_general._Base):
-    def __init__( self, *args, **kargs):
-        super(TwoGaussians,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(TwoGaussians,self).setup(dims)
         self._set_constraints( ((-50,50),) * self.dims )
 
     def __call__( self, vec ):
@@ -25,8 +25,8 @@ class TwoGaussians(_general._Base):
         return (1-oogaussian) + 0.4*(outergaussian - innergaussian)
 
 class ValleyNeedle(_general._Base):
-    def __init__( self, *args, **kargs):
-        super(ValleyNeedle,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(ValleyNeedle,self).setup(dims)
         self._set_constraints( ((-50,50),) * self.dims )
 
     def __call__( self, vec ):
@@ -45,8 +45,8 @@ class ValleyNeedle(_general._Base):
             return flatheight*(1 - prod)
 
 class AsymmetricCone(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(AsymmetricCone,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(AsymmetricCone,self).setup(dims)
         self._set_constraints( ((-50,50),) * self.dims )
 
     def __call__( self, vec ):

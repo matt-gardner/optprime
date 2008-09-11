@@ -10,7 +10,8 @@ class _Base(ParamObj):
             )
 
     def setup(self, dims):
-        self._set_constraints(((0,0),)*2)
+        self.dims = dims
+        self._set_constraints(((0,0),)*dims)
 
     def _set_constraints(self, constraints):
         self.dims = len(constraints)

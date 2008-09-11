@@ -4,8 +4,8 @@ from math import sqrt
 import _general
 
 class Exponential(_general._Base):
-    def __init__( self, *args, **kargs):
-        super(Exponential, self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Exponential, self).setup(dims)
         self._set_constraints( ((-50,50),) * self.dims )
 
     def __call__( self, vec ):

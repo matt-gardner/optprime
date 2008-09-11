@@ -1,11 +1,13 @@
 from math import sin, cos
-class egghill(object):
+import _general
+
+class egghill(_general._Base):
     __slots__ = [
         'constraints',
         'alpha',
         'p'
         ]
-    def __init__( self, alpha=2.0, p=0.5 ):
+    def setup(self, dims, alpha=2.0, p=0.5):
         self.constraints = [[-10.0,10.0],[-10.0,10.0]]
         self.alpha = alpha
         self.p = p

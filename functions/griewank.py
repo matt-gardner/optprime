@@ -4,8 +4,8 @@ import _general
 from math import sqrt, cos
 
 class Griewank(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(Griewank,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Griewank,self).setup(dims)
         self._set_constraints( ((-600,600),) * self.dims )
 
     def __call__( self, vec ):
