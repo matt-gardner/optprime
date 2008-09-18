@@ -60,7 +60,7 @@ def run(job, args, opts):
     # Create the initial population:
     import tempfile
     directory = tempfile.mkdtemp(dir=opts.mrs_shared, prefix=('population_'))
-    pop = Population(function, directory)
+    pop = Population(function.constraints, directory)
     pop.add_random(numparts)
 
     new_data = pop.mrsdataset(numtasks)
@@ -212,12 +212,12 @@ class Population(object):
     A Population in Mrs PSO is much like a neighborhood in Chris' PSO, but
     the interface is a little different.
     """
-    def __init__(self, func, directory, **kargs):
+    def __init__(self, constraints, directory, **kargs):
         """Initialize Population instance using a function instance."""
         self.directory = directory
         self.particles = []
         self._bestparticle = None
-        self.func = func
+        self.constraints = constraints
         #self.is_better = kargs.get('comparator', operator.lt)
         try:
             self.rand = kargs['rand']
@@ -265,9 +265,9 @@ class Population(object):
         #deps = range(Particle.next_id, Particle.next_id + n)
         deps = range(n)
         dep_str = 'all-%s' % n
-        sizes = [abs(cr-cl) for cl,cr in self.func.constraints]
+        sizes = [abs(cr-cl) for cl,cr in self.constraints]
         vconstraints = [(-s,s) for s in sizes]
-        c = Cube(self.func.constraints)
+        c = Cube(self.constraints)
         vc = Cube(vconstraints)
         for i in xrange(n):
             newpos = c.random_vec(self.rand)

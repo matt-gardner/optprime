@@ -4,7 +4,6 @@ Chris said that this was in the process of getting merged with neighborhood.
 """
 
 from __future__ import division
-from varargs import VarArgs
 from random import Random
 from particle import Particle
 from operator import lt, gt
