@@ -4,6 +4,7 @@ from __future__ import division
 import sys, optparse, operator
 
 import mrs
+from mrs import param
 from particle import Particle
 
 
@@ -129,19 +130,16 @@ def run(job, args, opts):
 def setup(opts):
     """Mrs Setup (run on both master and slave)"""
     from motion.basic import Basic
-    from simulation import functions
-    from cli import prefix_args
 
     global function, motion, comparator
 
-    funcls = functions[opts.function]
-    funcargs = prefix_args(FUNCPREFIX, opts)
-    funcargs['dims'] = opts.dims
-    function = funcls(**funcargs)
+    function = param.instantiate(opts, 'function')
+    function.setup(opts.dims)
 
     #TODO: comparator = opts.soc_maximize and operator.gt or operator.lt
     comparator = operator.lt
-    motion = Basic(comparator, function.constraints)
+    motion = Basic()
+    motion.setup(comparator, function.constraints)
 
 
 
@@ -298,7 +296,6 @@ class Population(object):
 FUNCPREFIX = 'func'
 
 def update_parser(parser):
-    from simulation import functions
     from cli import outputtypes
     global cli_parser
 
@@ -317,16 +314,14 @@ def update_parser(parser):
             help='Style of output {%s}' % ', '.join(outputtypes))
     parser.add_option('-d', '--dimensions', dest='dims', type='int',
             help='Number of dimensions')
-    parser.add_option('-f', '--function', dest='function',
-            help='Function to optimize {%s}' % ', '.join(functions))
+    parser.add_option('-f', '--function', action='extend',
+            search=['functions'], dest='function',
+            help='Function to optimize')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
             default=False, help='Print out verbose error messages')
     parser.set_defaults(quiet=False, iterations=100, outputfreq=1,
             outputtype='BasicOutput', dims=2, numtasks=0, numparts=2,
-            function='Sphere')
-
-    from cli import gen_varargs_options
-    gen_varargs_options(parser, FUNCPREFIX, 'Function', functions)
+            function='sphere.Sphere')
 
     return parser
 

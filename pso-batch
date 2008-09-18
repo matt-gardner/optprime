@@ -70,7 +70,7 @@ def main():
             help='Number of particles'
             )
     parser.add_option('-f','--function',
-            action='instantiate',
+            action='extend',
             dest='function',
             default='sphere.Sphere',
             search=['functions'],
@@ -92,7 +92,7 @@ def main():
     gen_simple_options( parser, simprefix, 'Simulation', Simulation.args )
 
     parser.add_option('-m','--motion',
-            action='instantiate',
+            action='extend',
             dest='motion',
             search=['motion.basic', 'motion'],
             default='Basic',
@@ -100,7 +100,7 @@ def main():
             )
 
     parser.add_option('-s','--sociometry',
-            action='instantiate',
+            action='extend',
             dest='sociometry',
             search=['neighborhood.fixed', 'neighborhood'],
             default='Star',
@@ -143,11 +143,14 @@ def main():
     freq = options.outputfreq
 
     for batch in xrange(options.batches):
+        function = param.instantiate(options, 'function')
+        sociometry = param.instantiate(options, 'sociometry')
+        motion = param.instantiate(options, 'motion')
         sim = Simulation(
                 options.numparts,
-                options.sociometry,
-                options.function,
-                options.motion,
+                sociometry,
+                function,
+                motion,
 
                 **simargs
                 )
