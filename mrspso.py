@@ -4,6 +4,7 @@ from __future__ import division
 import sys, optparse, operator
 
 import mrs
+from mrs import param
 from particle import Particle
 
 
@@ -132,7 +133,7 @@ def setup(opts):
 
     global function, motion, comparator
 
-    function = opts.function
+    function = param.instantiate(opts, 'function')
     function.setup(opts.dims)
 
     #TODO: comparator = opts.soc_maximize and operator.gt or operator.lt
@@ -313,7 +314,7 @@ def update_parser(parser):
             help='Style of output {%s}' % ', '.join(outputtypes))
     parser.add_option('-d', '--dimensions', dest='dims', type='int',
             help='Number of dimensions')
-    parser.add_option('-f', '--function', action='instantiate',
+    parser.add_option('-f', '--function', action='extend',
             search=['functions'], dest='function',
             help='Function to optimize')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
