@@ -21,6 +21,9 @@ class Ring(_FixedBase):
     def iterneighbors(self, particle):
         idx = particle.idx
         num = len(self.particles)
+        if self.neighbors < 0 or self.neighbors > 1:
+            raise ValueError('the neighbors option should be a percent! '+
+            '(i.e., between zero and one)')
         num_neighbors = int(self.neighbors*num)
         for i in range(idx+1, idx+num_neighbors+1):
             yield (idx+i) % num
@@ -94,7 +97,8 @@ class Islands(_FixedBase):
         num_particles = len(self.particles)
         islands = self.num_islands
         if num_particles % islands != 0:
-            raise IllegalArgumentError('Uneven split between islands!')
+            raise ValueError('Uneven split between islands! '+
+            'num_particles % num_islands should be zero')
         step_size = int(num_particles/islands)
         for i in xrange(islands):
             if idx in xrange(i*step_size, i*step_size + step_size):
