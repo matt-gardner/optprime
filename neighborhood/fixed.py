@@ -49,7 +49,7 @@ class Star(_FixedBase):
 
 
 class Wheel(_FixedBase):
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         if particle.idx == 0:
             # If this is the leader, emit everyone else
             for i in xrange(1,len(self.particles)):
@@ -106,8 +106,57 @@ class Islands(_FixedBase):
                     yield j
 
 
-class Dynamic(_FixedBase):
+class CommunicatingIslands(_FixedBase):
+    _params = dict(
+        num_islands=Param(default=5, type='int',
+            doc='Number of islands to use'),
+        iterations_per_communication=Param(default=50, type='int',
+            doc='Number of iterations inbetween each inter-island communication'),
+        type_of_communication=Param(default='Ring',
+            doc='The sociometry to use at each inter-island communication (only'
+            +' Ring and Random'),
+        percent_communication=Param(default=1, type='float',
+            doc='Percent of neighboring islands to communicate with (1 means '+
+            'star)'),
+        )
+
     def iterneighbors(self, particle):
+        # Particles are grouped into n islands, and communicate with all members
+        # on the island, and no one else
         idx = particle.idx
+        iter = particle.iters
         num = len(self.particles)
+        islands = self.num_islands
+        if num % islands != 0:
+            raise ValueError('Uneven split between islands! '+
+            'num % num_islands should be zero')
+        step_size = int(num/islands)
+        if iter%self.iterations_per_communication == 0:
+            # It's time to tell the other islands what's going on
+            # There are probably smarter ways to do this communication, but
+            # this is at least a temporary solution for the serial code
+            if self.type_of_communication == 'Ring':
+                 num_neighbors = int(self.percent_communication*num)
+                 for i in range(idx+1, idx+num_neighbors+1):
+                     yield (idx+i) % num
+                 if self.selflink:
+                     yield idx
+            elif self.type_of_communication == 'Random':
+                for i in xrange(0,idx):
+                    if random() < self.percent_communication: 
+                        yield i
+                for i in xrange(idx+1,num):
+                    if random() < self.percent_communication: 
+                        yield i
+                if self.selflink:
+                    yield idx
+        else:
+            for i in xrange(islands):
+                if idx in xrange(i*step_size, i*step_size + step_size):
+                    for j in xrange(i*step_size, i*step_size + step_size):
+                        yield j
+
+
+
+
 
