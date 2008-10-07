@@ -260,6 +260,7 @@ class _Base(ParamObj):
             p = self.particles[i]
             if self.is_better(p.bestval, best.bestval):
                 best = p
+        particle.gbest_cand(best.bestpos, best.bestval)
         return best
 
     def numparticles(self):

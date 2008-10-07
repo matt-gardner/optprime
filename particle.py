@@ -33,6 +33,7 @@ class Particle(object):
         gbest = None
 
         self.id = pid
+        self.iters = 0
 
         if state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
@@ -95,6 +96,7 @@ class Particle(object):
         p.gbest = Particle(self.gbest.pos, self.gbest.vel, self.gbest.val)
         p.deps = list(self.deps)
         p.dep_str = self.dep_str
+        p.iters = self.iters
         return p
 
     def make_message( self ):
@@ -104,12 +106,14 @@ class Particle(object):
         p.gbest = Particle(self.bestpos, val=self.bestval, pid=-1)
         p.dep_str = ''
         p.deps = []
+        p.iters = self.iters
         return p
 
     def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
         self.pos = Vector(newpos)
         self.vel = Vector(newvel)
         self.val = newval
+        self.iters += 1
         if isbetterfunc(self.val, self.bestval):
             self.stagnantcount = 0
             self.improvedcount += 1

@@ -21,7 +21,7 @@ import sys, os
 def main():
     simprefix = 'sim'
 
-    versioninfo = '$Id$'
+    versioninfo = '$Id: pso-batch 1.8 2008-9-11 1:13PM mjg82 $'
 
     parser = param.OptionParser()
     parser.add_option('-q', '--quiet',
@@ -118,7 +118,10 @@ def main():
     #--------------------------------------------------------------------------
 
     if not options.quiet:
+        from datetime import datetime
+        date = datetime.now()
         print "# %s" % (versioninfo,)
+        print "# Date run: %d-%d-%d" %(date.year, date.month, date.day)
         print "# ** OPTIONS **"
         for o in parser.option_list:
             if o.dest is not None:
