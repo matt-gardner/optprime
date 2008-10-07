@@ -5,6 +5,8 @@ import math
 from math import sqrt
 from array import array
 
+# TODO: make Vectors immutable
+
 range3 = range(3)
 
 class VectorSizeError(TypeError): pass

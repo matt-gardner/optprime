@@ -33,10 +33,10 @@ class Link1(basic._Base):
         else:
             self.sdev = math.sqrt( self.variance )
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         # Here we get the new gnorm dependent on whether we include pbest or not
         if self.usepbest:
-            gnorm1 = neighbor.bestpos - particle.pos
+            gnorm1 = particle.gbestpos - particle.pos
             gnorm2 = particle.bestpos - particle.pos
 
             pw = self.pweight
@@ -44,10 +44,10 @@ class Link1(basic._Base):
 
             gnorm = gw*gnorm1 + pw*gnorm2
         else:
-            gnorm = neighbor.bestpos - particle.pos
+            gnorm = particle.gbestpos - particle.pos
 
         pnorm = Vector(particle.vel)
-        gval = neighbor.bestval
+        gval = particle.gbestval
         gmag = abs(gnorm)
         pmag = abs(pnorm)
 
@@ -60,7 +60,8 @@ class Link1(basic._Base):
         if self.weight == -1:
             try:
                 # Applies to self -- when minimizing...
-                weight = neighbor.bestval / (particle.bestval+neighbor.bestval)
+                weight = particle.gbestval / (particle.bestval
+                        + particle.gbestval)
                 # ...when maximizing
                 if self.comparator(1,0):
                     weight = 1 - weight
@@ -129,9 +130,9 @@ class Link2(basic._Base):
         self.sdev = math.sqrt(self.variance)
         self.sizes = [abs(r-l) for l,r in self.constraints]
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         if self.usepbest:
-            gnorm1 = neighbor.bestpos - particle.pos
+            gnorm1 = particle.gbestpos - particle.pos
             gnorm2 = particle.bestpos - particle.pos
             gmag1 = abs(gnorm1)
             gmag2 = abs(gnorm2)
@@ -142,8 +143,8 @@ class Link2(basic._Base):
             if self.pweight == -1:
                 try:
                     # Minimizing -- weight applies to self
-                    weight = neighbor.bestval \
-                            / (particle.bestval + neighbor.bestval)
+                    weight = particle.gbestval \
+                            / (particle.bestval + particle.gbestval)
                     # Maximizing -- invert the weight -- still applies to self
                     if self.comparator(1,0):
                         weight = 1 - weight
@@ -157,7 +158,7 @@ class Link2(basic._Base):
 
             gnorm = gw * gnorm1 + pw * gnorm2
             if gnorm.magnitude() < 1.0e-4:
-                if self.comparator(neighbor.bestval,particle.bestval):
+                if self.comparator(particle.gbestval, particle.bestval):
                     gnorm = gnorm1
                 else:
                     gnorm = gnorm2
@@ -165,11 +166,11 @@ class Link2(basic._Base):
             gnorm.normalize()
             gnorm *= (gmag1 * gw + gmag2 * pw)
         else:
-            gnorm = neighbor.bestpos - particle.pos
+            gnorm = particle.gbestpos - particle.pos
 
         pnorm = Vector(particle.vel)
 
-        gval = neighbor.bestval
+        gval = particle.gbestval
 
         gmag = abs(gnorm)
         pmag = abs(pnorm)
@@ -181,7 +182,8 @@ class Link2(basic._Base):
         # vector.
         if self.weight == -1:
             try:
-                weight = neighbor.bestval / (particle.bestval+neighbor.bestval)
+                weight = particle.gbestval / (particle.bestval
+                        + particle.gbestval)
                 if self.comparator(1,0):
                     weight = 1 - weight
             except ZeroDivisionError, e:
@@ -242,17 +244,17 @@ class Link3(basic._Base):
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdevs = [math.sqrt(self.cfac * s) for s in self.sizes]
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         predpos = particle.pos + particle.vel
-        goodpos = neighbor.bestpos
+        goodpos = particle.bestpos
 
         diffpos = predpos - goodpos
 
         #pw = self.rand.gauss( self.weight, self.cfac )
         if self.weight == -1:
             try:
-                weight = neighbor.bestval 
-                    / (particle.bestval + neighbor.bestval)
+                weight = particle.gbestval / (particle.bestval
+                        + particle.gbestval)
             except ZeroDivisionError, e:
                 weight = 0
         else:
@@ -291,14 +293,14 @@ class Link4(basic._Base):
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdev = math.sqrt(self.variance)
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         predpos = particle.pos + particle.vel
-        goodpos = neighbor.bestpos
+        goodpos = particle.gbestpos
 
         if self.weight == -1:
             try:
-                weight = neighbor.bestval \
-                        / (particle.bestval + neighbor.bestval)
+                weight = particle.gbestval \
+                        / (particle.bestval + particle.gbestval)
             except ZeroDivisionError, e:
                 weight = 0
         else:
