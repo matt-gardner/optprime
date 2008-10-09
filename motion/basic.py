@@ -91,7 +91,7 @@ class Basic(_Base):
             self.current_arpso_low *= self.arpso_rate
             self.current_arpso_high *= self.arpso_rate
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -114,7 +114,7 @@ class Basic(_Base):
             r2 = self.rand.uniform(0,phi2)
         m = self.momentum
 
-        grel = neighbor.bestpos - particle.pos
+        grel = particle.gbestpos - particle.pos
         prel = particle.bestpos - particle.pos
 
         newvel = s * (particle.vel*m + self.sign*(grel*r1 + prel*r2))
@@ -160,7 +160,7 @@ class BasicAdaptive(_Base):
     def setup(self, *args, **kargs):
         super(BasicAdaptive, self).setup(*args, **kargs)
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -192,7 +192,7 @@ class BasicAdaptive(_Base):
             particle.dt *= self.step_dec
             vel *= self.step_dec
 
-        grel = neighbor.bestpos - pos
+        grel = particle.gbestpos - pos
         prel = particle.bestpos - pos
 
         acc = r1 * grel + r2 * prel + k * vel
@@ -207,7 +207,7 @@ class BasicAdaptive(_Base):
 
 
 class BasicGauss(_Base):
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -216,7 +216,7 @@ class BasicGauss(_Base):
         phi = 2/0.97225 # per Clerc's 2003 TRIBES paper
         chi = 1/(phi - 1 + sqrt(phi**2 - 2*phi))
 
-        grel = neighbor.bestpos - particle.pos
+        grel = particle.gbestpos - particle.pos
         prel = particle.bestpos - particle.pos
 
         # Generate a Gaussian around the velocity vectors according to Clerc's

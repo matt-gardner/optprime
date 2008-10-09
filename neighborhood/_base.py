@@ -129,8 +129,8 @@ class _Base(ParamObj):
                     bestpart = p
                     bestval = p.bestval
                     bestidx = i
-                best = self.bestneighbor( p )
-                newstates[i] = sim.motion( p, best )
+                self.update_gbest(p)
+                newstates[i] = sim.motion(p)
             sim.motion.post_batch( self )
             bestpos = bestpart.bestpos
 
@@ -248,20 +248,11 @@ class _Base(ParamObj):
     def bestparticle(self):
         return self._bestparticle
 
-    def bestneighbor(self, particle):
-        """Returns the best neighbor for this particle"""
-        niter = self.iterneighbors(particle)
-        try:
-            best = self.particles[niter.next()]
-        except StopIteration:
-            return None
-
-        for i in niter:
+    def update_gbest(self, particle):
+        """Updates the global best for this particle"""
+        for i in self.iterneighbors(particle):
             p = self.particles[i]
-            if self.is_better(p.bestval, best.bestval):
-                best = p
-        particle.gbest_cand(best.bestpos, best.bestval)
-        return best
+            particle.gbest_cand(p.bestpos, p.bestval, self.is_better)
 
     def numparticles(self):
         return len(self.particles)

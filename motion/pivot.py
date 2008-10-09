@@ -30,17 +30,17 @@ class Pivot(basic._Base):
         frac = radius * r / abs(vec)
         return vec * frac
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         """Implements the Simple Pivot motion approach"""
-        distance = abs(particle.bestpos - neighbor.bestpos)
+        distance = abs(particle.bestpos - particle.gbestpos)
 
         ppart = particle.bestpos + self.hyperspherevariate( distance )
-        pbest = neighbor.bestpos + self.hyperspherevariate( distance )
+        pbest = particle.gbestpos + self.hyperspherevariate( distance )
 
-        totval = neighbor.bestval + particle.bestval
+        totval = particle.gbestval + particle.bestval
 
         try:
-            pw = neighbor.bestval / totval
+            pw = particle.gbestval / totval
         except ZeroDivisionError, e:
             pw = 0.5
 

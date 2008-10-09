@@ -158,7 +158,7 @@ def pso_map(key, value):
     message = particle.make_message()
     for dep_id in particle.deps:
         if dep_id == particle.id:
-            particle.gbest_cand(particle.bestpos, particle.bestval)
+            particle.gbest_cand(particle.bestpos, particle.bestval, comparator)
         else:
             yield (str(dep_id), repr(message))
 
