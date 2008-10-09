@@ -86,7 +86,7 @@ class Rand(_FixedBase):
 
 class Islands(_FixedBase):
     _params = dict(
-        num_islands=Param(default=5, type='int',
+        num_islands=Param(default=2, type='int',
             doc='Number of islands to use'),
         )
 
