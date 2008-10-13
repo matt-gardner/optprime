@@ -96,7 +96,7 @@ class Kalman(basic._Base):
         self.filters[id(particle)] = kalman
         return self.filters[id(particle)]
 
-    def __call__(self, particle, neighbor):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -104,7 +104,7 @@ class Kalman(basic._Base):
 
         rand = self.rand
 
-        grel = neighbor.bestpos - particle.pos
+        grel = particle.gbestpos - particle.pos
         if self.norandscale:
             newvel = 1.0 * grel
         else:
