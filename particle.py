@@ -30,11 +30,11 @@ class Particle(object):
     on it too much.
     """
     def __init__(self, pos=None, vel=None, val=None, pid=None, state=None):
-        gbest = None
-
         self.id = pid
         self.iters = 0
 
+        # TODO: move all of the `state` grabbing stuff into a separate factory
+        # function, which will clean up the __init__ function dramatically.
         if state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
                     gbestpos_str, gbestval_str = state.split(';')
@@ -90,6 +90,7 @@ class Particle(object):
         self.improvedcount = 0
 
     def copy(self):
+        """Performs a deep copy and returns the new Particle."""
         p = Particle(self.pos, self.vel, self.val)
         p.bestpos = Vector(self.bestpos)
         p.bestval = self.bestval
@@ -101,6 +102,10 @@ class Particle(object):
         return p
 
     def make_message(self):
+        """Creates a pseudo-particle which will be sent to a neighbor.
+
+        This is used only in the Mrs PSO implementation.
+        """
         p = Particle(self.pos, self.vel, self.val)
         p.bestpos = Vector(self.bestpos)
         p.bestval = self.bestval
