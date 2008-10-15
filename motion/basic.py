@@ -10,7 +10,8 @@ class _Base(ParamObj):
     __slots__ = ['rand']
 
     _params = dict(
-        restrictvel=Param(default=0, doc='Restrict velocities' ),
+        restrictvel=Param(default=0, doc='Restrict velocities'),
+        wrap=Param(default=0, doc='Wrap particles around the constraints'),
         )
 
     def setup(self, comparator, constraints, *args, **kargs):
@@ -23,6 +24,19 @@ class _Base(ParamObj):
         vconstraints = [(-s,s) for s in sizes]
         self.vcube = Cube( vconstraints )
         self.sign = 1.0
+
+    def _motion(self, particle):
+        """Gets the next position and velocity from the given particle.
+        
+        Subclasses should override the _motion method.
+        """
+        pos, vel = self._motion(particle)
+        if self.wrap:
+            self.cube.wrap(pos)
+        return pos, vel
+
+    def _motion(self, particle):
+        raise NotImplementedError
 
     def pre_batch(self, soc):
         pass
@@ -91,9 +105,8 @@ class Basic(_Base):
             self.current_arpso_low *= self.arpso_rate
             self.current_arpso_high *= self.arpso_rate
 
-    def __call__(self, particle):
-        """Get the next velocity from this particle given a particle that it
-        should be moving toward"""
+    def _motion(self, particle):
+        """Get the next position and velocity from this particle."""
 
         phi1 = self.phi1
         phi2 = self.phi2
@@ -160,7 +173,7 @@ class BasicAdaptive(_Base):
     def setup(self, *args, **kargs):
         super(BasicAdaptive, self).setup(*args, **kargs)
 
-    def __call__(self, particle):
+    def _motion(self, particle):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -207,7 +220,7 @@ class BasicAdaptive(_Base):
 
 
 class BasicGauss(_Base):
-    def __call__(self, particle):
+    def _motion(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 

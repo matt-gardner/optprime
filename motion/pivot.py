@@ -30,7 +30,7 @@ class Pivot(basic._Base):
         frac = radius * r / abs(vec)
         return vec * frac
 
-    def __call__(self, particle):
+    def _motion(self, particle):
         """Implements the Simple Pivot motion approach"""
         distance = abs(particle.bestpos - particle.gbestpos)
 

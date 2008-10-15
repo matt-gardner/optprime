@@ -33,7 +33,7 @@ class Link1(basic._Base):
         else:
             self.sdev = math.sqrt( self.variance )
 
-    def __call__(self, particle):
+    def _motion(self, particle):
         # Here we get the new gnorm dependent on whether we include pbest or not
         if self.usepbest:
             gnorm1 = particle.gbestpos - particle.pos
@@ -130,7 +130,7 @@ class Link2(basic._Base):
         self.sdev = math.sqrt(self.variance)
         self.sizes = [abs(r-l) for l,r in self.constraints]
 
-    def __call__(self, particle):
+    def _motion(self, particle):
         if self.usepbest:
             gnorm1 = particle.gbestpos - particle.pos
             gnorm2 = particle.bestpos - particle.pos
@@ -244,7 +244,7 @@ class Link3(basic._Base):
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdevs = [math.sqrt(self.cfac * s) for s in self.sizes]
 
-    def __call__(self, particle):
+    def _motion(self, particle):
         predpos = particle.pos + particle.vel
         goodpos = particle.bestpos
 
@@ -293,7 +293,7 @@ class Link4(basic._Base):
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdev = math.sqrt(self.variance)
 
-    def __call__(self, particle):
+    def _motion(self, particle):
         predpos = particle.pos + particle.vel
         goodpos = particle.gbestpos
 
