@@ -217,13 +217,15 @@ class _Base(ParamObj):
                 if i in relocate:
                     pos, vel = state
                     val = sim.func(pos)
-                    self.simulation.reset_particle( p, pos, vel, val )
+                    p.reset(p, pos, vel, val)
                     if i == bestidx:
                         p.bestval = bestval
                         p.bestpos = bestpos
                     p.new = True
                 else:
-                    self.simulation.update_particle( p, *state )
+                    pos, vel = state
+                    val = sim.func(pos)
+                    p.update(pos, vel, val, sim.comparator)
                     if relocate:
                         p.resetcounts()
                     p.new = False

@@ -6,90 +6,45 @@ class Population(object):
     (e.g., Mrs PSO).
     """
 
-    def __init__(self, constraints):
-        self.constraints = constraints
+    _params = dict(
+        initspace=Param(default=1.0,
+            doc='Size of initialization space (per dimension)'),
+        initoffset=Param(default=0.0,
+            doc='Offset of initialization space (per dimension)'),
+        kmeaniters=Param(default=0, doc='K-Means initialization iterations'),
+        )
 
-    def iternewstates(self, **args):
-        """Iterator that successively returns new position/velocity pairs
-        within a possibly given set of constraints.
-        """
-        # Create the correct number of new particles
-        positions = []
-        rand = self.rand
+    def __init__(self, func):
+        # Save these for later.
+        self.func = func
 
-        randvels = True
+        ispace = self.initspace
+        ioffset = self.initoffset
 
-        # We allow the number of particles to be passed in, as well as the
-        # number of kmeans iterations, but they are not necessary.  Note that
-        # we don't just use the 'get' facility here to do this, since None
-        # should *also* indicate that we didn't pass it in.
-        numparts = args.get('numparts',None)
-        kmeaniters = args.get('kmeaniters',None)
+        constraints = [
+            (cl+abs(cr-cl)*ioffset,cl + abs(cr-cl)*ioffset + (cr-cl)*ispace)
+            for cl,cr in func.constraints
+            ]
+        sizes = [abs(cr-cl) * ispace for cl, cr in func.constraints]
+        vconstraints = [(-s,s) for s in sizes]
 
-        if numparts is None:
-            numparts = self.nparts
+        self.cube = Cube(constraints)
+        self.vcube = Cube(vconstraints)
 
-        if kmeaniters is None:
-            kmeaniters = self.kmeaniters
+        corner1, corner2 = zip(*constraints)
+        self.diaglen = abs(Vector(corner1) - Vector(corner2))
 
-        dims = self.dims
+    def newparticle(self, **args):
+        args['numparts'] = 1
+        piter = self.iternewparticles(**args)
+        return piter.next()
 
-        constraints = args.get('constraints',None)
-        if constraints is not None:
-            # We also allow for passing in constraints
-            sizes = [abs(cr-cl) for cl,cr in constraints]
-            vconstraints = [(-s,s) for s in sizes]
-            c = Cube(constraints)
-            vc = Cube(vconstraints)
-        else:
-            # No constraints sent in?  Use the default.
-            if self.kdtreeinit:
-                leaf = self.best_leaf()
-                c, vc = self.node_cubes( leaf )
-                # Using the kdtree -- so we need to be sure to use the
-                # appropriate preference.
-                randvels = self.kdrandvel
-            else:
-                c = self.cube
-                vc = self.vcube
+    def iternewparticles(self, **args):
+        func = self.func
+        for pos, vel in self.iternewstates(**args):
+            val = func(pos)
+            yield Particle(pos, vel, val)
 
-        if kmeaniters:
-            # Create initial mean positions
-            means = [(Vector(c.random_vec(rand)),1) for i in xrange(numparts)]
-
-            for i in xrange(kmeaniters * numparts):
-                rvec = Vector(c.random_vec(rand))
-
-                # Find the closest one:
-                m_iter = enumerate(means)
-                bestidx, (bestmean, bestnum) = m_iter.next()
-                bestdist = abs(rvec - bestmean)
-                for idx, (mean, num) in m_iter:
-                    d = abs(rvec - mean)
-                    if d < bestdist:
-                        bestdist = d
-                        bestmean = mean
-                        bestnum = num
-                        bestidx = idx
-                
-                # Now that we know who is closest, we can update the mean
-                newmean = (bestnum * bestmean + rvec) / (bestnum + 1)
-                means[bestidx] = (newmean, bestnum+1)
-
-            positions = [pos for pos, num in means]
-
-        for x in xrange(numparts):
-            if not positions:
-                newpos = c.random_vec(rand)
-                if randvels:
-                    newvel = vc.random_vec(rand)
-                else:
-                    newvel = Vector([0] * dims)
-            else:
-                newpos = positions[x]
-                newvel = Vector([0] * dims)
-
-            yield newpos, newvel
 
 
 # vim: et sw=4 sts=4
