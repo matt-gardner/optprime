@@ -128,12 +128,12 @@ class Particle(object):
 
     def gbest_cand(self, potential_pos, potential_val, comparator):
         """Update gbest if the given value is better than the current gbest."""
-        # FIXME: This assumes that we're minimizing!!
         if comparator(potential_val, self.gbestval):
             self.gbestpos = Vector(potential_pos)
             self.gbestval = potential_val
             return True
-        return False
+        else:
+            return False
 
     def is_message(self):
         """Is this a message (True) or a full-fledged particle (False)"""
