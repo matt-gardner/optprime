@@ -64,22 +64,23 @@ class Wheel(_FixedBase):
 
 class Rand(_FixedBase):
     _params = dict(
-        probability=Param(default=0.5, type='float',
-            doc='Probability of sending a message to a given particle'),
+        neighbors=Param(default=-1, type='int',
+            doc='Number of neighbors to send to.  Default of -1 means all '+
+            'particles'),
         )
 
     def iterneighbors(self, particle):
-        from random import random
+        from random import randint
         # Yield all of the particles up to this one, and all after, then this
         # one last, with probability equal to self.probability.
         idx = particle.idx
         num = len(self.particles)
-        for i in xrange(0,idx):
-            if random() < self.probability: 
-                yield i
-        for i in xrange(idx+1,num):
-            if random() < self.probability: 
-                yield i
+        if (self.neighbors == -1):
+            neighbors = num
+        else:
+            neighbors = self.neighbors
+        for i in xrange(neighbors):
+            yield randint(0,num-1)
         if self.selflink:
             yield idx
 
@@ -108,7 +109,7 @@ class Islands(_FixedBase):
 
 class CommunicatingIslands(_FixedBase):
     _params = dict(
-        num_islands=Param(default=5, type='int',
+        num_islands=Param(default=10, type='int',
             doc='Number of islands to use'),
         iterations_per_communication=Param(default=50, type='int',
             doc='Number of iterations inbetween each inter-island communication'),

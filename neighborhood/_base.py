@@ -254,10 +254,9 @@ class _Base(ParamObj):
         """Updates the global best for this particle"""
         for i in self.iterneighbors(particle):
             p = self.particles[i]
+            particle.gbest_cand(p.bestpos, p.bestval, self.is_better)
             if self.transitive_gbest:
                 particle.gbest_cand(p.gbestpos, p.gbestval, self.is_better)
-            else:
-                particle.gbest_cand(p.bestpos, p.bestval, self.is_better)
 
     def numparticles(self):
         return len(self.particles)
