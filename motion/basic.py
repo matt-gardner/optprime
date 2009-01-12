@@ -1,20 +1,19 @@
 from __future__ import division
 import random
-from amlpso.varargs import VarArgs
+from mrs.param import ParamObj, Param
 from amlpso.Vector import Vector
 from math import sqrt
 from amlpso.cubes.cube import Cube
 
-#------------------------------------------------------------------------------
-class _Base(VarArgs):
+
+class _Base(ParamObj):
     __slots__ = ['rand']
 
-    _args = [
-        ( 'restrictvel', False, 'Restrict velocities' ),
-        ]
+    _params = dict(
+        restrictvel=Param(default=0, doc='Restrict velocities' ),
+        )
 
-    def __init__( self, comparator, constraints, *args, **kargs ):
-        super(_Base,self).__init__( *args, **kargs )
+    def setup(self, comparator, constraints, *args, **kargs):
         self.comparator = comparator
         self.rand = random.Random()
         self.constraints = constraints
@@ -25,30 +24,38 @@ class _Base(VarArgs):
         self.vcube = Cube( vconstraints )
         self.sign = 1.0
 
-    def pre_batch( self, soc ):
+    def pre_batch(self, soc):
         pass
 
-    def post_batch( self, soc ):
+    def post_batch(self, soc):
         pass
 
-#------------------------------------------------------------------------------
+
 class Basic(_Base):
-    _args = [
-        ( 'm1', 1.0, 'Momentum start' ),
-        ( 'm2', 1.0, 'Momentum stop' ),
-        ( 'mstep', 0.0, 'Momentum step' ),
-        ( 'phi1', 2.05, "Max of phi_1" ),
-        ( 'phi2', 2.05, "Max of phi_2" ),
-        ( 'kappa', 1.0, "Clerc's Kappa value, always in (0,1)" ),
-        ( 'randvecs', True, "Use random vectors instead of random constants "),
-        ( 'arpso', False, "Use ARPSO diversity guided behavior" ),
-        ( 'constricted', True, "Use constricted PSO, per Clerc" ),
-        ( 'arpso_high', 0.25, "High water mark for ARPSO" ),
-        ( 'arpso_low', 5.0e-6, "Low water mark for ARPSO" ),
-        ( 'arpso_rate', 1.0, "Learning rate for ARPSO" ),
-        ]
-    def __init__( self, *args, **kargs ):
-        super(Basic, self).__init__( *args, **kargs )
+    _params = dict(
+        m1=Param(default=1.0, type='float', doc='Momentum start'),
+        m2=Param(default=1.0, type='float', doc='Momentum stop'),
+        mstep=Param(default=0.0, type='float', doc='Momentum step'),
+        phi1=Param(default=2.05, type='float', doc='Max of phi_1'),
+        phi2=Param(default=2.05, type='float', doc='Max of phi_2'),
+        kappa=Param(default=1.0, type='float',
+            doc="Clerc's Kappa value, always in (0,1)"),
+        randvecs=Param(default=1, type='int',
+            doc='Use random vectors instead of random constants'),
+        arpso=Param(default=0, type='int',
+            doc='Use ARPSO diversity guided behavior'),
+        constricted=Param(default=1, type='int',
+            doc='Use constricted PSO, per Clerc'),
+        arpso_high=Param(default=0.25, type='float',
+            doc='High water mark for ARPSO'),
+        arpso_low=Param(default=5.0e-6, type='float',
+            doc='Low water mark for ARPSO'),
+        arpso_rate=Param(default=1.0, type='float',
+            doc='Learning rate for ARPSO'),
+        )
+
+    def setup(self, *args, **kargs):
+        super(Basic, self).setup(*args, **kargs)
 
         self.msmall = min(self.m1, self.m2)
         self.mbig = max(self.m1, self.m2)
@@ -61,7 +68,7 @@ class Basic(_Base):
         p1, p2 = [Vector(x) for x in zip( *self.cube.constraints )]
         self.diaglength = abs(p1 - p2)
 
-    def pre_batch( self, soc ):
+    def pre_batch(self, soc):
         # Calculate diversity and set the sign appropriately if needs be.
         if not self.arpso or not soc.is_initialized:
             return
@@ -84,7 +91,7 @@ class Basic(_Base):
             self.current_arpso_low *= self.arpso_rate
             self.current_arpso_high *= self.arpso_rate
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -107,7 +114,7 @@ class Basic(_Base):
             r2 = self.rand.uniform(0,phi2)
         m = self.momentum
 
-        grel = neighbor.bestpos - particle.pos
+        grel = particle.gbestpos - particle.pos
         prel = particle.bestpos - particle.pos
 
         newvel = s * (particle.vel*m + self.sign*(grel*r1 + prel*r2))
@@ -124,28 +131,36 @@ class Basic(_Base):
 
         return particle.pos + newvel, newvel
 
-    def _setsign( self, soc ):
+    def _setsign(self, soc):
         if not self.arpso:
             return
 
         dh = self.arpso_high
         dl = self.arpso_low
 
-#------------------------------------------------------------------------------
-class BasicAdaptive(_Base):
-    _args = [
-        ('k', -0.5, 'Friction coefficient -- usually should be negative'),
-        ('dt', 1.0, 'Initial time step for each particle'),
-        ('step_inc', 1.5, 'Amount to increment the timestep (multiply)' ),
-        ('step_dec', 0.5, 'Amount to decrement the timestep (multiply)' ),
-        ('max_err_inc', 0.1, 'Maximum allowed error' ),
-        ('c1', 2.0, 'first random constant multiplier' ),
-        ('c2', 2.0, 'second random constant multiplier' ),
-        ]
-    def __init__( self, *args, **kargs ):
-        super(BasicAdaptive, self).__init__( *args, **kargs )
 
-    def __call__( self, particle, neighbor ):
+class BasicAdaptive(_Base):
+    _params = dict(
+        k=Param(default=-0.5, type='float',
+            doc='Friction coefficient -- usually should be negative'),
+        dt=Param(default=1.0, type='float',
+            doc='Initial time step for each particle'),
+        step_inc=Param(default=1.5, type='float',
+            doc='Amount to increment the timestep (multiply)' ),
+        step_dec=Param(default=0.5, type='float',
+            doc='Amount to decrement the timestep (multiply)' ),
+        max_err_inc=Param(default=0.1, type='float',
+            doc='Maximum allowed error' ),
+        c1=Param(default=2.0, type='float',
+            doc='first random constant multiplier' ),
+        c2=Param(default=2.0, type='float',
+            doc='second random constant multiplier' ),
+        )
+
+    def setup(self, *args, **kargs):
+        super(BasicAdaptive, self).setup(*args, **kargs)
+
+    def __call__(self, particle):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -177,7 +192,7 @@ class BasicAdaptive(_Base):
             particle.dt *= self.step_dec
             vel *= self.step_dec
 
-        grel = neighbor.bestpos - pos
+        grel = particle.gbestpos - pos
         prel = particle.bestpos - pos
 
         acc = r1 * grel + r2 * prel + k * vel
@@ -190,13 +205,9 @@ class BasicAdaptive(_Base):
 
         return newpos, newvel
 
-#------------------------------------------------------------------------------
-class BasicGauss(_Base):
-    _args = []
-    def __init__( self, *args, **kargs ):
-        super(BasicGauss, self).__init__( *args, **kargs )
 
-    def __call__( self, particle, neighbor ):
+class BasicGauss(_Base):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -205,7 +216,7 @@ class BasicGauss(_Base):
         phi = 2/0.97225 # per Clerc's 2003 TRIBES paper
         chi = 1/(phi - 1 + sqrt(phi**2 - 2*phi))
 
-        grel = neighbor.bestpos - particle.pos
+        grel = particle.gbestpos - particle.pos
         prel = particle.bestpos - particle.pos
 
         # Generate a Gaussian around the velocity vectors according to Clerc's
@@ -217,5 +228,3 @@ class BasicGauss(_Base):
 
         return None, newvel
 
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------

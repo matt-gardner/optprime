@@ -4,8 +4,8 @@ from math import exp
 import _general
 
 class Quadratic(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(Quadratic,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Quadratic,self).setup(dims)
         self._set_constraints( ((-100,100),) * self.dims )
 
     def __call__( self, vec ):

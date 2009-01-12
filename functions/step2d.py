@@ -1,7 +1,8 @@
 #!/usr/bin/env python2.2
+import _general
 
-class step2d(object):
-    def __init__( self ):
+class step2d(_general._Base):
+    def setup( self ):
         self.constraints = ((0,5), (0,5))
 
     def __call__( self, input ):

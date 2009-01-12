@@ -4,8 +4,8 @@ from math import cos, pi
 import _general
 
 class Rastrigin(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(Rastrigin,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Rastrigin,self).setup(dims)
         self._set_constraints( ((-5.12,5.12),) * self.dims )
 
     def __call__( self, vec ):

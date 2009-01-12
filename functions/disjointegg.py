@@ -1,10 +1,11 @@
 #!/usr/bin/env python2.2
 
 import math
+import _general
 
-class disjointegg(object):
+class disjointegg(_general._Base):
     __slots__ = 'constraints'
-    def __init__( self ):
+    def setup(self, dims):
         self.constraints = ((0,5), (0,5))
 
     def __call__( self, input ):

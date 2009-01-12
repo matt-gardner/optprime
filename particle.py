@@ -29,10 +29,11 @@ class Particle(object):
     awkward, so we stopped doing that.  Hopefully other code won't depend
     on it too much.
     """
-    def __init__( self, pos=None, vel=None, val=None, pid=None, state=None ):
+    def __init__(self, pos=None, vel=None, val=None, pid=None, state=None):
         gbest = None
 
         self.id = pid
+        self.iters = 0
 
         if state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
@@ -73,9 +74,8 @@ class Particle(object):
             self.dep_str = str(self.id)
             bestpos = pos
             bestval = val
-            gbest = self
-        else:
-            gbest = Particle(Vector(gbestpos), None, gbestval, pid=-1)
+            gbestpos = pos
+            gbestval = val
 
         self.deps = deps
         self.pos = Vector(pos)
@@ -83,33 +83,40 @@ class Particle(object):
         self.val = val
         self.bestpos = Vector(bestpos)
         self.bestval = bestval
-        self.gbest = gbest
+        self.gbestpos = Vector(gbestpos)
+        self.gbestval = gbestval
 
         self.stagnantcount = 0
         self.improvedcount = 0
 
-    def copy( self ):
+    def copy(self):
         p = Particle(self.pos, self.vel, self.val)
-        p.bestpos = self.bestpos
+        p.bestpos = Vector(self.bestpos)
         p.bestval = self.bestval
-        p.gbest = Particle(self.gbest.pos, self.gbest.vel, self.gbest.val)
+        p.gbestpos = Vector(self.gbestpos)
+        p.gbestval = self.gbestval
         p.deps = list(self.deps)
         p.dep_str = self.dep_str
+        p.iters = self.iters
         return p
 
-    def make_message( self ):
+    def make_message(self):
         p = Particle(self.pos, self.vel, self.val)
-        p.bestpos = self.bestpos
+        p.bestpos = Vector(self.bestpos)
         p.bestval = self.bestval
-        p.gbest = Particle(self.bestpos, val=self.bestval, pid=-1)
+        # We send our personal best to contribute to their global best.
+        p.gbestpos = Vector(self.bestpos)
+        p.gbestval = self.bestval
         p.dep_str = ''
         p.deps = []
+        p.iters = self.iters
         return p
 
-    def update( self, newpos, newvel, newval, isbetterfunc=operator.lt ):
+    def update(self, newpos, newvel, newval, isbetterfunc=operator.lt):
         self.pos = Vector(newpos)
         self.vel = Vector(newvel)
         self.val = newval
+        self.iters += 1
         if isbetterfunc(self.val, self.bestval):
             self.stagnantcount = 0
             self.improvedcount += 1
@@ -119,36 +126,38 @@ class Particle(object):
             self.stagnantcount += 1
             self.improvedcount = 0
 
-    def gbest_cand( self, potential_pos, potential_val ):
+    def gbest_cand(self, potential_pos, potential_val, comparator):
         """Update gbest if the given value is better than the current gbest."""
-        if potential_val < self.gbest.bestval:
-            self.gbest.bestpos = potential_pos
-            self.gbest.bestval = potential_val
+        if comparator(potential_val, self.gbestval):
+            self.gbestpos = Vector(potential_pos)
+            self.gbestval = potential_val
             return True
-        return False
+        else:
+            return False
 
-    def is_message( self ):
+    def is_message(self):
         """Is this a message (True) or a full-fledged particle (False)"""
         return self.dep_str == ''
 
-    def reset( self, pos, vel, val ):
+    def reset(self, pos, vel, val):
         self.pos = Vector(pos)
         self.vel = Vector(vel)
         self.val = val
         self.bestpos = Vector(pos)
         self.bestval = val
-        # we should probably reset gbest here, too.
+        self.gbestpos = Vector(pos)
+        self.gbestval = val
         self.resetcounts()
 
-    def resetcounts( self ):
+    def resetcounts(self):
         self.stagnantcount = 0
         self.improvedcount = 0
 
-    def __str__( self ):
+    def __str__(self):
         return "pos: %r; vel: %r; val: %r; bestpos: %r; bestval: %r" % (
                 self.pos, self.vel, self.val, self.bestpos, self.bestval)
 
-    def __repr__( self ):
+    def __repr__(self):
         # Note: We don't set the dep_str from self.deps anymore.
         return ';'.join((self.dep_str,
                         ','.join(str(x) for x in self.pos),
@@ -159,5 +168,3 @@ class Particle(object):
                         ','.join(str(x) for x in self.gbest.bestpos),
                         str(self.gbest.bestval)))
 
-
-#------------------------------------------------------------------------------

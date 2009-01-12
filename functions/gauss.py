@@ -4,8 +4,8 @@ from itertools import izip, imap
 import _general
 
 class Gauss(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(Gauss,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(Gauss,self).setup(dims)
         self._set_constraints( ((-2,2),) * self.dims )
 
     def __call__( self, vec ):
