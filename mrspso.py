@@ -150,7 +150,8 @@ def pso_map(key, value):
     particle = Particle(pid=int(key), state=value)
 
     # Update the particle:
-    newpos, newvel = motion(particle, particle.gbest)
+    #newpos, newvel = motion(particle, particle.gbest)
+    newpos, newvel = motion(particle)
     value = function(newpos)
     particle.update(newpos, newvel, value, motion.comparator)
 

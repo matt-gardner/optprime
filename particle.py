@@ -165,6 +165,6 @@ class Particle(object):
                         str(self.val),
                         ','.join(str(x) for x in self.bestpos),
                         str(self.bestval),
-                        ','.join(str(x) for x in self.gbest.bestpos),
-                        str(self.gbest.bestval)))
+                        ','.join(str(x) for x in self.gbestpos),
+                        str(self.gbestval)))
 
