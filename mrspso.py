@@ -63,7 +63,7 @@ def run(job, args, opts):
     pop = Population(function.constraints, directory)
     pop.add_random(numparts)
 
-    new_data = pop.mrsdataset(numtasks)
+    new_data = pop.mrsdataset(job, numtasks)
 
     iters = 1
     running = True
@@ -150,9 +150,9 @@ def pso_map(key, value):
     particle = Particle(pid=int(key), state=value)
 
     # Update the particle:
-    newpos, newvel = motion(particle, particle.gbest)
+    newpos, newvel = motion(particle)
     value = function(newpos)
-    particle.update(newpos, newvel, value, motion.comparator)
+    particle.update(newpos, newvel, value, comparator)
 
     # Emit a message for each dependent particle:
     message = particle.make_message()
@@ -173,15 +173,15 @@ def pso_reduce(key, value_iter):
 
     for value in value_iter:
         record = Particle(pid=int(key), state=value)
-        if record.gbest.bestval <= bestval:
+        if comparator(record.gbestval, bestval):
             best = record
-            bestval = record.gbest.bestval
+            bestval = record.gbestval
 
         if not record.is_message():
             particle = record
 
     if particle:
-        particle.gbest_cand(best.gbest.bestpos, bestval)
+        particle.gbest_cand(best.gbestpos, bestval, comparator)
         yield repr(particle)
     else:
         yield repr(best)
@@ -225,7 +225,7 @@ class Population(object):
             import random
             self.rand = random.Random()
 
-    def mrsdataset(self, partitions=None):
+    def mrsdataset(self, job, partitions=None):
         """Create a Mrs DataSet for the particles in the population.
         
         The number of partitions may be specified.
@@ -235,11 +235,8 @@ class Population(object):
         if partitions is None:
             partitions = len(particles)
 
-        dataset = mrs.datasets.Output(mrs.mod_partition, partitions,
-                directory=self.directory)
+        dataset = job.output_data(parter=mrs.mod_partition, nparts=partitions)
         dataset.collect(particles)
-        # TODO: this should eventually happen automatically in Mrs:
-        dataset.dump()
         return dataset
 
     def get_particles(self):
@@ -276,11 +273,14 @@ class Population(object):
             p.deps = deps
             p.dep_str = dep_str
             # Loosely connected ring sociometry:
-            #p.deps = [i%n for i in xrange(i-20,i+20)]
-            #p.dep_str = ''
-            #for i in xrange(len(p.deps)):
-            #    p.dep_str  += str(p.deps[i]) + ','
-            #p.dep_str = p.dep_str[:-1]
+            p.deps = [i%n for i in xrange(i-1,i+1)]
+            p.dep_str = ''
+            for i in xrange(len(p.deps)):
+                p.dep_str  += str(p.deps[i]) + ','
+            p.dep_str = p.dep_str[:-1]
+            # End loosely connected ring sociometry - uncomment these blocks
+            # for ring (changing the constant in the first line as desired)
+            # Comment them out for star
             self.particles.append(p)
 
     def __str__(self):
