@@ -34,18 +34,6 @@ def main():
             action='store_true',
             help='Print version information and exit'
             )
-    parser.add_option('-i', '--iterations',
-            dest='iterations',
-            default=100,
-            type='int',
-            help='Number of iterations to run'
-            )
-    parser.add_option('-e', '--evals',
-            dest='useevals',
-            default=False,
-            action='store_true',
-            help='Specify the number of function evaluations instead of batch iterations with the -i option',
-            )
     parser.add_option('-o', '--outputfreq',
             dest='outputfreq',
             default=1,
