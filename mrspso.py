@@ -63,7 +63,7 @@ def run(job, args, opts):
     pop = Population(function, directory)
     pop.add_random(numparts)
 
-    new_data = pop.mrsdataset(numtasks)
+    new_data = pop.mrsdataset(job, numtasks)
 
     iters = 1
     running = True
@@ -226,7 +226,7 @@ class Population(object):
             import random
             self.rand = random.Random()
 
-    def mrsdataset(self, partitions=None):
+    def mrsdataset(self, job, partitions=None):
         """Create a Mrs DataSet for the particles in the population.
         
         The number of partitions may be specified.
@@ -236,11 +236,8 @@ class Population(object):
         if partitions is None:
             partitions = len(particles)
 
-        dataset = mrs.datasets.Output(mrs.mod_partition, partitions,
-                directory=self.directory)
+        dataset = job.output_data(parter=mrs.mod_partition, nparts=partitions)
         dataset.collect(particles)
-        # TODO: this should eventually happen automatically in Mrs:
-        dataset.dump()
         return dataset
 
     def get_particles(self):
