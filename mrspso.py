@@ -150,10 +150,9 @@ def pso_map(key, value):
     particle = Particle(pid=int(key), state=value)
 
     # Update the particle:
-    #newpos, newvel = motion(particle, particle.gbest)
     newpos, newvel = motion(particle)
     value = function(newpos)
-    particle.update(newpos, newvel, value, motion.comparator)
+    particle.update(newpos, newvel, value, comparator)
 
     # Emit a message for each dependent particle:
     message = particle.make_message()
@@ -174,15 +173,15 @@ def pso_reduce(key, value_iter):
 
     for value in value_iter:
         record = Particle(pid=int(key), state=value)
-        if record.gbest.bestval <= bestval:
+        if comparator(record.gbestval, bestval):
             best = record
-            bestval = record.gbest.bestval
+            bestval = record.gbestval
 
         if not record.is_message():
             particle = record
 
     if particle:
-        particle.gbest_cand(best.gbest.bestpos, bestval)
+        particle.gbest_cand(best.gbestpos, bestval, comparator)
         yield repr(particle)
     else:
         yield repr(best)
