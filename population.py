@@ -11,11 +11,11 @@ class Population(object):
             doc='Size of initialization space (per dimension)'),
         initoffset=Param(default=0.0,
             doc='Offset of initialization space (per dimension)'),
-        kmeaniters=Param(default=0, doc='K-Means initialization iterations'),
+        randvels=Param(default=0, type='int', default=1,
+            doc='Whether to use random initial velocities (otherwise 0s)'),
         )
 
     def __init__(self, func):
-        # Save these for later.
         self.func = func
 
         ispace = self.initspace
@@ -31,20 +31,29 @@ class Population(object):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
-        corner1, corner2 = zip(*constraints)
-        self.diaglen = abs(Vector(corner1) - Vector(corner2))
+    # CHANGES:
+    #   - we no longer evaluate the function before creating the particle!
+    def newparticles(self, numparts=None):
+        """Iterator that successively returns new position/velocity pairs
+        within a possibly given set of constraints.
+        """
+        rand = self.rand
 
-    def newparticle(self, **args):
-        args['numparts'] = 1
-        piter = self.iternewparticles(**args)
-        return piter.next()
+        if numparts is None:
+            numparts = self.nparts
 
-    def iternewparticles(self, **args):
-        func = self.func
-        for pos, vel in self.iternewstates(**args):
-            val = func(pos)
-            yield Particle(pos, vel, val)
+        dims = self.func.dims
 
+        c = self.cube
+        vc = self.vcube
+
+        for x in xrange(numparts):
+            newpos = c.random_vec(rand)
+            if self.randvels:
+                newvel = vc.random_vec(rand)
+            else:
+                newvel = Vector([0] * dims)
+            yield Particle(newpos, newvel)
 
 
 # vim: et sw=4 sts=4
