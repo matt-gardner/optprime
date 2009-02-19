@@ -75,19 +75,19 @@ def run(job, args, opts):
             else:
                 # Create a new output_data MapReduce phase to find the best
                 # particle in the population.
-                collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
+                collapsed_data = job.map_data(new_data, collapse_map, splits=1)
                 output_data = job.reduce_data(collapsed_data, findbest_reduce,
-                        nparts=1)
+                        splits=1)
 
         if (opts.iterations >= 0) and (iters > opts.iterations):
             # The previous iteration was the last iteration.
             running = False
         else:
             # Submit one PSO iteration to the job:
-            interm_data = job.map_data(new_data, pso_map, nparts=numtasks,
+            interm_data = job.map_data(new_data, pso_map, splits=numtasks,
                     parter=mrs.mod_partition)
             new_data = job.reduce_data(interm_data, pso_reduce,
-                    nparts=numtasks, parter=mrs.mod_partition)
+                    splits=numtasks, parter=mrs.mod_partition)
 
         if output_data:
             # Note: The next PSO iteration is being computed concurrently with
@@ -233,8 +233,8 @@ class Population(object):
         if partitions is None:
             partitions = len(particles)
 
-        dataset = job.output_data(parter=mrs.mod_partition, nparts=partitions)
-        dataset.collect(particles)
+        dataset = job.local_data(particles, parter=mrs.mod_partition,
+                splits=partitions)
         return dataset
 
     def get_particles(self):
