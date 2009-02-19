@@ -278,11 +278,14 @@ class Population(object):
             p.deps = deps
             p.dep_str = dep_str
             # Loosely connected ring sociometry:
-            #p.deps = [i%n for i in xrange(i-20,i+20)]
-            #p.dep_str = ''
-            #for i in xrange(len(p.deps)):
-            #    p.dep_str  += str(p.deps[i]) + ','
-            #p.dep_str = p.dep_str[:-1]
+            p.deps = [i%n for i in xrange(i-1,i+1)]
+            p.dep_str = ''
+            for i in xrange(len(p.deps)):
+                p.dep_str  += str(p.deps[i]) + ','
+            p.dep_str = p.dep_str[:-1]
+            # End loosely connected ring sociometry - uncomment these blocks
+            # for ring (changing the constant in the first line as desired)
+            # Comment them out for star
             self.particles.append(p)
 
     def __str__(self):
