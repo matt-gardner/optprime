@@ -1,29 +1,35 @@
 from __future__ import division
 
-from amlpso.varargs import VarArgs
 from itertools import izip
 import operator
 from sets import Set
+from mrs.param import Param, ParamObj
 from amlpso.Vector import Vector
 
-class _Base(VarArgs):
-    _args = [
-        ('stagcount', 0,
-        'Number of stagnations to trigger a relocation test (0 means no test)'),
-        ('stagsize', 0.0,
-        'Fraction of swarm that triggers relocation when tested'),
-        ('bounceradius', 0.0,
-        'Distance to other particles (relative to longest diagonal) '
-        'that causes a bounce, 0 means no bounce'),
-        ('bounceadapt', 1.0,
-        'Use an adaptive bounce radius, one that decreases with every bounce'),
-        ('bouncetournament', False,
-        'The biggest particle in a bounce competition does not move'),
-        ('bouncedistance', False,
-        'Alter the bounce distance based on the adaptive parameter'),
-        ('relocatebest', False, 'Always move the best differently',),
-        ]
-    def __init__( self, simulation, numparticles, *args, **kargs ):
+class _Base(ParamObj):
+    _params = dict(
+        transitive_gbest=Param(default=0, type='int',
+            doc='Whether to send gbest to others instead of pbest'),
+        stagcount=Param(default=0, type='int',
+            doc='Number of stagnations to trigger a relocation test'
+                ' (0 means no test)'),
+        stagsize=Param(default=0, type='float',
+            doc='Fraction of swarm that triggers relocation when tested'),
+        bounceradius=Param(default=0, type='float',
+            doc='Distance to other particles (relative to longest diagonal)'
+                ' that causes a bounce, 0 means no bounce'),
+        bounceadapt=Param(default=1, type='float',
+            doc='Use an adaptive bounce radius, one that decreases with'
+                ' every bounce'),
+        bouncetournament=Param(default=0, type='int',
+            doc='The biggest particle in a bounce competition does not move'),
+        bouncedistance=Param(default=0, type='int',
+            doc='Alter the bounce distance based on the adaptive parameter'),
+        relocatebest=Param(default=0, type='int',
+            doc='Always move the best differently'),
+        )
+
+    def setup(self, simulation, numparticles, *args, **kargs):
         """Creates a sociometry object, which maintains particles and
         relationships.
 
@@ -33,13 +39,11 @@ class _Base(VarArgs):
         keyword arguments:
             comparator -- defaults to operator.lt (minimization)
         """
-        super(_Base,self).__init__( *args, **kargs )
-
         self.simulation = simulation
         self.rand = self.simulation.rand
         self.startparticles = numparticles
 
-        self.is_better = kargs.get( 'comparator', operator.lt )
+        self.is_better = kargs.get('comparator', operator.lt)
 
         # We create a nice simple id structure for the particles, where they
         # just have the id of their position in a list.
@@ -66,17 +70,17 @@ class _Base(VarArgs):
     # ------------------------------
     # Iterator protocol
 
-    def __iter__( self ):
+    def __iter__(self):
         return self
 
-    def next( self ):
+    def next(self):
         p, soc = self.evaliter.next()
         self.last_updated_particle = p
         return p, soc
 
     # ------------------------------
 
-    def _iterevals( self ):
+    def _iterevals(self):
         # First create the particles:
         n = self.startparticles
         sim = self.simulation
@@ -127,8 +131,8 @@ class _Base(VarArgs):
                     bestpart = p
                     bestval = p.bestval
                     bestidx = i
-                best = self.bestneighbor( p )
-                newstates[i] = sim.motion( p, best )
+                self.update_gbest(p)
+                newstates[i] = sim.motion(p)
             sim.motion.post_batch( self )
             bestpos = bestpart.bestpos
 
@@ -231,35 +235,30 @@ class _Base(VarArgs):
                 yield p, self
                 self.start_of_batch = False
 
-    def addparticle( self, particle ):
-        self.particles.append( particle )
+    def addparticle(self, particle):
+        self.particles.append(particle)
 
-    def iterparticles( self ):
+    def iterparticles(self):
         return iter(self.particles)
 
-    def iterneighbors( self, particle ):
+    def iterneighbors(self, particle):
         if not self.is_initialized:
-            raise ValueError( 'Swarm is not yet initialized!' )
+            raise ValueError('Swarm is not yet initialized!')
         if self.__class__ is _Base:
-            raise NotImplementedError( 'iterneighbors' )
+            raise NotImplementedError('iterneighbors')
 
-    def bestparticle( self ):
+    def bestparticle(self):
         return self._bestparticle
 
-    def bestneighbor( self, particle ):
-        """Returns the best neighbor for this particle"""
-        niter = self.iterneighbors( particle )
-        try:
-            best = niter.next()
-        except StopIteration:
-            return None
+    def update_gbest(self, particle):
+        """Updates the global best for this particle"""
+        for i in self.iterneighbors(particle):
+            p = self.particles[i]
+            particle.gbest_cand(p.bestpos, p.bestval, self.is_better)
+            if self.transitive_gbest:
+                particle.gbest_cand(p.gbestpos, p.gbestval, self.is_better)
 
-        for p in niter:
-            if self.is_better( p.bestval, best.bestval ):
-                best = p
-        return best
-
-    def numparticles( self ):
+    def numparticles(self):
         return len(self.particles)
 
 

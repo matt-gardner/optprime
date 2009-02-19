@@ -15,111 +15,6 @@ from kdtree import KDTree
 from cubes.cube import Cube
 
 #------------------------------------------------------------------------------
-# Set up the known neighborhoods
-from neighborhood.fixed import Star, Ring, Wheel
-from neighborhood.tribes import TRIBES
-neighborhoodlist = [
-    Star,
-    Ring,
-    Wheel,
-    TRIBES,
-]
-neighborhoods = dict([(v.__name__, v) for v in neighborhoodlist])
-
-#------------------------------------------------------------------------------
-# Set up the known motion types
-from motion.basic import Basic, BasicGauss, BasicAdaptive
-from motion.bare import Bare
-from motion.link import Link1, Link2, Link3, Link4
-from motion.pivot import Pivot
-motionlist = [
-    Basic,
-    BasicGauss,
-    BasicAdaptive,
-    Bare,
-    Pivot,
-    Link1,
-    Link2,
-    Link3,
-    Link4,
-]
-# Some motions require scipy, Numeric, etc., and might not work everywhere.
-try:
-    from motion.kalman import Kalman
-    motionlist.append(Kalman)
-except ImportError:
-    pass
-motions = dict([(v.__name__, v) for v in motionlist])
-
-#------------------------------------------------------------------------------
-# Set up the known functions (only useful benchmarks, please)
-from functions.ackley import Ackley
-from functions.dejong import DeJongF4
-from functions.griewank import Griewank
-from functions.easom import Easom
-from functions.rastrigin import Rastrigin
-from functions.rosenbrock import Rosenbrock
-from functions.schaffer import SchafferF6, SchafferF7
-from functions.sphere import Sphere
-from functions.monson import TwoGaussians, ValleyNeedle, AsymmetricCone
-from functions.quadratic import Quadratic
-from functions.distance import Distance
-from functions.schwefel import Schwefel
-from functions.pat import Pat
-from functions.keane import Keane
-from functions.gauss import Gauss
-from functions.financial import AlphaBeta
-from functions.rbf import RBF
-from functions.butterfly import Butterfly
-from functions.psocryst import Crystal
-from functions.dap_opt import DapOpt
-from functions.test import Test
-#from functions.art import Art
-functionlist = [
-    Sphere,
-    Distance,
-    Quadratic,
-    DeJongF4,
-    Rosenbrock,
-    Rastrigin,
-    Griewank,
-    Ackley,
-    SchafferF6,
-    SchafferF7,
-    TwoGaussians,
-    ValleyNeedle,
-    AsymmetricCone,
-    Schwefel,
-    Easom,
-    Pat,
-    Keane,
-    Gauss,
-    AlphaBeta,
-    RBF,
-    Butterfly,
-    Crystal,
-    DapOpt,
-    Test
-#    ,Art
-]
-# Some functions require scipy, Numeric, etc., and might not work everywhere.
-try:
-    from functions.ackley import Ackley as x
-    from functions.constrained10d import ConstrainedSphere10d, \
-            ConstrainedRastrigin10d, ConstrainedRosenbrock10d, \
-            ConstrainedGriewank10d, ConstrainedQuadratic10d
-    functionlist += [
-        ConstrainedSphere10d,
-        ConstrainedQuadratic10d,
-        ConstrainedRastrigin10d,
-        ConstrainedRosenbrock10d,
-        ConstrainedGriewank10d,
-    ]
-except ImportError:
-    pass
-functions = dict([(v.__name__, v) for v in functionlist])
-
-#------------------------------------------------------------------------------
 # The simulation class
 
 class Simulation(VarArgs):
@@ -138,7 +33,7 @@ class Simulation(VarArgs):
         ]
 
     def __init__( self,
-            nparts, neighborcls, funcls, motioncls, *args, **kargs
+            nparts, neighborhood, function, motion, *args, **kargs
             ):
         super(Simulation,self).__init__( *args, **kargs )
 
@@ -149,23 +44,22 @@ class Simulation(VarArgs):
 
         self.dims = kargs['dims']
         self.nparts = nparts
-        self.func = func = funcls(**kargs)
-        self.neighborcls = neighborcls
+        self.func = function
+        self.neighborhood = neighborhood
+        self.motion = motion
         self.comparator = self.maximize and gt or lt
-        self.motion = motioncls(
-                self.comparator,
-                self.func.constraints,
-                **kargs
-                )
+
+        self.func.setup(self.dims)
+        self.motion.setup(self.comparator, self.func.constraints)
 
         ispace = self.initspace
         ioffset = self.initoffset
 
         constraints = [
             (cl+abs(cr-cl)*ioffset,cl + abs(cr-cl)*ioffset + (cr-cl)*ispace)
-            for cl,cr in func.constraints
+            for cl,cr in self.func.constraints
             ]
-        sizes = [abs(cr-cl) * ispace for cl, cr in func.constraints]
+        sizes = [abs(cr-cl) * ispace for cl, cr in self.func.constraints]
         vconstraints = [(-s,s) for s in sizes]
 
         self.cube = Cube( constraints )
@@ -349,13 +243,13 @@ class Simulation(VarArgs):
     def iterevals( self ):
         comp = self.comparator
         kargs = self.keywordargs
-        soc = self.neighborcls( self, self.nparts, comparator=comp, **kargs )
+        self.neighborhood.setup(self, self.nparts, comparator=comp, **kargs)
 
         constraints = self.cube.constraints
 
         self.tree = KDTree( constraints )
 
-        for i, (particle, soc) in enumerate(soc):
+        for i, (particle, soc) in enumerate(self.neighborhood):
             if self.kdtreeinit:
                 if self.kdrebuild > 0 and i % self.kdrebuild == 0:
                     points = list(self.tree.iterpoints())

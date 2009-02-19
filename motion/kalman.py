@@ -8,24 +8,30 @@ from RandomArray import multivariate_normal as mn
 
 import sys
 
-#----------------------------------------------------------------------------
-#------------------------------------------------------------------------------
+
 class Kalman(basic._Base):
-    _args = [
-        ( 'cfac', 0.01, 'Covariance factor' ),
-        ( 'predict', True, 'Predict instead of just filtering' ),
-        ( 'randinit', False, 'Initialize to random priors' ),
-        ( 'velmultiplier', 1.0, 'Multiplier for velocities' ),
-        ( 'norandscale', False, 'Remove random scaling from the process' ),
-        ( 'usepbest', False, 'Add the use of pbest to the mix' ),
-        ( 'pgrelationship', 0.7, 'Strength of the relationship between gbest and pbest' ),
-        ]
-    def __init__( self, *args, **kargs ):
-        super(Kalman, self).__init__( *args, **kargs )
+    _params = dict(
+            cfac=Param(default=0.01, type='float', doc='Covariance factor' ),
+            predict=Param(default=1, type='int', 
+                doc='Predict instead of just filtering' ),
+            randinit=Param(default=0, type='int', 
+                doc='Initialize to random priors' ),
+            velmultiplier=Param(default=1.0, type='float', 
+                doc='Multiplier for velocities' ),
+            norandscale=Param(default=0, type='int', 
+                doc='Remove random scaling from the process' ),
+            usepbest=Param(default=0, type='int', 
+                doc='Add the use of pbest to the mix' ),
+            pgrelationship=Param(default=0.7, type='float', 
+                doc='Strength of the relationship between gbest and pbest' ),
+        )
+
+    def __init__(self, *args, **kargs):
+        super(Kalman, self).__init__(*args, **kargs)
 
         self.filters = {}
 
-    def getfilter( self, particle ):
+    def getfilter(self, particle):
         if id(particle) in self.filters:
             return self.filters[id(particle)]
 
@@ -36,7 +42,7 @@ class Kalman(basic._Base):
         if self.randinit:
             from cubes.cube import Cube
             from random import Random
-            c = Cube( self.constraints )
+            c = Cube(self.constraints)
             r = Random()
             prior = c.random_vec(r) + c.random_vec(r)
         else:
@@ -90,7 +96,7 @@ class Kalman(basic._Base):
         self.filters[id(particle)] = kalman
         return self.filters[id(particle)]
 
-    def __call__( self, particle, neighbor ):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -98,39 +104,38 @@ class Kalman(basic._Base):
 
         rand = self.rand
 
-        grel = neighbor.bestpos - particle.pos
+        grel = particle.gbestpos - particle.pos
         if self.norandscale:
             newvel = 1.0 * grel
         else:
             newvel = rand.uniform(0,2) * grel
 
         if self.restrictvel:
-            self.cube.constrain_vec( newvel, True )
+            self.cube.constrain_vec(newvel, True)
 
         newpos = particle.pos + newvel
 
         if not self.usepbest:
-            kalman.add( newpos )
+            kalman.add(newpos)
         else:
-            kalman.add( Vector(list(newpos) + list(particle.bestpos)) )
+            kalman.add(Vector(list(newpos) + list(particle.bestpos)))
 
         if self.predict:
             mean, var = kalman.predict()
         else:
             mean, var = kalman.filt()
 
-        newstate = mn( mean, var )
+        newstate = mn(mean, var)
         return Vector(newstate[:self.dims]),Vector(newstate[self.dims:])
 
-#----------------------------------------------------------------------------
-def ddot( *args ):
+
+def ddot(*args):
     """multi-array dot product, done in order from left to right
     """
-    return reduce( dot, args )
+    return reduce(dot, args)
 
-#----------------------------------------------------------------------------
 
-class KalmanFilter( object ):
+class KalmanFilter(object):
     def __init__(self, priors, priorvar, dynamics, dynamicvar, char, charvar):
         """Create a kalman filter object with an initial set of parameters.
 
@@ -166,41 +171,37 @@ class KalmanFilter( object ):
         self.sig_z = 1.0 * array( charvar )
         self.i = 1.0 * identity( len(priors ) )
 
-    def add( self, observation ):
+    def add(self, observation):
         """Predicts the next state given the current observation.
 
         arguments:
             observation -- a vector of observation values
         """
-        z = array( observation )
+        z = array(observation)
 
-        ftf = ddot( self.f, self.sig_t, self.f_T )
+        ftf = ddot(self.f, self.sig_t, self.f_T)
 
         g1 = ddot(ftf + self.sig_x, self.h_T)
-        g2 = inverse( ddot( self.h, ftf + self.sig_x, self.h_T ) + self.sig_z )
-        gain = ddot( g1, g2 )
+        g2 = inverse(ddot(self.h, ftf + self.sig_x, self.h_T) + self.sig_z)
+        gain = ddot(g1, g2)
 
         # Now we have the Kalman gain matrix.  With that, we calculate the
         # new mean and covariance matrices:
-        mean = \
-            ddot( self.f, self.mu_t ) + \
-            ddot( gain, (z - ddot( self.h, self.f, self.mu_t )) )
+        mean = (ddot(self.f, self.mu_t) +
+            ddot(gain, (z - ddot(self.h, self.f, self.mu_t))))
 
-        cov = \
-            ddot( self.i - ddot(gain,self.h), ftf + self.sig_x )
+        cov = ddot(self.i - ddot(gain,self.h), ftf + self.sig_x)
 
         # Set the old values to the new values and return
         self.mu_t = mean
         self.sig_t = cov
 
-    def filt( self ):
+    def filt(self):
         return self.mu_t, self.sig_t
 
-    def predict( self ):
-        newmu = ddot( self.f, self.mu_t )
+    def predict(self):
+        newmu = ddot(self.f, self.mu_t)
         newvar = self.sig_t
 
         return newmu, newvar
 
-#------------------------------------------------------------------------------
-#------------------------------------------------------------------------------

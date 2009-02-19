@@ -82,8 +82,8 @@ t_reverse = array([
        ])
 
 class ConstrainedFunc10d(_general._Base):
-    def __init__( self, *args, **kargs ):
-        super(ConstrainedFunc10d,self).__init__( *args, **kargs )
+    def setup(self, dims):
+        super(ConstrainedFunc10d,self).setup(dims)
 
     def __call__( self, vec ):
         realvec = vec[:5]

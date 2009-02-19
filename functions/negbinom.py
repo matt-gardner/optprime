@@ -1,8 +1,9 @@
 from __future__ import division
+import _general
 
 #------------------------------------------------------------------------------
-class NegBinomial( object ):
-    def __init__( self, r=6, p=0.3 ):
+class NegBinomial(_general._Base):
+    def dims(self, dims, r=6, p=0.3):
         self.r = r
         self.p = p
         self.q = 1 - p

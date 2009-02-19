@@ -4,6 +4,7 @@ from __future__ import division
 import sys, optparse, operator
 
 import mrs
+from mrs import param
 from particle import Particle
 
 
@@ -58,11 +59,10 @@ def run(job, args, opts):
 
     # Create the initial population:
     import tempfile
-    directory = tempfile.mkdtemp(dir=opts.mrs_shared, prefix=('population_'))
-    pop = Population(function, directory)
+    pop = Population(function)
     pop.add_random(numparts)
 
-    new_data = pop.mrsdataset(numtasks)
+    new_data = pop.mrsdataset(job, numtasks)
 
     iters = 1
     running = True
@@ -129,19 +129,16 @@ def run(job, args, opts):
 def setup(opts):
     """Mrs Setup (run on both master and slave)"""
     from motion.basic import Basic
-    from simulation import functions
-    from cli import prefix_args
 
     global function, motion, comparator
 
-    funcls = functions[opts.function]
-    funcargs = prefix_args(FUNCPREFIX, opts)
-    funcargs['dims'] = opts.dims
-    function = funcls(**funcargs)
+    function = param.instantiate(opts, 'function')
+    function.setup(opts.dims)
 
     #TODO: comparator = opts.soc_maximize and operator.gt or operator.lt
     comparator = operator.lt
-    motion = Basic(comparator, function.constraints)
+    motion = Basic()
+    motion.setup(comparator, function.constraints)
 
 
 
@@ -152,15 +149,15 @@ def pso_map(key, value):
     particle = Particle(pid=int(key), state=value)
 
     # Update the particle:
-    newpos, newvel = motion(particle, particle.gbest)
+    newpos, newvel = motion(particle)
     value = function(newpos)
-    particle.update(newpos, newvel, value, motion.comparator)
+    particle.update(newpos, newvel, value, comparator)
 
     # Emit a message for each dependent particle:
     message = particle.make_message()
     for dep_id in particle.deps:
         if dep_id == particle.id:
-            particle.gbest_cand(particle.bestpos, particle.bestval)
+            particle.gbest_cand(particle.bestpos, particle.bestval, comparator)
         else:
             yield (str(dep_id), repr(message))
 
@@ -175,15 +172,15 @@ def pso_reduce(key, value_iter):
 
     for value in value_iter:
         record = Particle(pid=int(key), state=value)
-        if record.gbest.bestval <= bestval:
+        if comparator(record.gbestval, bestval):
             best = record
-            bestval = record.gbest.bestval
+            bestval = record.gbestval
 
         if not record.is_message():
             particle = record
 
     if particle:
-        particle.gbest_cand(best.gbest.bestpos, bestval)
+        particle.gbest_cand(best.gbestpos, bestval, comparator)
         yield repr(particle)
     else:
         yield repr(best)
@@ -214,9 +211,8 @@ class Population(object):
     A Population in Mrs PSO is much like a neighborhood in Chris' PSO, but
     the interface is a little different.
     """
-    def __init__(self, func, directory, **kargs):
+    def __init__(self, func, **kargs):
         """Initialize Population instance using a function instance."""
-        self.directory = directory
         self.particles = []
         self._bestparticle = None
         self.func = func
@@ -227,7 +223,7 @@ class Population(object):
             import random
             self.rand = random.Random()
 
-    def mrsdataset(self, partitions=None):
+    def mrsdataset(self, job, partitions=None):
         """Create a Mrs DataSet for the particles in the population.
         
         The number of partitions may be specified.
@@ -237,11 +233,8 @@ class Population(object):
         if partitions is None:
             partitions = len(particles)
 
-        dataset = mrs.datasets.Output(mrs.mod_partition, partitions,
-                directory=self.directory)
+        dataset = job.output_data(parter=mrs.mod_partition, nparts=partitions)
         dataset.collect(particles)
-        # TODO: this should eventually happen automatically in Mrs:
-        dataset.dump()
         return dataset
 
     def get_particles(self):
@@ -301,7 +294,6 @@ class Population(object):
 FUNCPREFIX = 'func'
 
 def update_parser(parser):
-    from simulation import functions
     from cli import outputtypes
     global cli_parser
 
@@ -320,16 +312,14 @@ def update_parser(parser):
             help='Style of output {%s}' % ', '.join(outputtypes))
     parser.add_option('-d', '--dimensions', dest='dims', type='int',
             help='Number of dimensions')
-    parser.add_option('-f', '--function', dest='function',
-            help='Function to optimize {%s}' % ', '.join(functions))
+    parser.add_option('-f', '--function', action='extend',
+            search=['functions'], dest='function',
+            help='Function to optimize')
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
             default=False, help='Print out verbose error messages')
     parser.set_defaults(quiet=False, iterations=100, outputfreq=1,
             outputtype='BasicOutput', dims=2, numtasks=0, numparts=2,
-            function='Sphere')
-
-    from cli import gen_varargs_options
-    gen_varargs_options(parser, FUNCPREFIX, 'Function', functions)
+            function='sphere.Sphere')
 
     return parser
 
