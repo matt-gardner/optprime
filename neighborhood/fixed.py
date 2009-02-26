@@ -15,21 +15,18 @@ class Ring(_FixedBase):
     _params = dict(
         double=Param(default=0, type='int', doc='Doubly linked ring'),
         neighbors=Param(default=0.5, type='float',
-            doc='Fraction of neighbors to send to on each side'),
+            doc='Number of neighbors to send to on each side'),
         )
 
     def iterneighbors(self, particle):
         idx = particle.idx
         num = len(self.particles)
-        if self.neighbors < 0 or self.neighbors > 1:
-            raise ValueError('the neighbors option should be a percent! '+
-            '(i.e., between zero and one)')
-        num_neighbors = int(self.neighbors*num)
-        for i in range(idx+1, idx+num_neighbors+1):
-            yield (idx+i) % num
+        num_neighbors = self.neighbors
+        for i in range(idx+1, idx+1+num_neighbors):
+            yield i % num
         if self.double:
             for i in range(idx-num_neighbors, idx):
-                yield (idx-1) % num
+                yield i % num
         if self.selflink:
             yield idx
 
@@ -109,7 +106,7 @@ class Islands(_FixedBase):
 
 class CommunicatingIslands(_FixedBase):
     _params = dict(
-        num_islands=Param(default=10, type='int',
+        num_islands=Param(default=4, type='int',
             doc='Number of islands to use'),
         iterations_per_communication=Param(default=50, type='int',
             doc='Number of iterations inbetween each inter-island communication'),
@@ -139,7 +136,7 @@ class CommunicatingIslands(_FixedBase):
             if self.type_of_communication == 'Ring':
                  num_neighbors = int(self.percent_communication*num)
                  for i in range(idx+1, idx+num_neighbors+1):
-                     yield (idx+i) % num
+                     yield i % num
                  if self.selflink:
                      yield idx
             elif self.type_of_communication == 'Random':
