@@ -181,6 +181,7 @@ def main():
                 soc, iters = simiter.next()
                 if 0 == (i+1) % freq:
                     outputter(soc, iters)
+            outputter.finish()
             print "# DONE" 
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
