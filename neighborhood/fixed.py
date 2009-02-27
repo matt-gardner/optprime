@@ -14,7 +14,7 @@ class _FixedBase(_Base):
 class Ring(_FixedBase):
     _params = dict(
         double=Param(default=0, type='int', doc='Doubly linked ring'),
-        neighbors=Param(default=0.5, type='float',
+        neighbors=Param(default=1, type='int',
             doc='Number of neighbors to send to on each side'),
         )
 
