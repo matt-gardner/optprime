@@ -102,7 +102,7 @@ def run(job, args, opts):
                     else:
                         print >>tty, job.status()
                 else:
-                    ready = job.wait(new_data)
+                    ready = job.wait(output_data)
 
             # Download output_data and update population accordingly.
             output_data.fetchall()
@@ -119,6 +119,7 @@ def run(job, args, opts):
             sys.stdout.flush()
 
         if not running:
+            job.wait(new_data)
             break
 
         iters += 1
