@@ -69,7 +69,7 @@ def run(job, args, opts):
     while True:
         # Check whether we need to collect output for the previous iteration.
         output_data = None
-        if (iters != 1) and (((iters+1) % opts.outputfreq) == 0):
+        if (iters != 1) and (((iters-1) % opts.outputfreq) == 0):
             if outputter.require_all:
                 output_data = new_data
             else:
