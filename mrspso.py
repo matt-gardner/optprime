@@ -69,7 +69,7 @@ def run(job, args, opts):
     while True:
         # Check whether we need to collect output for the previous iteration.
         output_data = None
-        if (iters != 1) and (((iters+1) % opts.outputfreq) == 0):
+        if (iters != 1) and (((iters-1) % opts.outputfreq) == 0):
             if outputter.require_all:
                 output_data = new_data
             else:
@@ -102,7 +102,7 @@ def run(job, args, opts):
                     else:
                         print >>tty, job.status()
                 else:
-                    ready = job.wait(new_data)
+                    ready = job.wait(output_data)
 
             # Download output_data and update population accordingly.
             output_data.fetchall()
@@ -119,6 +119,7 @@ def run(job, args, opts):
             sys.stdout.flush()
 
         if not running:
+            job.wait(new_data)
             break
 
         iters += 1
@@ -271,7 +272,7 @@ class Population(object):
             p.deps = deps
             p.dep_str = dep_str
             # Loosely connected ring sociometry:
-            p.deps = [i%n for i in xrange(i-1,i+1)]
+            p.deps = [i%n for i in xrange(i-1,i+2)]
             p.dep_str = ''
             for i in xrange(len(p.deps)):
                 p.dep_str  += str(p.deps[i]) + ','
