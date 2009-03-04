@@ -20,11 +20,11 @@ class ExternalFunction(_general._Base):
                 default='')
             )
 
-    def setup(self, dims):
+    def setup(self):
         if self.externfunc == '':
             raise Exception('Must supply an external function!')
-        super(ExternalFunction, self).setup(dims)
-        self._set_constraints( ((-50,50),) * self.dims )
+        super(ExternalFunction, self).setup()
+        self._set_constraints(((-50,50),) * self.dims)
         self.ERROR = float('inf')
 
     def __call__( self, vec ):

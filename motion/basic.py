@@ -1,8 +1,10 @@
 from __future__ import division
+import operator
+from math import sqrt
 import random
+
 from mrs.param import ParamObj, Param
 from amlpso.Vector import Vector
-from math import sqrt
 from amlpso.cubes.cube import Cube
 
 
@@ -14,15 +16,18 @@ class _Base(ParamObj):
         wrap=Param(default=0, doc='Wrap particles around the constraints'),
         )
 
-    def setup(self, comparator, constraints, *args, **kargs):
-        self.comparator = comparator
+    def setup(self, function, *args, **kargs):
+        if function.maximize:
+            self.comparator = operator.gt
+        else:
+            self.comparator = operator.lt
         self.rand = random.Random()
-        self.constraints = constraints
+        self.constraints = function.constraints
         self.dims = len(constraints)
-        self.cube = Cube( constraints )
+        self.cube = Cube(constraints)
         sizes = [abs(cr-cl) for cl,cr in constraints]
         vconstraints = [(-s,s) for s in sizes]
-        self.vcube = Cube( vconstraints )
+        self.vcube = Cube(vconstraints)
         self.sign = 1.0
 
     def _motion(self, particle):

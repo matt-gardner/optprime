@@ -3,8 +3,8 @@ from itertools import izip
 import _general
 
 class DeJongF4(_general._Base):
-    def setup(self, dims):
-        super(DeJongF4,self).setup(dims)
+    def setup(self):
+        super(DeJongF4,self).setup()
         self._set_constraints( ((-20,20),) * self.dims )
 
     def __call__( self, vec ):

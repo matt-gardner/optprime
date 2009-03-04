@@ -5,9 +5,9 @@ from operator import mul
 import _general
 
 class Easom(_general._Base):
-    def setup(self, dims):
-        super(Easom,self).setup(dims)
-        self._set_constraints( ((-100,100),) * self.dims )
+    def setup(self):
+        super(Easom,self).setup()
+        self._set_constraints(((-100,100),) * self.dims)
 
     # fEaso(x1,x2)=-cos(x1) cos(x2) exp(-((x1-pi)^2+(x2-pi)^2));
     # Modified to have the center at 0,0 instead of pi and minimum of 0:

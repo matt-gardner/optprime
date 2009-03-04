@@ -5,7 +5,8 @@ import _general
 
 class disjointegg(_general._Base):
     __slots__ = 'constraints'
-    def setup(self, dims):
+
+    def setup(self):
         self.constraints = ((0,5), (0,5))
 
     def __call__( self, input ):

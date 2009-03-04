@@ -4,9 +4,9 @@ from math import sqrt, exp, cos, sin, pi
 import _general
 
 class TwoGaussians(_general._Base):
-    def setup(self, dims):
-        super(TwoGaussians,self).setup(dims)
-        self._set_constraints( ((-50,50),) * self.dims )
+    def setup(self):
+        super(TwoGaussians,self).setup()
+        self._set_constraints(((-50,50),) * self.dims)
 
     def __call__( self, vec ):
         magsq = sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
@@ -25,9 +25,9 @@ class TwoGaussians(_general._Base):
         return (1-oogaussian) + 0.4*(outergaussian - innergaussian)
 
 class ValleyNeedle(_general._Base):
-    def setup(self, dims):
-        super(ValleyNeedle,self).setup(dims)
-        self._set_constraints( ((-50,50),) * self.dims )
+    def setup(self):
+        super(ValleyNeedle,self).setup()
+        self._set_constraints(((-50,50),) * self.dims)
 
     def __call__( self, vec ):
         magsq = sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
@@ -45,9 +45,9 @@ class ValleyNeedle(_general._Base):
             return flatheight*(1 - prod)
 
 class AsymmetricCone(_general._Base):
-    def setup(self, dims):
-        super(AsymmetricCone,self).setup(dims)
-        self._set_constraints( ((-50,50),) * self.dims )
+    def setup(self):
+        super(AsymmetricCone,self).setup()
+        self._set_constraints(((-50,50),) * self.dims)
 
     def __call__( self, vec ):
         cvec = self.abscenter

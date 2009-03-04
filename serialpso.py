@@ -25,43 +25,19 @@ def main():
     parser.add_option('-q', '--quiet',
             dest='quiet',
             action='store_true',
-            help='Refrain from printing version and option information'
-            )
-    parser.add_option('-o', '--outputfreq',
-            dest='outputfreq',
-            default=1,
-            type='int',
-            help='Number of iterations per value output',
-            )
-    parser.add_option('-t', '--outputtype',
-            dest='outputtype',
-            default='BasicOutput',
-            help='Style of output {%s}' % ", ".join(outputtypes),
-            )
-    parser.add_option('-d', '--dimensions',
-            dest='dimensions',
-            default=2,
-            type='int',
-            help='Number of dimensions'
+            help='Refrain from printing version and option information',
             )
     parser.add_option('-n','--num-particles',
             dest='numparts',
             default=2,
             type='int',
-            help='Number of particles'
-            )
-    parser.add_option('-f','--function',
-            action='extend',
-            dest='function',
-            default='sphere.Sphere',
-            search=['functions'],
-            help='Function to optimize.'
+            help='Number of particles',
             )
     parser.add_option('-b','--batches',
             dest='batches',
             type='int',
             default=1,
-            help='Number of complete experiments to run'
+            help='Number of complete experiments to run',
             )
     parser.add_option('-v','--verbose',
             dest='verbose',
@@ -69,9 +45,13 @@ def main():
             default=False,
             help="Print out verbose error messages",
             )
-
-    gen_simple_options( parser, simprefix, 'Simulation', Simulation.args )
-
+    parser.add_option('-f','--func',
+            action='extend',
+            dest='function',
+            default='sphere.Sphere',
+            search=['functions'],
+            help='Function to optimize.',
+            )
     parser.add_option('-m','--motion',
             action='extend',
             dest='motion',
@@ -79,16 +59,27 @@ def main():
             default='Basic',
             help='Particle motion type',
             )
-
-    parser.add_option('-s','--sociometry',
+    parser.add_option('-t','--top',
             action='extend',
-            dest='sociometry',
+            dest='topology',
             search=['neighborhood.fixed', 'neighborhood'],
-            default='Star',
-            help='Particle sociometry'
+            default='Complete',
+            help='Particle topology/sociometry',
+            )
+    parser.add_option('-o', '--out',
+            dest='output',
+            search=['output'],
+            default='Basic',
+            help='Style of output',
             )
 
+    # We add suboptions for Population, but no --pop option (since there's
+    # only one Population class).
+    parser.add_defaults(pop=Population)
+    parser.add_param_object(Population._params, '--pop')
+
     options, args = parser.parse_args()
+
 
     #--------------------------------------------------------------------------
     # Create the simulation arguments, output header information

@@ -82,10 +82,7 @@ t_reverse = array([
        ])
 
 class ConstrainedFunc10d(_general._Base):
-    def setup(self, dims):
-        super(ConstrainedFunc10d,self).setup(dims)
-
-    def __call__( self, vec ):
+    def __call__(self, vec):
         realvec = vec[:5]
         if len(realvec) < 5:
             realvec.extend([0.0] * (5-len(realvec)))
@@ -95,35 +92,45 @@ class ConstrainedFunc10d(_general._Base):
         # Push this vector back out into the original world, evaluate the true
         # function, and return that.
 
-        expandedvec = dot( t_reverse, array(realvec) )
+        expandedvec = dot(t_reverse, array(realvec))
         return self.func(expandedvec)
 
 class ConstrainedSphere10d(ConstrainedFunc10d):
-    def __init__( self, *args, **kargs ):
-        super(ConstrainedSphere10d,self).__init__( *args, **kargs )
-        self.func = Sphere( dims=10 )
-        self._set_constraints( ((-100,100),) * self.dims )
+    def setup(self, *args, **kargs):
+        super(ConstrainedSphere10d, self).setup( *args, **kargs )
+        self.func = Sphere()
+        self.func.dims = 10
+        self.func.setup()
+        self._set_constraints(((-100,100),) * self.dims)
 
 class ConstrainedQuadratic10d(ConstrainedFunc10d):
-    def __init__( self, *args, **kargs ):
+    def setup(self, *args, **kargs):
         super(ConstrainedQuadratic10d,self).__init__( *args, **kargs )
-        self.func = Quadratic( dims=10 )
-        self._set_constraints( ((-100,100),) * self.dims )
+        self.func = Quadratic()
+        self.func.dims = 10
+        self.func.setup()
+        self._set_constraints(((-100,100),) * self.dims)
 
 class ConstrainedRastrigin10d(ConstrainedFunc10d):
-    def __init__( self, *args, **kargs ):
-        super(ConstrainedRastrigin10d,self).__init__( *args, **kargs )
-        self.func = Rastrigin( dims=10 )
-        self._set_constraints( ((-100,100),) * self.dims )
+    def setup(self, *args, **kargs):
+        super(ConstrainedRastrigin10d,self).setup(*args, **kargs)
+        self.func = Rastrigin()
+        self.func.dims = 10
+        self.func.setup()
+        self._set_constraints(((-100,100),) * self.dims)
 
 class ConstrainedRosenbrock10d(ConstrainedFunc10d):
-    def __init__( self, *args, **kargs ):
-        super(ConstrainedRosenbrock10d,self).__init__( *args, **kargs )
-        self.func = Rosenbrock( dims=10 )
-        self._set_constraints( ((-100,100),) * self.dims )
+    def setup( self, *args, **kargs ):
+        super(ConstrainedRosenbrock10d,self).__init__(*args, **kargs)
+        self.func = Rosenbrock()
+        self.func.dims = 10
+        self.func.setup()
+        self._set_constraints(((-100,100),) * self.dims)
 
 class ConstrainedGriewank10d(ConstrainedFunc10d):
-    def __init__( self, *args, **kargs ):
-        super(ConstrainedGriewank10d,self).__init__( *args, **kargs )
-        self.func = Griewank( dims=10 )
-        self._set_constraints( ((-100,100),) * self.dims )
+    def setup(self, *args, **kargs):
+        super(ConstrainedGriewank10d,self).__init__(*args, **kargs)
+        self.func = Griewank()
+        self.func.dims = 10
+        self.func.setup()
+        self._set_constraints(((-100,100),) * self.dims)

@@ -4,9 +4,9 @@ from math import exp, e, sqrt, cos, pi
 import _general
 
 class Ackley(_general._Base):
-    def setup(self, dims):
-        super(Ackley,self).setup(dims)
-        self._set_constraints( ((-32.768,32.768),) * self.dims )
+    def setup(self):
+        super(Ackley,self).setup()
+        self._set_constraints(((-32.768,32.768),) * self.dims)
 
     def __call__( self, vec ):
         n = self.dims

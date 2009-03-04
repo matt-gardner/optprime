@@ -3,7 +3,7 @@ import _general
 
 #------------------------------------------------------------------------------
 class NegBinomial(_general._Base):
-    def dims(self, dims, r=6, p=0.3):
+    def dims(self, r=6, p=0.3):
         self.r = r
         self.p = p
         self.q = 1 - p

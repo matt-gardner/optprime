@@ -5,9 +5,9 @@ import _general
 
 
 class Pat(_general._Base):
-    def setup(self, dims):
-        super(Pat, self).setup(dims)
-        self._set_constraints( ((0.0,3.0),) * self.dims )
+    def setup(self):
+        super(Pat, self).setup()
+        self._set_constraints(((0.0,3.0),) * self.dims)
 
         self.alpha = kargs.get( 'alpha', 8.0 )
         self.beta = kargs.get( 'beta', -1.5 )

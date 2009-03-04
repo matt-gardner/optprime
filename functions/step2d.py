@@ -2,7 +2,7 @@
 import _general
 
 class step2d(_general._Base):
-    def setup( self ):
+    def setup(self):
         self.constraints = ((0,5), (0,5))
 
     def __call__( self, input ):

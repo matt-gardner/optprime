@@ -8,8 +8,9 @@ class Distance(_general._Base):
                 norm=Param(default=2.0, type='float', 
                     doc='Default norm (2 is Euclidian)'),
             )
-    def setup(self, dims):
-        super(Distance,self).setup(dims)
+
+    def setup(self):
+        super(Distance,self).setup()
         self._set_constraints( ((-50,50),) * self.dims )
         #self._set_constraints( ((-2,2),) * self.dims )
 

@@ -5,9 +5,9 @@ from math import cos, sqrt
 import _general
 
 class Keane(_general._Base):
-    def setup(self, dims):
-        super(Keane,self).setup(dims)
-        self._set_constraints( ((0,10),) * self.dims )
+    def setup(self):
+        super(Keane,self).setup()
+        self._set_constraints(((0,10),) * self.dims)
 
     def __call__( self, vec ):
         if min(vec) < 0 or max(vec) > 10:

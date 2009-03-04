@@ -4,9 +4,9 @@ from math import cos, pi
 import _general
 
 class Rastrigin(_general._Base):
-    def setup(self, dims):
-        super(Rastrigin,self).setup(dims)
-        self._set_constraints( ((-5.12,5.12),) * self.dims )
+    def setup(self):
+        super(Rastrigin,self).setup()
+        self._set_constraints(((-5.12,5.12),) * self.dims)
 
     def __call__( self, vec ):
         s= 0.0

@@ -3,7 +3,7 @@ import _general
 
 class egg(_general._Base):
     __slots__ = ['constraints']
-    def setup(self, dims):
+    def setup(self):
         self.constraints = [[-10.0,10.0],[-10.0,10.0]]
 
     def __call__( self, vec ):

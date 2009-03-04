@@ -1,3 +1,5 @@
+from mrs.param import Param
+
 class Population(object):
     """Population of particles.
     
@@ -7,12 +9,12 @@ class Population(object):
     """
 
     _params = dict(
+        num=Param(default=2, type='int',
+            doc='Number of particles in the swarm'),
         initspace=Param(default=1.0,
             doc='Size of initialization space (per dimension)'),
         initoffset=Param(default=0.0,
             doc='Offset of initialization space (per dimension)'),
-        randvels=Param(default=0, type='int', default=1,
-            doc='Whether to use random initial velocities (otherwise 0s)'),
         )
 
     def __init__(self, func):

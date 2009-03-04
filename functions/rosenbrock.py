@@ -3,9 +3,9 @@ from itertools import izip
 import _general
 
 class Rosenbrock(_general._Base):
-    def setup(self, dims):
-        super(Rosenbrock,self).setup(dims)
-        self._set_constraints( ((-100,100),) * self.dims )
+    def setup(self):
+        super(Rosenbrock,self).setup()
+        self._set_constraints(((-100,100),) * self.dims)
 
     def __call__( self, vec ):
         s=0

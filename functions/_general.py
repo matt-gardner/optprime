@@ -5,13 +5,16 @@ from itertools import izip
 
 class _Base(ParamObj):
     _params = dict(
+            dims=Param(default=2, type='int',
+                doc='Number of dimensions'),
             center=Param(default='0.5', type='float',
                 doc='Relative center of function, between 0 and 1.'),
+            maximize=Param(default=0, type='int',
+                doc='Whether to maximize the function instead of minimize.'),
             )
 
-    def setup(self, dims):
-        self.dims = dims
-        self._set_constraints(((0,0),)*dims)
+    def setup(self):
+        self._set_constraints(((0,0),)*self.dims)
 
     def _set_constraints(self, constraints):
         self.dims = len(constraints)

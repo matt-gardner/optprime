@@ -7,7 +7,7 @@ class egghill(_general._Base):
         'alpha',
         'p'
         ]
-    def setup(self, dims, alpha=2.0, p=0.5):
+    def setup(self, alpha=2.0, p=0.5):
         self.constraints = [[-10.0,10.0],[-10.0,10.0]]
         self.alpha = alpha
         self.p = p

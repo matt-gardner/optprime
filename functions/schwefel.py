@@ -4,9 +4,9 @@ import _general
 from math import sqrt, sin
 
 class Schwefel(_general._Base):
-    def setup(self, dims):
-        super(Schwefel,self).setup(dims)
-        self._set_constraints( ((-500,500),) * self.dims )
+    def setup(self):
+        super(Schwefel,self).setup()
+        self._set_constraints(((-500,500),) * self.dims)
 
     def __call__( self, vec ):
         s = sum([x * sin(sqrt(abs(x))) for x in vec])

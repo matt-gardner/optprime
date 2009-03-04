@@ -39,9 +39,9 @@ class RBF(_general._Base):
             seed=Param(default=42, type='int', 
                 doc='Random seed used to generate points')
             )
-    def setup(self, dims):
-        super(RBF,self).setup(dims)
-        self._set_constraints( ((-50,50),) * self.dims )
+    def setup(self):
+        super(RBF,self).setup()
+        self._set_constraints(((-50,50),) * self.dims)
         self.data_dims = None
         try:
             datafile = self.datafiles.split()[0]
