@@ -31,7 +31,7 @@ class Ring(_FixedBase):
             yield idx
 
 
-class Star(_FixedBase):
+class Complete(_FixedBase):
     def iterneighbors(self, particle):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
@@ -43,20 +43,6 @@ class Star(_FixedBase):
             yield i
         if self.selflink:
             yield idx
-
-
-class Wheel(_FixedBase):
-    def iterneighbors(self, particle):
-        if particle.idx == 0:
-            # If this is the leader, emit everyone else
-            for i in xrange(1,len(self.particles)):
-                yield i
-        else:
-            # Otherwise, only connect to the leader
-            yield 0
-
-        if self.selflink:
-            yield particle.idx
 
 
 class Rand(_FixedBase):
