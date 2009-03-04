@@ -1,12 +1,11 @@
-#!/usr/bin/python -tt
+"""Outputter classes which determine the format of swarm status messages."""
+
 
 from __future__ import division
 import sys
+from mrs.param import Param
 
 
-#------------------------------------------------------------------------------
-# BasicOutput class -- deals with output of the data
-#------------------------------------------------------------------------------
 class Output(object):
     """Output the results of an iteration in some form.
 
@@ -15,6 +14,10 @@ class Output(object):
     just the gbest.
     """
     require_all = False
+    _params = dict(
+            freq=Param(default=1, type='int',
+                doc='Number of iterations per value output')
+            )
 
     def __call__(self, soc, iters):
         raise NotImplementedError()
@@ -22,9 +25,11 @@ class Output(object):
     def finish(self):
         pass
 
-class BasicOutput(Output):
-    def __call__( self, soc, iters ):
-        """Output the current state of the simulation
+
+class Basic(Output):
+    """Outputs the best value."""
+    def __call__(self, soc, iters):
+        """Output the current state of the simulation.
         
         In this particular instance, it just dumps stuff out to stdout, and it
         only outputs the globally best value in the swarm.
@@ -34,31 +39,38 @@ class BasicOutput(Output):
         print best.bestval
         sys.stdout.flush()
 
-class PairOutput(Output):
-    def __call__( self, soc, iters ):
+
+class Pair(Output):
+    """Outputs the iteration and best value."""
+    def __call__(self, soc, iters):
         best = soc.bestparticle()
         print iters, best.bestval
         sys.stdout.flush()
 
-class IterNumValOutput(Output):
-    def __call__( self, soc, iters ):
+
+class IterNumVal(Output):
+    """Outputs the iteration, number of particles, and best value."""
+    def __call__(self, soc, iters):
         best = soc.bestparticle()
         print iters, soc.numparticles(),  best.bestval
         sys.stdout.flush()
 
-class TimerOutput(Output):
-    def __init__( self ):
+
+class Timer(Output):
+    """Outputs the elapsed time for each iteration."""
+    def __init__(self):
         from datetime import datetime
         self.last_iter = 0
         self.last_time = datetime.now()
 
-    def __call__( self, soc, iters ):
+    def __call__(self, soc, iters):
         if iters <= 0: return
         # Find time difference
         from datetime import datetime
         now = datetime.now()
         delta = now - self.last_time
-        seconds = delta.days * 86400 + delta.seconds + delta.microseconds / 1000000
+        seconds = (delta.days * 86400 + delta.seconds
+                + delta.microseconds / 1000000)
 
         time_per_iter = seconds / (iters - self.last_iter)
         print time_per_iter
@@ -67,45 +79,56 @@ class TimerOutput(Output):
         self.last_time = now
         self.last_iter = iters
 
-class ExtendedOutput(Output):
-    def __call__( self, soc, iters ):
+
+class Extended(Output):
+    """Outputs the best value and best position."""
+    def __call__(self, soc, iters):
         best = soc.bestparticle()
         print best.bestval, " ".join([str(x) for x in best.bestpos])
         sys.stdout.flush()
 
-class OutputEverything(Output):
+
+class Everything(Output):
+    """Outputs the iteration, best value, best position, and elapsed time."""
     def __init__(self):
         from datetime import datetime
         self.last_iter = 0
         self.last_time = datetime.now()
 
-    def __call__( self, soc, iters ):
+    def __call__(self, soc, iters):
         if iters <= 0: return
         from datetime import datetime
         now = datetime.now()
         delta = now - self.last_time
-        seconds = delta.days * 86400 + delta.seconds + delta.microseconds / 1000000
+        seconds = (delta.days * 86400 + delta.seconds
+                + delta.microseconds / 1000000)
 
         time_per_iter = seconds / (iters - self.last_iter)
         best = soc.bestparticle()
-        print iters, best.bestval, " ".join([str(x) for x in best.bestpos]), "; Time: ", time_per_iter
+        print iters, best.bestval, " ".join([str(x) for x in best.bestpos]), \
+                "; Time: ", time_per_iter
         sys.stdout.flush()
 
         self.last_time = now
         self.last_iter = iters
 
 
-class SwarmOutput(Output):
+class Swarm(Output):
+    """Outputs the value, pos., best value, and best pos. for each particle."""
+
     require_all = True
 
-    def __call__( self, soc, iters ):
+    def __call__(self, soc, iters):
         print iters, len(soc.particles)
         for part in soc.particles:
             print part.val, ' '.join(str(x) for x in part.pos), \
                     part.bestval, ' '.join(str(x) for x in part.bestpos)
         print
 
-class StatsOutput(Output):
+
+class Stats(Output):
+    """Outputs stats about how many particles have been updated."""
+
     require_all = True
 
     def __init__(self):
@@ -120,8 +143,7 @@ class StatsOutput(Output):
         self.recentlyseen = []
         self.num_recent = 4
 
-
-    def __call__( self, soc, iters ):
+    def __call__(self, soc, iters):
         best = soc.bestparticle()
         self.iters += 1
         if best.bestval == self.last_val:
@@ -153,14 +175,6 @@ class StatsOutput(Output):
         print self.consistent_changes/self.changes
         print 'Percent of gbest updates that were by recently seen particles:'
         print self.recently_seen_changes/self.changes
-
-
-
-#------------------------------------------------------------------------------
-
-outputtypes = dict((cls.__name__, cls) for cls in
-        (BasicOutput, PairOutput, IterNumValOutput, TimerOutput,
-            ExtendedOutput, SwarmOutput, OutputEverything, StatsOutput))
 
 
 # vim: et sw=4 sts=4
