@@ -59,8 +59,7 @@ def run(job, args, opts):
 
     # Create the initial population:
     import tempfile
-    directory = tempfile.mkdtemp(dir=opts.mrs_shared, prefix=('population_'))
-    pop = Population(function.constraints, directory)
+    pop = Population(function.constraints)
     pop.add_random(numparts)
 
     new_data = pop.mrsdataset(job, numtasks)
@@ -70,25 +69,25 @@ def run(job, args, opts):
     while True:
         # Check whether we need to collect output for the previous iteration.
         output_data = None
-        if (iters != 1) and (((iters+1) % opts.outputfreq) == 0):
+        if (iters != 1) and (((iters-1) % opts.outputfreq) == 0):
             if outputter.require_all:
                 output_data = new_data
             else:
                 # Create a new output_data MapReduce phase to find the best
                 # particle in the population.
-                collapsed_data = job.map_data(new_data, collapse_map, nparts=1)
+                collapsed_data = job.map_data(new_data, collapse_map, splits=1)
                 output_data = job.reduce_data(collapsed_data, findbest_reduce,
-                        nparts=1)
+                        splits=1)
 
         if (opts.iterations >= 0) and (iters > opts.iterations):
             # The previous iteration was the last iteration.
             running = False
         else:
             # Submit one PSO iteration to the job:
-            interm_data = job.map_data(new_data, pso_map, nparts=numtasks,
+            interm_data = job.map_data(new_data, pso_map, splits=numtasks,
                     parter=mrs.mod_partition)
             new_data = job.reduce_data(interm_data, pso_reduce,
-                    nparts=numtasks, parter=mrs.mod_partition)
+                    splits=numtasks, parter=mrs.mod_partition)
 
         if output_data:
             # Note: The next PSO iteration is being computed concurrently with
@@ -103,7 +102,7 @@ def run(job, args, opts):
                     else:
                         print >>tty, job.status()
                 else:
-                    ready = job.wait(new_data)
+                    ready = job.wait(output_data)
 
             # Download output_data and update population accordingly.
             output_data.fetchall()
@@ -120,6 +119,7 @@ def run(job, args, opts):
             sys.stdout.flush()
 
         if not running:
+            job.wait(new_data)
             break
 
         iters += 1
@@ -212,9 +212,8 @@ class Population(object):
     A Population in Mrs PSO is much like a neighborhood in Chris' PSO, but
     the interface is a little different.
     """
-    def __init__(self, constraints, directory, **kargs):
+    def __init__(self, constraints, **kargs):
         """Initialize Population instance using a function instance."""
-        self.directory = directory
         self.particles = []
         self._bestparticle = None
         self.constraints = constraints
@@ -235,8 +234,8 @@ class Population(object):
         if partitions is None:
             partitions = len(particles)
 
-        dataset = job.output_data(parter=mrs.mod_partition, nparts=partitions)
-        dataset.collect(particles)
+        dataset = job.local_data(particles, parter=mrs.mod_partition,
+                splits=partitions)
         return dataset
 
     def get_particles(self):
@@ -273,7 +272,7 @@ class Population(object):
             p.deps = deps
             p.dep_str = dep_str
             # Loosely connected ring sociometry:
-            p.deps = [i%n for i in xrange(i-1,i+1)]
+            p.deps = [i%n for i in xrange(i-1,i+2)]
             p.dep_str = ''
             for i in xrange(len(p.deps)):
                 p.dep_str  += str(p.deps[i]) + ','
