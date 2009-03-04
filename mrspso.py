@@ -8,9 +8,6 @@ from mrs import param
 from particle import Particle
 
 
-# TODO: The fact that we're minimizing instead of maximizing is currently
-# hardcoded in. (use --sim-maximize)
-
 # TODO: We currently assume that your gbest is the best pbest you've ever seen
 # among all of your neighbors; an alternative interpretation might be that
 # it's the best pbest among all of your current neighbors.
@@ -134,12 +131,10 @@ def setup(opts):
     global function, motion, comparator
 
     function = param.instantiate(opts, 'function')
-    function.setup(opts.dims)
+    function.setup()
 
-    #TODO: comparator = opts.soc_maximize and operator.gt or operator.lt
-    comparator = operator.lt
     motion = Basic()
-    motion.setup(comparator, function.constraints)
+    motion.setup(function)
 
 
 
