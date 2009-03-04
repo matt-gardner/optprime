@@ -31,8 +31,6 @@ class Population(object):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
-    # CHANGES:
-    #   - we no longer evaluate the function before creating the particle!
     def newparticles(self, numparts=None):
         """Iterator that successively returns new position/velocity pairs
         within a possibly given set of constraints.

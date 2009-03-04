@@ -21,18 +21,11 @@ import sys, os
 def main():
     simprefix = 'sim'
 
-    versioninfo = '$Id: pso-batch 1.8 2008-9-11 1:13PM mjg82 $'
-
     parser = param.OptionParser()
     parser.add_option('-q', '--quiet',
             dest='quiet',
             action='store_true',
             help='Refrain from printing version and option information'
-            )
-    parser.add_option('-V', '--version',
-            dest='version',
-            action='store_true',
-            help='Print version information and exit'
             )
     parser.add_option('-o', '--outputfreq',
             dest='outputfreq',
@@ -97,10 +90,6 @@ def main():
 
     options, args = parser.parse_args()
 
-    if options.version:
-        print "%s" % versioninfo
-        sys.exit(0)
-
     #--------------------------------------------------------------------------
     # Create the simulation arguments, output header information
     #--------------------------------------------------------------------------
@@ -108,7 +97,6 @@ def main():
     if not options.quiet:
         from datetime import datetime
         date = datetime.now()
-        print "# %s" % (versioninfo,)
         print "# Date run: %d-%d-%d" %(date.year, date.month, date.day)
         print "# ** OPTIONS **"
         for o in parser.option_list:
