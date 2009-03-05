@@ -23,7 +23,7 @@ class Kalman(basic._Base):
             usepbest=Param(default=0, type='int', 
                 doc='Add the use of pbest to the mix' ),
             pgrelationship=Param(default=0.7, type='float', 
-                doc='Strength of the relationship between gbest and pbest' ),
+                doc='Strength of the relationship between nbest and pbest' ),
         )
 
     def __init__(self, *args, **kargs):
@@ -104,7 +104,7 @@ class Kalman(basic._Base):
 
         rand = self.rand
 
-        grel = particle.gbestpos - particle.pos
+        grel = particle.nbestpos - particle.pos
         if self.norandscale:
             newvel = 1.0 * grel
         else:
@@ -118,7 +118,7 @@ class Kalman(basic._Base):
         if not self.usepbest:
             kalman.add(newpos)
         else:
-            kalman.add(Vector(list(newpos) + list(particle.bestpos)))
+            kalman.add(Vector(list(newpos) + list(particle.pbestpos)))
 
         if self.predict:
             mean, var = kalman.predict()

@@ -37,7 +37,7 @@ class Particle(object):
         # function, which will clean up the __init__ function dramatically.
         if state is not None:
             dep_str, pos_str, vel_str, val_str, pbestpos_str, pbestval_str, \
-                    gbestpos_str, gbestval_str = state.split(';')
+                    nbestpos_str, nbestval_str = state.split(';')
             self.dep_str = dep_str
             if dep_str:
                 try:
@@ -54,10 +54,10 @@ class Particle(object):
             pos = [float(field) for field in pos_str.split(',')]
             vel = [float(field) for field in vel_str.split(',')]
             val = float(val_str)
-            bestpos = [float(field) for field in pbestpos_str.split(',')]
-            bestval = float(pbestval_str)
-            gbestpos = [float(field) for field in gbestpos_str.split(',')]
-            gbestval = float(gbestval_str)
+            pbestpos = [float(field) for field in pbestpos_str.split(',')]
+            pbestval = float(pbestval_str)
+            nbestpos = [float(field) for field in nbestpos_str.split(',')]
+            nbestval = float(nbestval_str)
 
         #super(Particle, self).__init__( pos )
 
@@ -72,19 +72,19 @@ class Particle(object):
         if state is None:
             deps = [self.id]
             self.dep_str = str(self.id)
-            bestpos = pos
-            bestval = val
-            gbestpos = pos
-            gbestval = val
+            pbestpos = pos
+            pbestval = val
+            nbestpos = pos
+            nbestval = val
 
         self.deps = deps
         self.pos = Vector(pos)
         self.vel = Vector(vel)
         self.val = val
-        self.bestpos = Vector(bestpos)
-        self.bestval = bestval
-        self.gbestpos = Vector(gbestpos)
-        self.gbestval = gbestval
+        self.pbestpos = Vector(pbestpos)
+        self.pbestval = pbestval
+        self.nbestpos = Vector(nbestpos)
+        self.nbestval = nbestval
 
         self.stagnantcount = 0
         self.improvedcount = 0
@@ -92,10 +92,10 @@ class Particle(object):
     def copy(self):
         """Performs a deep copy and returns the new Particle."""
         p = Particle(self.pos, self.vel, self.val)
-        p.bestpos = Vector(self.bestpos)
-        p.bestval = self.bestval
-        p.gbestpos = Vector(self.gbestpos)
-        p.gbestval = self.gbestval
+        p.pbestpos = Vector(self.pbestpos)
+        p.pbestval = self.pbestval
+        p.nbestpos = Vector(self.nbestpos)
+        p.nbestval = self.nbestval
         p.deps = list(self.deps)
         p.dep_str = self.dep_str
         p.iters = self.iters
@@ -107,11 +107,11 @@ class Particle(object):
         This is used only in the Mrs PSO implementation.
         """
         p = Particle(self.pos, self.vel, self.val)
-        p.bestpos = Vector(self.bestpos)
-        p.bestval = self.bestval
+        p.pbestpos = Vector(self.pbestpos)
+        p.pbestval = self.pbestval
         # We send our personal best to contribute to their global best.
-        p.gbestpos = Vector(self.bestpos)
-        p.gbestval = self.bestval
+        p.nbestpos = Vector(self.pbestpos)
+        p.nbestval = self.pbestval
         p.dep_str = ''
         p.deps = []
         p.iters = self.iters
@@ -122,20 +122,20 @@ class Particle(object):
         self.vel = Vector(newvel)
         self.val = newval
         self.iters += 1
-        if isbetterfunc(self.val, self.bestval):
+        if isbetterfunc(self.val, self.pbestval):
             self.stagnantcount = 0
             self.improvedcount += 1
-            self.bestval = newval
-            self.bestpos = newpos
+            self.pbestval = newval
+            self.pbestpos = newpos
         else:
             self.stagnantcount += 1
             self.improvedcount = 0
 
-    def gbest_cand(self, potential_pos, potential_val, comparator):
-        """Update gbest if the given value is better than the current gbest."""
-        if comparator(potential_val, self.gbestval):
-            self.gbestpos = Vector(potential_pos)
-            self.gbestval = potential_val
+    def nbest_cand(self, potential_pos, potential_val, comparator):
+        """Update nbest if the given value is better than the current nbest."""
+        if comparator(potential_val, self.nbestval):
+            self.nbestpos = Vector(potential_pos)
+            self.nbestval = potential_val
             return True
         else:
             return False
@@ -148,10 +148,10 @@ class Particle(object):
         self.pos = Vector(pos)
         self.vel = Vector(vel)
         self.val = val
-        self.bestpos = Vector(pos)
-        self.bestval = val
-        self.gbestpos = Vector(pos)
-        self.gbestval = val
+        self.pbestpos = Vector(pos)
+        self.pbestval = val
+        self.nbestpos = Vector(pos)
+        self.nbestval = val
         self.resetcounts()
 
     def resetcounts(self):
@@ -159,8 +159,8 @@ class Particle(object):
         self.improvedcount = 0
 
     def __str__(self):
-        return "pos: %r; vel: %r; val: %r; bestpos: %r; bestval: %r" % (
-                self.pos, self.vel, self.val, self.bestpos, self.bestval)
+        return "pos: %r; vel: %r; val: %r; pbestpos: %r; pbestval: %r" % (
+                self.pos, self.vel, self.val, self.pbestpos, self.pbestval)
 
     def __repr__(self):
         # Note: We don't set the dep_str from self.deps anymore.
@@ -168,8 +168,8 @@ class Particle(object):
                         ','.join(str(x) for x in self.pos),
                         ','.join(str(x) for x in self.vel),
                         str(self.val),
-                        ','.join(str(x) for x in self.bestpos),
-                        str(self.bestval),
-                        ','.join(str(x) for x in self.gbestpos),
-                        str(self.gbestval)))
+                        ','.join(str(x) for x in self.pbestpos),
+                        str(self.pbestval),
+                        ','.join(str(x) for x in self.nbestpos),
+                        str(self.nbestval)))
 

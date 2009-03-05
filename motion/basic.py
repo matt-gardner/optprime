@@ -55,8 +55,8 @@ class Constricted(_Base):
         r1 = Vector([uniform(0, self.phi1) for x in xrange(self.dims)])
         r2 = Vector([uniform(0, self.phi2) for x in xrange(self.dims)])
 
-        grel = particle.gbestpos - particle.pos
-        prel = particle.bestpos - particle.pos
+        grel = particle.nbestpos - particle.pos
+        prel = particle.pbestpos - particle.pos
         newvel = s * (particle.vel + grel*r1 + prel*r2)
 
         if self.restrictvel:
@@ -118,8 +118,8 @@ class BasicAdaptive(_Base):
             particle.dt *= self.step_dec
             vel *= self.step_dec
 
-        grel = particle.gbestpos - pos
-        prel = particle.bestpos - pos
+        grel = particle.nbestpos - pos
+        prel = particle.pbestpos - pos
 
         acc = r1 * grel + r2 * prel + k * vel
 
@@ -142,8 +142,8 @@ class BasicGauss(_Base):
         phi = 2/0.97225 # per Clerc's 2003 TRIBES paper
         chi = 1/(phi - 1 + sqrt(phi**2 - 2*phi))
 
-        grel = particle.gbestpos - particle.pos
-        prel = particle.bestpos - particle.pos
+        grel = particle.nbestpos - particle.pos
+        prel = particle.pbestpos - particle.pos
 
         # Generate a Gaussian around the velocity vectors according to Clerc's
         # paper.

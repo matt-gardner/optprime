@@ -16,7 +16,7 @@ class Link1(basic._Base):
                 doc='Weight applied to predictions' ),
             usepbest=Param(default=0, type='int', doc='Use pbest' ),
             pweight=Param(default=0.1, type='float', 
-                doc='Weight applied to pbest/gbest combination' ),
+                doc='Weight applied to pbest/nbest combination' ),
             dimdiv=Param(default=0, type='int', 
                 doc='Divide variance by number of dimensions' ),
             norm=Param(default=1, type='int', 
@@ -36,18 +36,18 @@ class Link1(basic._Base):
     def __call__(self, particle):
         # Here we get the new gnorm dependent on whether we include pbest or not
         if self.usepbest:
-            gnorm1 = particle.gbestpos - particle.pos
-            gnorm2 = particle.bestpos - particle.pos
+            gnorm1 = particle.nbestpos - particle.pos
+            gnorm2 = particle.pbestpos - particle.pos
 
             pw = self.pweight
             gw = 1 - pw
 
             gnorm = gw*gnorm1 + pw*gnorm2
         else:
-            gnorm = particle.gbestpos - particle.pos
+            gnorm = particle.nbestpos - particle.pos
 
         pnorm = Vector(particle.vel)
-        gval = particle.gbestval
+        gval = particle.nbestval
         gmag = abs(gnorm)
         pmag = abs(pnorm)
 
@@ -60,8 +60,8 @@ class Link1(basic._Base):
         if self.weight == -1:
             try:
                 # Applies to self -- when minimizing...
-                weight = particle.gbestval / (particle.bestval
-                        + particle.gbestval)
+                weight = particle.nbestval / (particle.pbestval
+                        + particle.nbestval)
                 # ...when maximizing
                 if self.comparator(1,0):
                     weight = 1 - weight
@@ -121,7 +121,7 @@ class Link2(basic._Base):
                 doc='Variance multiplier for craziness' ),
             usepbest=Param(default=0, type='int', doc='Use pbest' ),
             pweight=Param(default=0.45, type='float', 
-                doc='Weight applied to pbest/gbest combination' ),
+                doc='Weight applied to pbest/nbest combination' ),
         )
 
     def __init__(self, *args, **kargs):
@@ -132,8 +132,8 @@ class Link2(basic._Base):
 
     def __call__(self, particle):
         if self.usepbest:
-            gnorm1 = particle.gbestpos - particle.pos
-            gnorm2 = particle.bestpos - particle.pos
+            gnorm1 = particle.nbestpos - particle.pos
+            gnorm2 = particle.pbestpos - particle.pos
             gmag1 = abs(gnorm1)
             gmag2 = abs(gnorm2)
 
@@ -143,8 +143,8 @@ class Link2(basic._Base):
             if self.pweight == -1:
                 try:
                     # Minimizing -- weight applies to self
-                    weight = particle.gbestval \
-                            / (particle.bestval + particle.gbestval)
+                    weight = particle.nbestval \
+                            / (particle.pbestval + particle.nbestval)
                     # Maximizing -- invert the weight -- still applies to self
                     if self.comparator(1,0):
                         weight = 1 - weight
@@ -158,7 +158,7 @@ class Link2(basic._Base):
 
             gnorm = gw * gnorm1 + pw * gnorm2
             if gnorm.magnitude() < 1.0e-4:
-                if self.comparator(particle.gbestval, particle.bestval):
+                if self.comparator(particle.nbestval, particle.pbestval):
                     gnorm = gnorm1
                 else:
                     gnorm = gnorm2
@@ -166,11 +166,11 @@ class Link2(basic._Base):
             gnorm.normalize()
             gnorm *= (gmag1 * gw + gmag2 * pw)
         else:
-            gnorm = particle.gbestpos - particle.pos
+            gnorm = particle.nbestpos - particle.pos
 
         pnorm = Vector(particle.vel)
 
-        gval = particle.gbestval
+        gval = particle.nbestval
 
         gmag = abs(gnorm)
         pmag = abs(pnorm)
@@ -182,8 +182,8 @@ class Link2(basic._Base):
         # vector.
         if self.weight == -1:
             try:
-                weight = particle.gbestval / (particle.bestval
-                        + particle.gbestval)
+                weight = particle.nbestval / (particle.pbestval
+                        + particle.nbestval)
                 if self.comparator(1,0):
                     weight = 1 - weight
             except ZeroDivisionError, e:
@@ -246,15 +246,15 @@ class Link3(basic._Base):
 
     def __call__(self, particle):
         predpos = particle.pos + particle.vel
-        goodpos = particle.bestpos
+        goodpos = particle.pbestpos
 
         diffpos = predpos - goodpos
 
         #pw = self.rand.gauss( self.weight, self.cfac )
         if self.weight == -1:
             try:
-                weight = particle.gbestval / (particle.bestval
-                        + particle.gbestval)
+                weight = particle.nbestval / (particle.pbestval
+                        + particle.nbestval)
             except ZeroDivisionError, e:
                 weight = 0
         else:
@@ -295,12 +295,12 @@ class Link4(basic._Base):
 
     def __call__(self, particle):
         predpos = particle.pos + particle.vel
-        goodpos = particle.gbestpos
+        goodpos = particle.nbestpos
 
         if self.weight == -1:
             try:
-                weight = particle.gbestval \
-                        / (particle.bestval + particle.gbestval)
+                weight = particle.nbestval \
+                        / (particle.pbestval + particle.nbestval)
             except ZeroDivisionError, e:
                 weight = 0
         else:

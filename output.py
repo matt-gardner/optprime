@@ -11,7 +11,7 @@ class Output(object):
 
     This class should be extended to be useful.  Note that the require_all
     attribute reveals whether this outputter requires the full population or
-    just the gbest.
+    just the nbest.
     """
     require_all = False
     _params = dict(
@@ -39,7 +39,7 @@ class Basic(Output):
         """
         best = soc.bestparticle()
 
-        print best.bestval
+        print best.pbestval
         sys.stdout.flush()
 
 
@@ -47,7 +47,7 @@ class Pair(Output):
     """Outputs the iteration and best value."""
     def __call__(self, soc, iters):
         best = soc.bestparticle()
-        print iters, best.bestval
+        print iters, best.pbestval
         sys.stdout.flush()
 
 
@@ -55,7 +55,7 @@ class IterNumVal(Output):
     """Outputs the iteration, number of particles, and best value."""
     def __call__(self, soc, iters):
         best = soc.bestparticle()
-        print iters, soc.numparticles(),  best.bestval
+        print iters, soc.numparticles(),  best.pbestval
         sys.stdout.flush()
 
 
@@ -88,7 +88,7 @@ class Extended(Output):
     """Outputs the best value and best position."""
     def __call__(self, soc, iters):
         best = soc.bestparticle()
-        print best.bestval, " ".join([str(x) for x in best.bestpos])
+        print best.pbestval, " ".join([str(x) for x in best.pbestpos])
         sys.stdout.flush()
 
 
@@ -109,7 +109,7 @@ class Everything(Output):
 
         time_per_iter = seconds / (iters - self.last_iter)
         best = soc.bestparticle()
-        print iters, best.bestval, " ".join([str(x) for x in best.bestpos]), \
+        print iters, best.pbestval, " ".join([str(x) for x in best.pbestpos]), \
                 "; Time: ", time_per_iter
         sys.stdout.flush()
 
@@ -126,7 +126,7 @@ class Swarm(Output):
         print iters, len(soc.particles)
         for part in soc.particles:
             print part.val, ' '.join(str(x) for x in part.pos), \
-                    part.bestval, ' '.join(str(x) for x in part.bestpos)
+                    part.pbestval, ' '.join(str(x) for x in part.pbestpos)
         print
 
 
@@ -150,11 +150,11 @@ class Stats(Output):
     def __call__(self, soc, iters):
         best = soc.bestparticle()
         self.iters += 1
-        if best.bestval == self.last_val:
+        if best.pbestval == self.last_val:
             self.not_updated += 1
-            print iters, best.bestval
+            print iters, best.pbestval
         else:
-            self.last_val = best.bestval
+            self.last_val = best.pbestval
             if best.idx in self.recentlyseen:
                 self.recently_seen_changes += 1
             if best.idx == self.bestidx:
@@ -167,17 +167,17 @@ class Stats(Output):
                 self.counter[best.idx] = 0
             self.counter[best.idx] += 1
             self.changes += 1
-            print iters, best.bestval, best.idx
+            print iters, best.pbestval, best.idx
 
     def finish(self):
         print 'Stats:'
         #for idx in self.counter:
             #print idx, self.counter[idx]/self.changes
-        print 'Percent of iterations that gbest was not updated:'
+        print 'Percent of iterations that nbest was not updated:'
         print self.not_updated/self.iters
-        print 'Percent of gbest updates that were by the same particle:'
+        print 'Percent of nbest updates that were by the same particle:'
         print self.consistent_changes/self.changes
-        print 'Percent of gbest updates that were by recently seen particles:'
+        print 'Percent of nbest updates that were by recently seen particles:'
         print self.recently_seen_changes/self.changes
 
 

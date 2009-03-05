@@ -32,15 +32,15 @@ class Pivot(basic._Base):
 
     def __call__(self, particle):
         """Implements the Simple Pivot motion approach"""
-        distance = abs(particle.bestpos - particle.gbestpos)
+        distance = abs(particle.pbestpos - particle.nbestpos)
 
-        ppart = particle.bestpos + self.hyperspherevariate( distance )
-        pbest = particle.gbestpos + self.hyperspherevariate( distance )
+        ppart = particle.pbestpos + self.hyperspherevariate( distance )
+        pbest = particle.nbestpos + self.hyperspherevariate( distance )
 
-        totval = particle.gbestval + particle.bestval
+        totval = particle.nbestval + particle.pbestval
 
         try:
-            pw = particle.gbestval / totval
+            pw = particle.nbestval / totval
         except ZeroDivisionError, e:
             pw = 0.5
 

@@ -8,8 +8,8 @@ from amlpso.Vector import Vector
 
 class _Base(ParamObj):
     _params = dict(
-        transitive_gbest=Param(default=0, type='int',
-            doc='Whether to send gbest to others instead of pbest'),
+        transitive_best=Param(default=0, type='int',
+            doc='Whether to send nbest to others instead of pbest'),
         stagcount=Param(default=0, type='int',
             doc='Number of stagnations to trigger a relocation test'
                 ' (0 means no test)'),
@@ -131,7 +131,7 @@ class _Base(ParamObj):
                     bestpart = p
                     bestval = p.bestval
                     bestidx = i
-                self.update_gbest(p)
+                self.update_nbest(p)
                 newstates[i] = sim.motion(p)
             sim.motion.post_batch( self )
             bestpos = bestpart.bestpos
@@ -252,13 +252,13 @@ class _Base(ParamObj):
     def bestparticle(self):
         return self._bestparticle
 
-    def update_gbest(self, particle):
+    def update_nbest(self, particle):
         """Updates the global best for this particle"""
         for i in self.iterneighbors(particle):
             p = self.particles[i]
-            particle.gbest_cand(p.bestpos, p.bestval, self.is_better)
-            if self.transitive_gbest:
-                particle.gbest_cand(p.gbestpos, p.gbestval, self.is_better)
+            particle.nbest_cand(p.bestpos, p.bestval, self.is_better)
+            if self.transitive_best:
+                particle.nbest_cand(p.nbestpos, p.nbestval, self.is_better)
 
     def numparticles(self):
         return len(self.particles)

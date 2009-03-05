@@ -8,7 +8,7 @@ from mrs import param
 from particle import Particle
 
 
-# TODO: We currently assume that your gbest is the best pbest you've ever seen
+# TODO: We currently assume that your nbest is the best pbest you've ever seen
 # among all of your neighbors; an alternative interpretation might be that
 # it's the best pbest among all of your current neighbors.
 
@@ -153,7 +153,8 @@ def pso_map(key, value):
     message = particle.make_message()
     for dep_id in particle.deps:
         if dep_id == particle.id:
-            particle.gbest_cand(particle.bestpos, particle.bestval, comparator)
+            particle.nbest_cand(particle.pbestpos, particle.pbestval, \
+                    comparator)
         else:
             yield (str(dep_id), repr(message))
 
@@ -168,15 +169,15 @@ def pso_reduce(key, value_iter):
 
     for value in value_iter:
         record = Particle(pid=int(key), state=value)
-        if comparator(record.gbestval, bestval):
+        if comparator(record.nbestval, bestval):
             best = record
-            bestval = record.gbestval
+            bestval = record.nbestval
 
         if not record.is_message():
             particle = record
 
     if particle:
-        particle.gbest_cand(best.gbestpos, bestval, comparator)
+        particle.nbest_cand(best.nbestpos, bestval, comparator)
         yield repr(particle)
     else:
         yield repr(best)
@@ -192,7 +193,7 @@ def findbest_reduce(key, value_iter):
     best = None
     for value in value_iter:
         p = Particle(state=value)
-        if (best is None) or (comparator(p.bestval, best.bestval)):
+        if (best is None) or (comparator(p.pbestval, best.pbestval)):
             best = p
     yield repr(best)
 
