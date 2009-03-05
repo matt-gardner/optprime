@@ -22,6 +22,9 @@ class Output(object):
     def __call__(self, soc, iters):
         raise NotImplementedError()
 
+    def start(self):
+        pass
+
     def finish(self):
         pass
 
@@ -58,7 +61,8 @@ class IterNumVal(Output):
 
 class Timer(Output):
     """Outputs the elapsed time for each iteration."""
-    def __init__(self):
+
+    def start(self):
         from datetime import datetime
         self.last_iter = 0
         self.last_time = datetime.now()
@@ -90,7 +94,7 @@ class Extended(Output):
 
 class Everything(Output):
     """Outputs the iteration, best value, best position, and elapsed time."""
-    def __init__(self):
+    def start(self):
         from datetime import datetime
         self.last_iter = 0
         self.last_time = datetime.now()
