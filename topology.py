@@ -4,48 +4,48 @@ from amlpso.Vector import Vector
 from mrs.param import Param
 
 
-class _FixedBase(_Base):
+class _Topology(object):
     # All fixed sociometries have this option
     _params = dict(
-        selflink=Param(doc='Include self in neighborhood', default=True),
+        num=Param(default=20, type='int',
+            doc='Number of particles in swarm'),
+        selflink=Param(default=1, type='int',
+            doc='Include self in neighborhood'),
         )
 
 
-class Ring(_FixedBase):
+class Ring(_Topology):
     _params = dict(
-        double=Param(default=0, type='int', doc='Doubly linked ring'),
         neighbors=Param(default=1, type='int',
             doc='Number of neighbors to send to on each side'),
         )
 
     def iterneighbors(self, particle):
-        idx = particle.idx
-        num = len(self.particles)
-        num_neighbors = self.neighbors
-        for i in range(idx+1, idx+1+num_neighbors):
-            yield i % num
-        if self.double:
-            for i in range(idx-num_neighbors, idx):
-                yield i % num
         if self.selflink:
-            yield idx
+            yield particle.idx
+        for i in xrange(self.neighbors):
+            yield (particle.idx + i) % self.num
+            yield (particle.idx - i) % self.num
 
 
-class Complete(_FixedBase):
+class DRing(Ring):
+    def iterneighbors(self, particle):
+        if self.selflink:
+            yield particle.idx
+        for i in xrange(self.neighbors):
+            yield (particle.idx + i) % self.num
+
+
+class Complete(_Topology):
     def iterneighbors(self, particle):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
-        idx = particle.idx
-        num = len(self.particles)
-        for i in xrange(0,idx):
-            yield i
-        for i in xrange(idx+1,num):
-            yield i
-        if self.selflink:
-            yield idx
+        for i in xrange(self.num):
+            if self.selflink or (i != particle.idx):
+                yield i
 
 
-class Rand(_FixedBase):
+class Rand(_Topology):
     _params = dict(
         neighbors=Param(default=-1, type='int',
             doc='Number of neighbors to send to.  Default of -1 means all '+
@@ -68,7 +68,7 @@ class Rand(_FixedBase):
             yield idx
 
 
-class Islands(_FixedBase):
+class Islands(_Topology):
     _params = dict(
         num_islands=Param(default=2, type='int',
             doc='Number of islands to use'),
@@ -90,7 +90,7 @@ class Islands(_FixedBase):
                     yield j
 
 
-class CommunicatingIslands(_FixedBase):
+class CommunicatingIslands(_Topology):
     _params = dict(
         num_islands=Param(default=4, type='int',
             doc='Number of islands to use'),
