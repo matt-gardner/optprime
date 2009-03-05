@@ -39,6 +39,7 @@ class RBF(_general._Base):
             seed=Param(default=42, type='int', 
                 doc='Random seed used to generate points')
             )
+
     def setup(self):
         super(RBF,self).setup()
         self._set_constraints(((-50,50),) * self.dims)
@@ -56,7 +57,6 @@ class RBF(_general._Base):
         #self.debug_proc = Popen(('%s/bin/hadoop' % os.environ['HADOOP_HOME'],
         #    'dfs', '-put', '-', tempfile.mktemp()), stdin=PIPE)
         #example: print >>self.debug_proc.stdin, 'Hello!'
-
 
     def __call__( self, vec ):
         """Evaluate sum squared error."""

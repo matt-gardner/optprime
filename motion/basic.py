@@ -55,12 +55,10 @@ class Basic(_Base):
         m1=Param(default=1.0, type='float', doc='Momentum start'),
         m2=Param(default=1.0, type='float', doc='Momentum stop'),
         mstep=Param(default=0.0, type='float', doc='Momentum step'),
-        phi1=Param(default=2.05, type='float', doc='Max of phi_1'),
-        phi2=Param(default=2.05, type='float', doc='Max of phi_2'),
+        phi1=Param(default=2.05, type='float', doc='Value of phi_1 constant'),
+        phi2=Param(default=2.05, type='float', doc='Value of phi_2 constant'),
         kappa=Param(default=1.0, type='float',
             doc="Clerc's Kappa value, always in (0,1)"),
-        randvecs=Param(default=1, type='int',
-            doc='Use random vectors instead of random constants'),
         arpso=Param(default=0, type='int',
             doc='Use ARPSO diversity guided behavior'),
         constricted=Param(default=1, type='int',
@@ -124,12 +122,8 @@ class Basic(_Base):
             else:
                 s = kappa
                 
-        if self.randvecs:
-            r1 = Vector([self.rand.uniform(0,phi1) for x in xrange(self.dims)])
-            r2 = Vector([self.rand.uniform(0,phi2) for x in xrange(self.dims)])
-        else:
-            r1 = self.rand.uniform(0,phi1)
-            r2 = self.rand.uniform(0,phi2)
+        r1 = Vector([self.rand.uniform(0,phi1) for x in xrange(self.dims)])
+        r2 = Vector([self.rand.uniform(0,phi2) for x in xrange(self.dims)])
         m = self.momentum
 
         grel = particle.gbestpos - particle.pos
@@ -138,7 +132,7 @@ class Basic(_Base):
         newvel = s * (particle.vel*m + self.sign*(grel*r1 + prel*r2))
 
         if self.restrictvel:
-            self.vcube.constrain_vec( newvel )
+            self.vcube.constrain_vec(newvel)
 
         # Apply the momentum schedule before doing anything else
         m += self.mstep
