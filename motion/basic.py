@@ -9,13 +9,6 @@ from amlpso.cubes.cube import Cube
 
 
 class _Base(ParamObj):
-    __slots__ = ['rand']
-
-    _params = dict(
-        restrictvel=Param(default=0, doc='Restrict velocities'),
-        wrap=Param(default=0, doc='Wrap particles around the constraints'),
-        )
-
     def setup(self, function, *args, **kargs):
         if function.maximize:
             self.comparator = operator.gt
@@ -28,127 +21,48 @@ class _Base(ParamObj):
         sizes = [abs(cr-cl) for cl,cr in constraints]
         vconstraints = [(-s,s) for s in sizes]
         self.vcube = Cube(vconstraints)
-        self.sign = 1.0
 
-    def _motion(self, particle):
-        """Gets the next position and velocity from the given particle.
-        
-        Subclasses should override the _motion method.
-        """
-        pos, vel = self._motion(particle)
-        if self.wrap:
-            self.cube.wrap(pos)
-        return pos, vel
-
-    def _motion(self, particle):
+    def __call__(self, particle):
         raise NotImplementedError
 
-    def pre_batch(self, soc):
-        pass
 
-    def post_batch(self, soc):
-        pass
-
-
-class Basic(_Base):
+class Constricted(_Base):
     _params = dict(
-        m1=Param(default=1.0, type='float', doc='Momentum start'),
-        m2=Param(default=1.0, type='float', doc='Momentum stop'),
-        mstep=Param(default=0.0, type='float', doc='Momentum step'),
         phi1=Param(default=2.05, type='float', doc='Value of phi_1 constant'),
         phi2=Param(default=2.05, type='float', doc='Value of phi_2 constant'),
         kappa=Param(default=1.0, type='float',
             doc="Clerc's Kappa value, always in (0,1)"),
-        arpso=Param(default=0, type='int',
-            doc='Use ARPSO diversity guided behavior'),
-        constricted=Param(default=1, type='int',
-            doc='Use constricted PSO, per Clerc'),
-        arpso_high=Param(default=0.25, type='float',
-            doc='High water mark for ARPSO'),
-        arpso_low=Param(default=5.0e-6, type='float',
-            doc='Low water mark for ARPSO'),
-        arpso_rate=Param(default=1.0, type='float',
-            doc='Learning rate for ARPSO'),
+        restrictvel=Param(default=0, doc='Restrict velocities'),
         )
 
     def setup(self, *args, **kargs):
         super(Basic, self).setup(*args, **kargs)
 
-        self.msmall = min(self.m1, self.m2)
-        self.mbig = max(self.m1, self.m2)
-
-        self.current_arpso_low = self.arpso_low
-        self.current_arpso_high = self.arpso_high
-
-        self.momentum = self.m1
-
-        p1, p2 = [Vector(x) for x in zip( *self.cube.constraints )]
+        p1, p2 = [Vector(x) for x in zip(*self.cube.constraints)]
         self.diaglength = abs(p1 - p2)
 
-    def pre_batch(self, soc):
-        # Calculate diversity and set the sign appropriately if needs be.
-        if not self.arpso or not soc.is_initialized:
-            return
-
-        L = self.diaglength
-        S = soc.numparticles()
-        piter = soc.iterparticles()
-        pmean = Vector(piter.next())
-        for p in piter:
-            pmean += p
-        pmean /= S
-
-        diversity = sum([abs(p-pmean) for p in soc.iterparticles()]) / (S*L)
-
-        # Set the sign accordingly
-        if diversity > self.current_arpso_high:
-            self.sign = 1
-        elif diversity < self.current_arpso_low:
-            self.sign = -1
-            self.current_arpso_low *= self.arpso_rate
-            self.current_arpso_high *= self.arpso_rate
-
-    def _motion(self, particle):
+    def __call__(self, particle):
         """Get the next position and velocity from this particle."""
 
-        phi1 = self.phi1
-        phi2 = self.phi2
-        s = 1.0
-        if self.constricted:
-            phi = phi1 + phi2
-            kappa = self.kappa
-            if phi > 4:
-                s = 2*kappa/abs(2 - phi - sqrt(phi**2 - 4*phi))
-            else:
-                s = kappa
-                
-        r1 = Vector([self.rand.uniform(0,phi1) for x in xrange(self.dims)])
-        r2 = Vector([self.rand.uniform(0,phi2) for x in xrange(self.dims)])
-        m = self.momentum
+        phi = self.phi1 + self.phi2
+        kappa = self.kappa
+        if phi > 4:
+            s = 2*kappa/abs(2 - phi - sqrt(phi**2 - 4*phi))
+        else:
+            s = kappa
+
+        uniform = self.rand.uniform
+        r1 = Vector([uniform(0, self.phi1) for x in xrange(self.dims)])
+        r2 = Vector([uniform(0, self.phi2) for x in xrange(self.dims)])
 
         grel = particle.gbestpos - particle.pos
         prel = particle.bestpos - particle.pos
-
-        newvel = s * (particle.vel*m + self.sign*(grel*r1 + prel*r2))
+        newvel = s * (particle.vel + grel*r1 + prel*r2)
 
         if self.restrictvel:
             self.vcube.constrain_vec(newvel)
 
-        # Apply the momentum schedule before doing anything else
-        m += self.mstep
-        m = min(self.mbig, m)
-        m = max(self.msmall, m)
-
-        self.momentum = m
-
         return particle.pos + newvel, newvel
-
-    def _setsign(self, soc):
-        if not self.arpso:
-            return
-
-        dh = self.arpso_high
-        dl = self.arpso_low
 
 
 class BasicAdaptive(_Base):
@@ -172,7 +86,7 @@ class BasicAdaptive(_Base):
     def setup(self, *args, **kargs):
         super(BasicAdaptive, self).setup(*args, **kargs)
 
-    def _motion(self, particle):
+    def __call__(self, particle):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -219,7 +133,7 @@ class BasicAdaptive(_Base):
 
 
 class BasicGauss(_Base):
-    def _motion(self, particle):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 

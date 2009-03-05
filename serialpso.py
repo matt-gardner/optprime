@@ -48,7 +48,7 @@ def main():
             action='extend',
             dest='motion',
             search=['motion.basic', 'motion'],
-            default='Basic',
+            default='Constricted',
             help='Particle motion type',
             )
     parser.add_option('-t','--top',

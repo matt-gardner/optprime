@@ -96,7 +96,7 @@ class Kalman(basic._Base):
         self.filters[id(particle)] = kalman
         return self.filters[id(particle)]
 
-    def _motion(self, particle):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
