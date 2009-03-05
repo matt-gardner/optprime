@@ -10,31 +10,46 @@ class ExternalFunction(_general._Base):
 
     The only requirements for the executable are that it takes as command line
     arguments the function parameters, and spits out to stdout the function
-    evaluation at that point.  Nothing else should go to stdout.
+    evaluation at that point.  Nothing else should go to stdout.  If stdin is
+    set to true, the function must take arguments from stdin instead.  In that
+    case, the process is never closed, so it should run faster.  The executable
+    should be a loop that waits on stdin and spits out to stdout.
     """
 
     from mrs.param import Param
 
     _params = dict(
             externfunc=Param(doc='External function (must be an executable file)',
-                default='')
+                default=''),
+            stdin=Param(doc='Get parameters from stdin instead of as commandline '+
+                'arguments',
+                type='int',
+                default=0)
             )
 
     def setup(self):
+        import subprocess
         if self.externfunc == '':
             raise Exception('Must supply an external function!')
         super(ExternalFunction, self).setup()
         self._set_constraints(((-50,50),) * self.dims)
         self.ERROR = float('inf')
+        if self.stdin == 1:
+            self.func_proc = subprocess.Popen((self.externfunc), stdout=subprocess.PIPE,
+                stdin=subprocess.PIPE)
 
     def __call__( self, vec ):
         import subprocess
-        command = [self.externfunc]
-        for x in vec:
-            command.append(str(x))
-        func_proc = subprocess.Popen(tuple(command), stdout=subprocess.PIPE)
-        retcode = func_proc.wait()
-        if retcode < 0:
-            return self.ERROR
-        retval = func_proc.stdout.readline()
+        if self.stdin:
+            self.func_proc.stdin.write(' '.join(str(x) for x in vec)+' ')
+            retval = self.func_proc.stdout.readline()
+        else:
+            command = [self.externfunc]
+            for x in vec:
+                command.append(str(x))
+            func_proc = subprocess.Popen(tuple(command), stdout=subprocess.PIPE)
+            retcode = func_proc.wait()
+            if retcode < 0:
+                return self.ERROR
+            retval = func_proc.stdout.readline()
         return float(retval)
