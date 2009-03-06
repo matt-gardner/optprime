@@ -6,19 +6,13 @@ structures that deal with various types of hypercubic interpolation (there
 are many!) can just assume access to a class of this kind.
 """
 
-#---------------------------------------------------------------------------
-
 from __future__ import division
 from copy import deepcopy
 from math import sqrt
 from itertools import izip
 from math import floor, ceil
-import sys
 import copy
-if sys.version < '2.3': raise RuntimeError("Python 2.3 or higher required")
 
-#---------------------------------------------------------------------------
-#---------------------------------------------------------------------------
 
 class Cube(object):
     def __init__( self, constraints, values=None ):
@@ -159,7 +153,6 @@ class Cube(object):
             s = s + ("%r:%r\n" % (v,v.value))
         return s
 
-#---------------------------------------------------------------------------
 
 class ConstantGradientExtremumMixin(object):
     def constrained_extremum( self, cvec, ismin=False ):
@@ -185,7 +178,6 @@ class ConstantGradientExtremumMixin(object):
         pt.value = self.value( pt )
         return pt
 
-#---------------------------------------------------------------------------
 
 class Vertex(list):
     # Limit the things we can change here
@@ -240,11 +232,6 @@ class Vertex(list):
 
     def __ge__( self, other ):
         return self.value >= other.value
-
-    '''
-    def __str__( self ):
-        return " ".join(["%0.2f" % float(x) for x in self])
-    '''
 
     def __init__( self, *args, **kargs ):
         # Call the original constructor (try not to mess list up too much)
@@ -416,4 +403,3 @@ class Vertex(list):
 
     __rmul__ = __mul__
 
-#---------------------------------------------------------------------------

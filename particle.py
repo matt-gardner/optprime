@@ -3,7 +3,7 @@ from random import Random
 from vector import Vector
 import operator
 
-#------------------------------------------------------------------------------
+
 class Particle(object):
     """Particle for Particle Swarm Optimization.
     
