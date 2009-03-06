@@ -4,7 +4,7 @@ from itertools import izip
 
 class _Base(ParamObj):
     _params = dict(
-            dims=Param(default=2, type='int',
+            dims=Param(default=2, type='int', shortopt='-d',
                 doc='Number of dimensions'),
             center=Param(default='0.5', type='float',
                 doc='Relative center of function, between 0 and 1.'),
