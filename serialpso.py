@@ -85,7 +85,6 @@ def main():
         function = param.instantiate(options, 'func')
         topology = param.instantiate(options, 'top')
         motion = param.instantiate(options, 'motion')
-        population = param.instantiate(options, 'pop')
         output = param.instantiate(options, 'out')
 
         try:
