@@ -8,7 +8,6 @@ from __future__ import division
 import os
 import sys
 from mrs import param
-from population import Population
 
 
 def main():
@@ -55,7 +54,7 @@ def main():
             action='extend',
             dest='top',
             metavar='TOPOLOGY',
-            search=['neighborhood.fixed', 'neighborhood'],
+            search=['topology'],
             default='Complete',
             help='Particle topology/sociometry',
             )
@@ -67,11 +66,6 @@ def main():
             default='Basic',
             help='Style of output',
             )
-
-    # We add suboptions for Population, but no --pop option (since there's
-    # only one Population class).
-    parser.set_defaults(pop=Population)
-    parser.add_param_object(Population, 'pop')
 
     options, args = parser.parse_args()
 

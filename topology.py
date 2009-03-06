@@ -1,6 +1,5 @@
 from __future__ import division
-from _base import _Base
-from amlpso.vector import Vector
+from vector import Vector
 from mrs.param import Param
 
 # TODO: should initscale and initoffset be moved into Function??
