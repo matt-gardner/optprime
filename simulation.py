@@ -18,7 +18,6 @@ from cubes.cube import Cube
 
 class Simulation(ParamObj):
     _params = dict(
-        maximize=Param(default=0, doc='If 1, maximize instead of minimize'),
         iterations=Param(default=100, doc='Number of iterations to run'),
         )
 

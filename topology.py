@@ -3,18 +3,59 @@ from _base import _Base
 from amlpso.Vector import Vector
 from mrs.param import Param
 
-
+# TODO: should initscale and initoffset be moved into Function??
 class _Topology(object):
-    # All fixed sociometries have this option
+    """Swarm Topology
+
+    A Topology object can create particles and determine neighborhoods, but it
+    does not hold swarm state.  Thus, multiple independent swarms should be
+    able to share the same Topology object.
+    """
     _params = dict(
         num=Param(default=20, type='int',
-            doc='Number of particles in swarm'),
+            doc='Number of particles in the swarm'),
         selflink=Param(default=1, type='int',
             doc='Include self in neighborhood'),
+        initscale=Param(default=1.0,
+            doc='Scale factor of initialization space (per dimension)'),
+        initoffset=Param(default=0.0,
+            doc='Offset of initialization space (per dimension)'),
         )
+
+    def setup(self, func):
+        self.dims = func.dims
+
+        ispace = self.initscale
+        ioffset = self.initoffset
+
+        # TODO: Make sure this is correct.  Shouldn't both the left and the
+        # right constraints need an ispace term?  The inner formula should
+        # even be split off into a separate testable method.
+        constraints = [
+            (cl+abs(cr-cl)*ioffset,cl + abs(cr-cl)*ioffset + (cr-cl)*ispace)
+            for cl,cr in func.constraints
+            ]
+        sizes = [abs(cr-cl) * ispace for cl, cr in func.constraints]
+        vconstraints = [(-s,s) for s in sizes]
+
+        self.cube = Cube(constraints)
+        self.vcube = Cube(vconstraints)
+
+    def newparticles(self):
+        """Yields new particles.
+
+        Particles are distributed uniformly within the constraints.  The
+        generator stops after creating the configured number of particles.
+        """
+        from particle import Particle
+        for x in xrange(self.num):
+            newpos = self.cube.random_vec(self.rand)
+            newvel = self.vcube.random_vec(self.rand)
+            yield Particle(newpos, newvel)
 
 
 class Ring(_Topology):
+    """Bidirectional Ring (aka lbest)"""
     _params = dict(
         neighbors=Param(default=1, type='int',
             doc='Number of neighbors to send to on each side'),
@@ -29,6 +70,7 @@ class Ring(_Topology):
 
 
 class DRing(Ring):
+    """Directed (one-way) Ring"""
     def iterneighbors(self, particle):
         if self.selflink:
             yield particle.idx
@@ -37,6 +79,7 @@ class DRing(Ring):
 
 
 class Complete(_Topology):
+    """Complete (aka fully connected, gbest, or star)"""
     def iterneighbors(self, particle):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
