@@ -1,5 +1,4 @@
 from __future__ import division
-from amlpso.varargs import VarArgs
 from mrs.param import ParamObj, Param
 from itertools import izip
 
@@ -9,8 +8,8 @@ class _Base(ParamObj):
                 doc='Number of dimensions'),
             center=Param(default='0.5', type='float',
                 doc='Relative center of function, between 0 and 1.'),
-            maximize=Param(default=0, type='int',
-                doc='Whether to maximize the function instead of minimize.'),
+            maximize=Param(type='bool',
+                doc='Maximize the function instead of minimizing.'),
             )
 
     def setup(self):

@@ -30,9 +30,9 @@ class Constricted(_Base):
     _params = dict(
         phi1=Param(default=2.05, type='float', doc='Value of phi_1 constant'),
         phi2=Param(default=2.05, type='float', doc='Value of phi_2 constant'),
-        kappa=Param(default=1.0, type='float',
+        kappa=Param(default=1, type='float',
             doc="Clerc's Kappa value, always in (0,1)"),
-        restrictvel=Param(default=0, doc='Restrict velocities'),
+        restrictvel=Param(type='bool', doc='Restrict velocities'),
         )
 
     def setup(self, *args, **kargs):
