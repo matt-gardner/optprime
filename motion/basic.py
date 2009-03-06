@@ -4,7 +4,7 @@ from math import sqrt
 import random
 
 from mrs.param import ParamObj, Param
-from amlpso.Vector import Vector
+from amlpso.vector import Vector
 from amlpso.cubes.cube import Cube
 
 

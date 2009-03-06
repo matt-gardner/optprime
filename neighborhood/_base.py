@@ -4,7 +4,7 @@ from itertools import izip
 import operator
 from sets import Set
 from mrs.param import Param, ParamObj
-from amlpso.Vector import Vector
+from amlpso.vector import Vector
 
 class _Base(ParamObj):
     _params = dict(

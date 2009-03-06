@@ -1,6 +1,6 @@
 from __future__ import division
 import basic
-from amlpso.Vector import Vector
+from amlpso.vector import Vector
 
 from Numeric import array, dot, transpose, identity, zeros
 from LinearAlgebra import inverse

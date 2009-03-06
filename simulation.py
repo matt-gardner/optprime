@@ -9,7 +9,7 @@ from random import Random
 from particle import Particle
 from operator import lt, gt
 from itertools import izip, count
-from Vector import Vector
+from vector import Vector
 
 from cubes.cube import Cube
 

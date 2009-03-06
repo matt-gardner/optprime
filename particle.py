@@ -1,6 +1,6 @@
 from __future__ import division
 from random import Random
-from Vector import Vector
+from vector import Vector
 import operator
 
 #------------------------------------------------------------------------------
