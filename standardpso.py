@@ -27,6 +27,15 @@ class MrsPSO(mrs.MapReduce):
         self.function.setup()
         self.motion.setup(self.function)
 
+    def bypass(self):
+        """Run a "native" version of PSO."""
+
+        self.topology = param.instantiate(self.opts, 'top')
+        self.topology.setup(self.function)
+
+        self.output = param.instantiate(self.opts, 'out')
+        self.output.start()
+
     def run(self, job):
         """Run Mrs PSO function
         
@@ -50,12 +59,6 @@ class MrsPSO(mrs.MapReduce):
             tty = open('/dev/tty', 'w')
         except IOError:
             tty = None
-
-        self.topology = param.instantiate(self.opts, 'top')
-        self.topology.setup(self.function)
-
-        self.output = param.instantiate(self.opts, 'out')
-        self.output.start()
 
         numtasks = self.opts.numtasks
         if numtasks == 0:
@@ -132,7 +135,6 @@ class MrsPSO(mrs.MapReduce):
 
         self.output.finish()
         print "# DONE"
-
 
     ##########################################################################
     # PRIMARY MAPREDUCE
@@ -437,8 +439,6 @@ def main():
 
 ##############################################################################
 # BUSYWORK
-
-FUNCPREFIX = 'func'
 
 def update_parser(parser):
     parser.add_option('-q', '--quiet',
