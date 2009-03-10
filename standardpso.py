@@ -19,10 +19,10 @@ class MrsPSO(mrs.MapReduce):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
+        super(MrsPSO, self).__init__(opts, args)
+
         self.function = param.instantiate(opts, 'function')
-        self.topology = param.instantiate(options, 'top')
         self.motion = param.instantiate(opts, 'motion')
-        self.output = param.instantiate(options, 'out')
 
         self.function.setup()
         self.motion.setup(self.function)
@@ -51,12 +51,13 @@ class MrsPSO(mrs.MapReduce):
         except IOError:
             tty = None
 
-        # Note: some output types really need to get initialized just in time.
-        from cli import outputtypes
-        outputter = outputtypes[opts.outputtype]()
+        self.topology = param.instantiate(self.opts, 'top')
+        self.topology.setup(self.function)
 
-        numparts = opts.numparts
-        numtasks = opts.numtasks
+        self.output = param.instantiate(self.opts, 'out')
+        self.output.start()
+
+        numtasks = self.opts.numtasks
         if numtasks == 0:
             numtasks = numparts
 
@@ -129,6 +130,7 @@ class MrsPSO(mrs.MapReduce):
 
             iters += 1
 
+        self.output.finish()
         print "# DONE"
 
 
@@ -196,11 +198,7 @@ class MrsPSO(mrs.MapReduce):
 
 
 class Population(object):
-    """Population of particles.
-
-    A Population in Mrs PSO is much like a neighborhood in Chris' PSO, but
-    the interface is a little different.
-    """
+    """Population of particles."""
     def __init__(self, constraints, **kargs):
         """Initialize Population instance using a function instance."""
         self.particles = []
@@ -285,21 +283,15 @@ class StandardPSO(ParamObj):
         iterations=Param(default=100, doc='Number of iterations to run'),
         transitive_best=Param(default=0, type='int',
             doc='Whether to send nbest to others instead of pbest'),
+        #rand=Param(doc='Random Seed')
         )
 
-    def __init__( self,
-            nparts, particles, function, motion, *args, **kargs
-            ):
-        super(Simulation,self).__init__(*args, **kargs)
-
-        self.rand = kargs.get('rand', Random())
-
-        self.dims = kargs['dims']
+    def __init__(self):
+        self.rand = Random()
         self.nparts = nparts
         self.func = function
-        self.particles = particles
+        self.particles = {}
         self.motion = motion
-        self.comparator = self.maximize and gt or lt
 
         self.func.setup(self.dims)
         self.motion.setup(self.comparator, self.func.constraints)
@@ -308,15 +300,7 @@ class StandardPSO(ParamObj):
         for i, (particle, soc) in enumerate(self.particles):
             yield soc, i
 
-    def setup(self, simulation, numparticles, *args, **kargs):
-        self.simulation = simulation
-        self.rand = self.simulation.rand
-        self.startparticles = numparticles
-
-        # We create a nice simple id structure for the particles, where they
-        # just have the id of their position in a list.
-        self.particles = []
-
+    def setup(self):
         self.iters = 0
         self._bestparticle = None
         self.last_updated_particle = None
