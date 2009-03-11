@@ -21,40 +21,60 @@ class MrsPSO(mrs.MapReduce):
 
         super(MrsPSO, self).__init__(opts, args)
 
-        self.function = param.instantiate(opts, 'function')
+        self.func = param.instantiate(opts, 'func')
         self.motion = param.instantiate(opts, 'motion')
 
-        self.function.setup()
-        self.motion.setup(self.function)
+        self.func.setup()
+        self.motion.setup(self.func)
 
     def bypass(self):
-        """Run a "native" version of PSO."""
+        """Run a "native" version of PSO without MapReduce."""
+
+        self.cli_startup()
 
         self.topology = param.instantiate(self.opts, 'top')
-        self.topology.setup(self.function)
+        self.topology.setup(self.func)
 
         self.output = param.instantiate(self.opts, 'out')
         self.output.start()
+
+    def cli_startup(self):
+        import cli
+        import sys
+        mrs_status = cli.GitStatus(mrs)
+        amlpso_status = cli.GitStatus(sys.modules[__name__])
+        if not self.opts.shamefully_dirty:
+            if amlpso_status.dirty:
+                print >>sys.stderr, (('Repository amlpso (%s) is dirty!'
+                        '  Use --shamefully-dirty if necessary.') %
+                        amlpso_status.directory)
+                sys.exit(-1)
+            if mrs_status.dirty:
+                print >>sys.stderr, (('Repository mrs (%s) is dirty!'
+                        '  Use --shamefully-dirty if necessary.') %
+                        mrs_status.directory)
+                sys.exit(-1)
+        # Report parameters
+        if not self.opts.quiet:
+            import email
+            date = email.Utils.formatdate(localtime=True)
+            print '#', sys.argv[0]
+            print '# Date:', date
+            print '# Git Status:'
+            print '#   amlpso:', amlpso_status
+            print '#   mrs:', mrs_status
+            print "# Options:"
+            for key, value in sorted(self.opts.__dict__.iteritems()):
+                print '#   %s = %s' % (key, value)
+            print ""
+            sys.stdout.flush()
 
     def run(self, job):
         """Run Mrs PSO function
         
         This is run on the master.
         """
-        # Report parameters
-        if not opts.quiet:
-            from datetime import datetime
-            date = datetime.now()
-            print "# %s" % (versioninfo,)
-            print "# Date run: %d-%d-%d" %(date.year, date.month, date.day)
-            print "#"
-            print "# ** OPTIONS **"
-            for o in cli_parser.option_list:
-                if o.dest is not None:
-                    print "#     %s = %r" % (o.dest, getattr(opts,o.dest))
-            print ""
-            sys.stdout.flush()
-
+        self.cli_startup()
         try:
             tty = open('/dev/tty', 'w')
         except IOError:
@@ -280,10 +300,11 @@ class Population(object):
 
 ##############################################################################
 
-class StandardPSO(ParamObj):
+#class StandardPSO(ParamObj):
+class StandardPSO:
     _params = dict(
-        iterations=Param(default=100, doc='Number of iterations to run'),
-        transitive_best=Param(default=0, type='int',
+        iterations=param.Param(default=100, doc='Number of iterations to run'),
+        transitive_best=param.Param(default=0, type='int',
             doc='Whether to send nbest to others instead of pbest'),
         #rand=Param(doc='Random Seed')
         )
@@ -483,6 +504,10 @@ def update_parser(parser):
     parser.add_option('-N', '--num-tasks',
             dest='numtasks', type='int',
             help='Number of tasks (if 0, create 1 task per particle)'
+            )
+    parser.add_option('--shamefully-dirty',
+            dest='shamefully_dirty', action='store_true',
+            help='Ignore errors from uncommitted changes (for testing only!)'
             )
 
     return parser

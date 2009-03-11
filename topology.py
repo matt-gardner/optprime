@@ -1,5 +1,4 @@
 from __future__ import division
-from vector import Vector
 from mrs.param import Param
 
 # TODO: should initscale and initoffset be moved into Function??
@@ -22,6 +21,8 @@ class _Topology(object):
         )
 
     def setup(self, func):
+        from cubes.cube import Cube
+
         self.dims = func.dims
 
         ispace = self.initscale

@@ -15,7 +15,7 @@ class _Base(ParamObj):
         else:
             self.comparator = operator.lt
         self.rand = random.Random()
-        self.constraints = function.constraints
+        constraints = function.constraints
         self.dims = len(constraints)
         self.cube = Cube(constraints)
         sizes = [abs(cr-cl) for cl,cr in constraints]
@@ -36,7 +36,7 @@ class Constricted(_Base):
         )
 
     def setup(self, *args, **kargs):
-        super(Basic, self).setup(*args, **kargs)
+        super(Constricted, self).setup(*args, **kargs)
 
         p1, p2 = [Vector(x) for x in zip(*self.cube.constraints)]
         self.diaglength = abs(p1 - p2)
