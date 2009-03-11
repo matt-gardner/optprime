@@ -469,6 +469,7 @@ def update_parser(parser):
     parser.add_option('-q', '--quiet',
             dest='quiet', action='store_true',
             help='Refrain from printing version and option information',
+            default=False,
             )
     parser.add_option('-v','--verbose',
             dest='verbose', action='store_true',
@@ -507,11 +508,13 @@ def update_parser(parser):
             )
     parser.add_option('-N', '--num-tasks',
             dest='numtasks', type='int',
-            help='Number of tasks (if 0, create 1 task per particle)'
+            help='Number of tasks (if 0, create 1 task per particle)',
+            default=0,
             )
     parser.add_option('--shamefully-dirty',
             dest='shamefully_dirty', action='store_true',
-            help='Ignore errors from uncommitted changes (for testing only!)'
+            help='Ignore errors from uncommitted changes (for testing only!)',
+            default=False,
             )
 
     return parser
