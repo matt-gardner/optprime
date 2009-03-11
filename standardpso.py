@@ -462,6 +462,10 @@ def main():
 # BUSYWORK
 
 def update_parser(parser):
+    """Adds PSO options to an OptionParser instance."""
+    # Set the default Mrs implementation to Bypass.
+    parser.usage = parser.usage.replace('Serial', 'Bypass')
+    parser.set_default('mrs', 'Bypass')
     parser.add_option('-q', '--quiet',
             dest='quiet', action='store_true',
             help='Refrain from printing version and option information',
