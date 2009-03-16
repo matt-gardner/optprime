@@ -10,10 +10,10 @@ class _Topology(object):
     able to share the same Topology object.
     """
     _params = dict(
-        num=Param(default=20, type='int',
+        num=Param(default=20, type='int', shortopt='-n',
             doc='Number of particles in the swarm'),
-        selflink=Param(default=1, type='int',
-            doc='Include self in neighborhood'),
+        noselflink=Param(type='bool',
+            doc='Do not include self in neighborhood'),
         initscale=Param(default=1.0,
             doc='Scale factor of initialization space (per dimension)'),
         initoffset=Param(default=0.0,
@@ -62,7 +62,7 @@ class Ring(_Topology):
         )
 
     def iterneighbors(self, particle):
-        if self.selflink:
+        if not self.noselflink:
             yield particle.idx
         for i in xrange(self.neighbors):
             yield (particle.idx + i) % self.num
@@ -72,7 +72,7 @@ class Ring(_Topology):
 class DRing(Ring):
     """Directed (one-way) Ring"""
     def iterneighbors(self, particle):
-        if self.selflink:
+        if not self.noselflink:
             yield particle.idx
         for i in xrange(self.neighbors):
             yield (particle.idx + i) % self.num
@@ -84,7 +84,7 @@ class Complete(_Topology):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
         for i in xrange(self.num):
-            if self.selflink or (i != particle.idx):
+            if not (i == particle.idx and self.noselflink):
                 yield i
 
 
@@ -107,7 +107,7 @@ class Rand(_Topology):
             neighbors = self.neighbors
         for i in xrange(neighbors):
             yield randint(0,num-1)
-        if self.selflink:
+        if not self.noselflink:
             yield idx
 
 
@@ -166,7 +166,7 @@ class CommunicatingIslands(_Topology):
                  num_neighbors = int(self.percent_communication*num)
                  for i in range(idx+1, idx+num_neighbors+1):
                      yield i % num
-                 if self.selflink:
+                 if not self.noselflink:
                      yield idx
             elif self.type_of_communication == 'Random':
                 for i in xrange(0,idx):
@@ -175,7 +175,7 @@ class CommunicatingIslands(_Topology):
                 for i in xrange(idx+1,num):
                     if random() < self.percent_communication: 
                         yield i
-                if self.selflink:
+                if not self.noselflink:
                     yield idx
         else:
             for i in xrange(islands):
