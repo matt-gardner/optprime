@@ -302,13 +302,6 @@ class Population(object):
 
 #class StandardPSO(ParamObj):
 class StandardPSO:
-    _params = dict(
-        iterations=param.Param(default=100, doc='Number of iterations to run'),
-        transitive_best=param.Param(default=0, type='int',
-            doc='Whether to send nbest to others instead of pbest'),
-        #rand=Param(doc='Random Seed')
-        )
-
     def __init__(self):
         self.rand = Random()
         self.nparts = nparts
@@ -510,6 +503,11 @@ def update_parser(parser):
             dest='numtasks', type='int',
             help='Number of tasks (if 0, create 1 task per particle)',
             default=0,
+            )
+    parser.add_option('--transitive-best',
+            dest='transitive_best', action='store_true',
+            help='Whether to send nbest to others instead of pbest',
+            default=False
             )
     parser.add_option('--shamefully-dirty',
             dest='shamefully_dirty', action='store_true',
