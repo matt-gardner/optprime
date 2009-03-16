@@ -10,7 +10,7 @@ class _Topology(object):
     able to share the same Topology object.
     """
     _params = dict(
-        num=Param(default=20, type='int',
+        num=Param(default=20, type='int', shortopt='-n',
             doc='Number of particles in the swarm'),
         noselflink=Param(type='bool',
             doc='Do not include self in neighborhood'),
