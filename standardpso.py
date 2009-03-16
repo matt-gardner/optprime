@@ -38,37 +38,6 @@ class MrsPSO(mrs.MapReduce):
         self.output = param.instantiate(self.opts, 'out')
         self.output.start()
 
-    def cli_startup(self):
-        import cli
-        import sys
-        mrs_status = cli.GitStatus(mrs)
-        amlpso_status = cli.GitStatus(sys.modules[__name__])
-        if not self.opts.shamefully_dirty:
-            if amlpso_status.dirty:
-                print >>sys.stderr, (('Repository amlpso (%s) is dirty!'
-                        '  Use --shamefully-dirty if necessary.') %
-                        amlpso_status.directory)
-                sys.exit(-1)
-            if mrs_status.dirty:
-                print >>sys.stderr, (('Repository mrs (%s) is dirty!'
-                        '  Use --shamefully-dirty if necessary.') %
-                        mrs_status.directory)
-                sys.exit(-1)
-        # Report parameters
-        if not self.opts.quiet:
-            import email
-            date = email.Utils.formatdate(localtime=True)
-            print '#', sys.argv[0]
-            print '# Date:', date
-            print '# Git Status:'
-            print '#   amlpso:', amlpso_status
-            print '#   mrs:', mrs_status
-            print "# Options:"
-            for key, value in sorted(self.opts.__dict__.iteritems()):
-                print '#   %s = %s' % (key, value)
-            print ""
-            sys.stdout.flush()
-
     def run(self, job):
         """Run Mrs PSO function
         
@@ -80,16 +49,13 @@ class MrsPSO(mrs.MapReduce):
         except IOError:
             tty = None
 
+
+        particles = [(str(p.id), repr(p)) for p in self.particles]
         numtasks = self.opts.numtasks
-        if numtasks == 0:
-            numtasks = numparts
-
-        # Create the initial population:
-        import tempfile
-        pop = Population(function.constraints)
-        pop.add_random(numparts)
-
-        new_data = pop.mrsdataset(job, numtasks)
+        if not numtasks:
+            numtasks = len(particles)
+        new_data = job.local_data(particles, parter=mrs.mod_partition,
+                splits=numtasks)
 
         iters = 1
         running = True
@@ -215,6 +181,45 @@ class MrsPSO(mrs.MapReduce):
         yield repr(best)
 
 
+    ##########################################################################
+    # Helper Functions (shared by bypass and mrs implementations)
+
+    def cli_startup(self):
+        """Checks whether the repository is dirty and reports options."""
+        import cli
+        import sys
+
+        # Check whether the repository is dirty.
+        mrs_status = cli.GitStatus(mrs)
+        amlpso_status = cli.GitStatus(sys.modules[__name__])
+        if not self.opts.shamefully_dirty:
+            if amlpso_status.dirty:
+                print >>sys.stderr, (('Repository amlpso (%s) is dirty!'
+                        '  Use --shamefully-dirty if necessary.') %
+                        amlpso_status.directory)
+                sys.exit(-1)
+            if mrs_status.dirty:
+                print >>sys.stderr, (('Repository mrs (%s) is dirty!'
+                        '  Use --shamefully-dirty if necessary.') %
+                        mrs_status.directory)
+                sys.exit(-1)
+
+        # Report command-line options.
+        if not self.opts.quiet:
+            import email
+            date = email.Utils.formatdate(localtime=True)
+            print '#', sys.argv[0]
+            print '# Date:', date
+            print '# Git Status:'
+            print '#   amlpso:', amlpso_status
+            print '#   mrs:', mrs_status
+            print "# Options:"
+            for key, value in sorted(self.opts.__dict__.iteritems()):
+                print '#   %s = %s' % (key, value)
+            print ""
+            sys.stdout.flush()
+
+
 ##############################################################################
 # POPULATION
 
@@ -226,12 +231,6 @@ class Population(object):
         self.particles = []
         self._bestparticle = None
         self.constraints = constraints
-        #self.is_better = kargs.get('comparator', operator.lt)
-        try:
-            self.rand = kargs['rand']
-        except KeyError:
-            import random
-            self.rand = random.Random()
 
     def mrsdataset(self, job, partitions=None):
         """Create a Mrs DataSet for the particles in the population.
@@ -466,6 +465,7 @@ def update_parser(parser):
     # Set the default Mrs implementation to Bypass.
     parser.usage = parser.usage.replace('Serial', 'Bypass')
     parser.set_default('mrs', 'Bypass')
+
     parser.add_option('-q', '--quiet',
             dest='quiet', action='store_true',
             help='Refrain from printing version and option information',
