@@ -8,7 +8,7 @@ class Quadratic(_general._Base):
         super(Quadratic,self).setup()
         self._set_constraints(((-100,100),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         s = 0
         for i in xrange(self.dims):
             for j in xrange(self.dims):

@@ -7,7 +7,7 @@ class Rosenbrock(_general._Base):
         super(Rosenbrock,self).setup()
         self._set_constraints(((-100,100),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         s=0
         for i in xrange(self.dims-1):
             v = vec[i]

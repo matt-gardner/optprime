@@ -14,7 +14,7 @@ class Easom(_general._Base):
     # fEaso(x1,x2)=1-cos(x1+pi) cos(x2+pi) exp(-(x1^2+x2^2));
     # To move the center simply subtract from each coordinate
     # -100<=x(i)<=100, i=1:2.
-    def __call__( self, vec ):
+    def __call__(self, vec):
         n = self.dims
         center = self.abscenter
         # Sum the squares

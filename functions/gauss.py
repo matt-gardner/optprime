@@ -8,7 +8,7 @@ class Gauss(_general._Base):
         super(Gauss,self).setup()
         self._set_constraints(((-2,2),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         p = 1.0
         for x,c in izip(vec,self.abscenter):
             p *= exp( -(x-c)**2 )

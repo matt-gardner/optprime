@@ -8,7 +8,7 @@ class SchafferF6(_general._Base):
         super(SchafferF6,self).setup()
         self._set_constraints(((-100,100),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         xsq = sum(imap(lambda x,c: (x-c)**2, vec, self.abscenter))
         return 0.5 + (sin(sqrt(xsq))**2 - 0.5)/((1 + 0.001*xsq)**2)
 
@@ -17,6 +17,6 @@ class SchafferF7(_general._Base):
         super(SchafferF7,self).setup()
         self._set_constraints(((-100,100),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         xsq = sum(imap(lambda x,c: (x-c)**2, vec, self.abscenter))
         return xsq**0.25 * (sin(50*xsq**0.1)**2 + 1)

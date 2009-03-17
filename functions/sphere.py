@@ -4,6 +4,7 @@ import _general
 
 class Sphere(_general._Base):
     def setup(self):
+        super(Sphere, self).setup()
         self._set_constraints(((-50,50),) * self.dims)
 
     def __call__(self, vec):

@@ -14,7 +14,7 @@ class _Base(ParamObj):
     def setup(self):
         import operator
         self._set_constraints(((0,0),)*self.dims)
-        if maximize:
+        if self.maximize:
             self.comparator = operator.gt
         else:
             self.comparator = operator.lt

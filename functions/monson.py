@@ -8,7 +8,7 @@ class TwoGaussians(_general._Base):
         super(TwoGaussians,self).setup()
         self._set_constraints(((-50,50),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         magsq = sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
         mag = sqrt(magsq)
         outersdev = 30
@@ -29,7 +29,7 @@ class ValleyNeedle(_general._Base):
         super(ValleyNeedle,self).setup()
         self._set_constraints(((-50,50),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         magsq = sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
         mag = sqrt(magsq)
         flatradius=30
@@ -49,7 +49,7 @@ class AsymmetricCone(_general._Base):
         super(AsymmetricCone,self).setup()
         self._set_constraints(((-50,50),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         cvec = self.abscenter
 
         x = vec[0] - cvec[0]

@@ -10,12 +10,13 @@ class NegBinomial(_general._Base):
 
         self.constraints = ((0,1000L),)
 
-    def __call__( self, x ):
+    def __call__(self, x):
         x, = x
         fac = self.choose( x + self.r - 1, self.r - 1 )
         return fac * (self.p ** self.r) * (self.q ** x)
 
-    def __static__choose( n, k ):
+    @staticmethod
+    def choose( n, k ):
         """Compute n! / (k! * (n-k)!)"""
         # In order to keep things neat, we don't fully compute the n! portion
         # of the equation, since the larger of k! and (n-k)! will cancel out
@@ -40,7 +41,4 @@ class NegBinomial(_general._Base):
             denominator *= i
 
         return numerator // denominator
-    choose = staticmethod(__static__choose)
-#------------------------------------------------------------------------------
-f = NegBinomial()
-#------------------------------------------------------------------------------
+

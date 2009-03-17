@@ -38,7 +38,7 @@ class ExternalFunction(_general._Base):
             self.func_proc = subprocess.Popen((self.externfunc), stdout=subprocess.PIPE,
                 stdin=subprocess.PIPE)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         import subprocess
         if self.stdin:
             self.func_proc.stdin.write(' '.join(str(x) for x in vec)+' ')

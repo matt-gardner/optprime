@@ -8,7 +8,7 @@ class Ackley(_general._Base):
         super(Ackley,self).setup()
         self._set_constraints(((-32.768,32.768),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         n = self.dims
         # Sum the squares
         s1 = sum(imap(lambda x,c: (x-c)**2, vec, self.abscenter))

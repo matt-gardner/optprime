@@ -9,7 +9,7 @@ class Keane(_general._Base):
         super(Keane,self).setup()
         self._set_constraints(((0,10),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         if min(vec) < 0 or max(vec) > 10:
             v = 0
         elif reduce(mul, vec) < 0.75:

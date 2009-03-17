@@ -12,7 +12,7 @@ class egghill(_general._Base):
         self.alpha = alpha
         self.p = p
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         p = self.p
         a = self.alpha
         x, y = vec

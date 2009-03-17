@@ -8,5 +8,5 @@ class Exponential(_general._Base):
         super(Exponential, self).setup()
         self._set_constraints(((-50,50),) * self.dims)
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         return 2**sqrt(sum([(x-c)**2 for x,c in izip(vec,self.abscenter)]))

@@ -1,8 +1,8 @@
 import _general
 
 class Test(_general._Base):
-    def setup(self, *args, **kargs):
-        super(Test,self).setup(*args, **kargs)
+    def setup(self):
+        super(Test,self).setup()
         self._set_constraints(((3,200), (4,100), (0,302), (0,200),)*3)
 
     def __call__(self, vec):

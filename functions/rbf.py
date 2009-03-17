@@ -58,7 +58,7 @@ class RBF(_general._Base):
         #    'dfs', '-put', '-', tempfile.mktemp()), stdin=PIPE)
         #example: print >>self.debug_proc.stdin, 'Hello!'
 
-    def __call__( self, vec ):
+    def __call__(self, vec):
         """Evaluate sum squared error."""
         sumsqerr = 0.0
         for point in self.datapoints:
