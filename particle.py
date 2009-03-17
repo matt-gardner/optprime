@@ -26,7 +26,7 @@ class Particle(object):
     on it too much.
     """
     def __init__(self, pos=None, vel=None, val=None, pid=None, state=None):
-        self.id = pid
+        self.pid = pid
         self.iters = 0
 
         # TODO: move all of the `state` grabbing stuff into a separate factory

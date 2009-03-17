@@ -19,13 +19,13 @@ class StandardPSO(mrs.MapReduce):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
-        super(MrsPSO, self).__init__(opts, args)
+        super(StandardPSO, self).__init__(opts, args)
 
-        self.func = param.instantiate(opts, 'func')
+        self.function = param.instantiate(opts, 'func')
         self.motion = param.instantiate(opts, 'motion')
 
-        self.func.setup()
-        self.motion.setup(self.func)
+        self.function.setup()
+        self.motion.setup(self.function)
 
     ##########################################################################
     # Bypass Implementation
@@ -37,7 +37,7 @@ class StandardPSO(mrs.MapReduce):
 
         # Perform the simulation in batches
         try:
-            for batch in self.opts.batches:
+            for batch in xrange(self.opts.batches):
                 self.bypass_batch()
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
@@ -47,11 +47,11 @@ class StandardPSO(mrs.MapReduce):
         # Separate by two blank lines and a header.
         print
         print
-        if (options.batches > 1):
+        if (self.opts.batches > 1):
             print "# Batch %d" % batch
 
         self.topology = param.instantiate(self.opts, 'top')
-        self.topology.setup(self.func)
+        self.topology.setup(self.function)
 
         # Create the Population.
         rand = self.random(0)
@@ -62,7 +62,7 @@ class StandardPSO(mrs.MapReduce):
         self.output = param.instantiate(self.opts, 'out')
         self.output.start()
 
-        for i in xrange(options.iters):
+        for i in xrange(self.opts.iters):
             self.bypass_iteration(particles)
             if 0 == (i+1) % output.freq:
                 outputter(soc, iters)
@@ -82,11 +82,11 @@ class StandardPSO(mrs.MapReduce):
         # Communication phase.
         for p in particles:
             # TODO: create a Random instance for the iterneighbors method.
-            for i in self.topology.iterneighbors(particle):
+            for i in self.topology.iterneighbors(p):
                 # Send p's information to neighbor i.
                 neighbor = particles[i]
-                neighbor.nbest_cand(p.bestpos, p.bestval, comparator)
-                if self.transitive_best:
+                neighbor.nbest_cand(p.pbestpos, p.pbestval, comparator)
+                if self.opts.transitive_best:
                     neighbor.nbest_cand(p.nbestpos, p.nbestval, comparator)
 
     ##########################################################################
@@ -106,7 +106,7 @@ class StandardPSO(mrs.MapReduce):
         # TODO: Add a batches loop.
 
         rand = self.random(0)
-        particles = [(str(p.id), repr(p)) for p in
+        particles = [(str(p.pid), repr(p)) for p in
                 self.topology.newparticles(rand)]
 
         numtasks = self.opts.numtasks
@@ -192,7 +192,7 @@ class StandardPSO(mrs.MapReduce):
         message = particle.make_message()
         # TODO: create a Random instance for the iterneighbors method.
         for dep_id in self.topology.iterneighbors(particle):
-            if dep_id == particle.id:
+            if dep_id == particle.pid:
                 particle.nbest_cand(particle.pbestpos, particle.pbestval,
                         comparator)
             else:
@@ -287,7 +287,7 @@ class StandardPSO(mrs.MapReduce):
 
     def setup(self):
         try:
-            self.tmpfiles = function.tmpfiles()
+            self.tmpfiles = self.function.tmpfiles()
         except AttributeError:
             self.tmpfiles = []
 

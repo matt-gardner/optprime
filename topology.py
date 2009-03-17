@@ -84,7 +84,7 @@ class Complete(_Topology):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
         for i in xrange(self.num):
-            if not (i == particle.idx and self.noselflink):
+            if not (i == particle.pid and self.noselflink):
                 yield i
 
 
