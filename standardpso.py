@@ -253,9 +253,6 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
 
-    def new_population(self):
-        """Creates a list of n new random particles."""
-
     def move_and_evaluate(self, particle):
         """Moves, evaluates, and updates the given particle."""
         # TODO: should we skip motion in the first iteration?
