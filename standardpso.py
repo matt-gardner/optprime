@@ -21,11 +21,14 @@ class StandardPSO(mrs.MapReduce):
 
         super(StandardPSO, self).__init__(opts, args)
 
+        self.tmpfiles = None
         self.function = param.instantiate(opts, 'func')
         self.motion = param.instantiate(opts, 'motion')
+        self.topology = param.instantiate(opts, 'top')
 
         self.function.setup()
         self.motion.setup(self.function)
+        self.topology.setup(self.function)
 
     ##########################################################################
     # Bypass Implementation
@@ -50,44 +53,54 @@ class StandardPSO(mrs.MapReduce):
         if (self.opts.batches > 1):
             print "# Batch %d" % batch
 
-        self.topology = param.instantiate(self.opts, 'top')
-        self.topology.setup(self.function)
+        self.setup()
+        comp = self.function.comparator
 
         # Create the Population.
         rand = self.random(0)
         particles = list(self.topology.newparticles(rand))
 
-        self.setup()
+        # Perform PSO Iterations.  The iteration number represents the total
+        # number of function evaluations that have been performed for each
+        # particle by the end of the iteration.
+        output = param.instantiate(self.opts, 'out')
+        output.start()
+        for iteration in xrange(1, 1 + self.opts.iters):
+            # Update position and value.
+            for p in particles:
+                # TODO: keep track of bestparticle.
+                self.move_and_evaluate(p)
 
-        self.output = param.instantiate(self.opts, 'out')
-        self.output.start()
+            # Communication phase.
+            for p in particles:
+                # TODO: create a Random instance for the iterneighbors method.
+                for i in self.topology.iterneighbors(p):
+                    # Send p's information to neighbor i.
+                    neighbor = particles[i]
+                    neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
+                    if self.opts.transitive_best:
+                        neighbor.nbest_cand(p.nbestpos, p.nbestval, comp)
 
-        for i in xrange(self.opts.iters):
-            self.bypass_iteration(particles)
-            if 0 == (i+1) % output.freq:
-                outputter(soc, iters)
+            # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
+            if not ((iteration-1) % output.freq):
+                kwds = {}
+                if 'iters' in output.args:
+                    kwds['iteration'] = iteration
+                if 'swarm' in output.args:
+                    kwds['particles'] = particles
+                if 'best' in output.args:
+                    best = None
+                    bestval = None
+                    for p in particles:
+                        if (best is None) or comp(p.pbestval, bestval):
+                            best = p
+                            bestval = p.pbestval
+                    kwds['best'] = best
+                output(**kwds)
         print "# DONE" 
+        output.finish()
 
-        self.output.finish()
         self.cleanup()
-
-    def bypass_iteration(self, particles):
-        """Performs a single iteration of PSO, updating the given particles."""
-        comparator = self.function.comparator
-        # Update position and value.
-        for p in particles:
-            # TODO: keep track of bestparticle.
-            self.move_and_evaluate(p)
-
-        # Communication phase.
-        for p in particles:
-            # TODO: create a Random instance for the iterneighbors method.
-            for i in self.topology.iterneighbors(p):
-                # Send p's information to neighbor i.
-                neighbor = particles[i]
-                neighbor.nbest_cand(p.pbestpos, p.pbestval, comparator)
-                if self.opts.transitive_best:
-                    neighbor.nbest_cand(p.nbestpos, p.nbestval, comparator)
 
     ##########################################################################
     # MapReduce Implementation
