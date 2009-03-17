@@ -150,11 +150,13 @@ class Swarm(Output):
 class Stats(Output):
     """Outputs stats about how many particles have been updated."""
 
-    args = frozenset(('iteration', 'best'))
+    args = frozenset(('iteration', 'best', 'particles'))
 
-    def __init__(self):
+    def start(self):
+        self.num_recent = 4
         self.iters = 0
         self.not_updated = 0
+        self.stagnant_iters = 0
         self.last_val = 0
         self.counter = dict()
         self.changes = 0
@@ -162,36 +164,52 @@ class Stats(Output):
         self.recently_seen_changes = 0
         self.bestidx = 0
         self.recentlyseen = []
-        self.num_recent = 4
+        self.num_pbest_updates = 0
+        self.num_pbest_possible_updates = 0
+        self.prevpbest = dict()
 
     def __call__(self, **kwds):
         best = kwds['best']
         self.iters = kwds['iteration']
+        particles = kwds['particles']
+        if self.iters == 1:
+            for particle in particles:
+                self.prevpbest[particle.pid] = 0
+        stagnant = True
+        for particle in particles:
+            if particle.pbestval != self.prevpbest[particle.pid]:
+                self.num_pbest_updates += 1
+                self.prevpbest[particle.pid] = particle.pbestval
+                stagnant = False
+            self.num_pbest_possible_updates += 1
         if best.pbestval == self.last_val:
             self.not_updated += 1
+            if stagnant:
+                self.stagnant_iters += 1
+                print self.iters, best.pbestval, 'Stagnant!'
             print self.iters, best.pbestval
         else:
             self.last_val = best.pbestval
-            if best.idx in self.recentlyseen:
+            if best.pid in self.recentlyseen:
                 self.recently_seen_changes += 1
-            if best.idx == self.bestidx:
+            if best.pid == self.bestpid:
                 self.consistent_changes += 1
             else:
-                self.recentlyseen.append(best.idx)
+                self.recentlyseen.append(best.pid)
                 self.recentlyseen = self.recentlyseen[-self.num_recent:]
-            self.bestidx = best.idx
-            if best.idx not in self.counter:
-                self.counter[best.idx] = 0
-            self.counter[best.idx] += 1
+            self.bestpid = best.pid
+            if best.pid not in self.counter:
+                self.counter[best.pid] = 0
+            self.counter[best.pid] += 1
             self.changes += 1
-            print self.iters, best.pbestval, best.idx
+            print self.iters, best.pbestval, best.pid
 
     def finish(self):
         print 'Stats:'
-        #for idx in self.counter:
-            #print idx, self.counter[idx]/self.changes
         print 'Percent of iterations that best was not updated:'
         print self.not_updated/self.iters
+        print 'Number of stagnant iterations: %d (%d\%)' % (self.stagnant_iters,
+                self.stagnant_iters/self.iters)
         print 'Percent of best updates that were by the same particle:'
         print self.consistent_changes/self.changes
         print 'Percent of best updates that were by recently seen particles:'
