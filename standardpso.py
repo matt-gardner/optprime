@@ -222,7 +222,6 @@ class StandardPSO(mrs.MapReduce):
         else:
             yield repr(best)
 
-
     ##########################################################################
     # MapReduce to Find the Best Particle
 
@@ -237,7 +236,6 @@ class StandardPSO(mrs.MapReduce):
             if (best is None) or (comparator(p.pbestval, best.pbestval)):
                 best = p
         yield repr(best)
-
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
@@ -260,15 +258,15 @@ class StandardPSO(mrs.MapReduce):
         # Check whether the repository is dirty.
         mrs_status = cli.GitStatus(mrs)
         amlpso_status = cli.GitStatus(sys.modules[__name__])
-        if not self.opts.shamefully_dirty:
+        if not self.opts.hey_im_testing:
             if amlpso_status.dirty:
                 print >>sys.stderr, (('Repository amlpso (%s) is dirty!'
-                        '  Use --shamefully-dirty if necessary.') %
+                        '  Use --hey-im-testing if necessary.') %
                         amlpso_status.directory)
                 sys.exit(-1)
             if mrs_status.dirty:
                 print >>sys.stderr, (('Repository mrs (%s) is dirty!'
-                        '  Use --shamefully-dirty if necessary.') %
+                        '  Use --hey-im-testing if necessary.') %
                         mrs_status.directory)
                 sys.exit(-1)
 
@@ -357,8 +355,8 @@ def update_parser(parser):
             help='Whether to send nbest to others instead of pbest',
             default=False
             )
-    parser.add_option('--shamefully-dirty',
-            dest='shamefully_dirty', action='store_true',
+    parser.add_option('--hey-im-testing',
+            dest='hey_im_testing', action='store_true',
             help='Ignore errors from uncommitted changes (for testing only!)',
             default=False,
             )
