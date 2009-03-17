@@ -15,7 +15,7 @@ from particle import Particle
 # TODO: allow the initial set of particles to be given
 
 
-class MrsPSO(mrs.MapReduce):
+class StandardPSO(mrs.MapReduce):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
@@ -27,16 +27,70 @@ class MrsPSO(mrs.MapReduce):
         self.func.setup()
         self.motion.setup(self.func)
 
+    ##########################################################################
+    # Bypass Implementation
+
     def bypass(self):
         """Run a "native" version of PSO without MapReduce."""
 
         self.cli_startup()
 
+        # Perform the simulation in batches
+        try:
+            for batch in self.opts.batches:
+                self.bypass_batch()
+        except KeyboardInterrupt, e:
+            print "# INTERRUPTED"
+
+    def bypass_batch(self):
+        """Performs a single batch of PSO."""
+        # Separate by two blank lines and a header.
+        print
+        print
+        if (options.batches > 1):
+            print "# Batch %d" % batch
+
         self.topology = param.instantiate(self.opts, 'top')
         self.topology.setup(self.func)
 
+        # Create the Population.
+        rand = self.random(0)
+        particles = list(self.topology.newparticles(rand))
+
+        self.setup()
+
         self.output = param.instantiate(self.opts, 'out')
         self.output.start()
+
+        for i in xrange(options.iters):
+            self.bypass_iteration(particles)
+            if 0 == (i+1) % output.freq:
+                outputter(soc, iters)
+        print "# DONE" 
+
+        self.output.finish()
+        self.cleanup()
+
+    def bypass_iteration(self, particles):
+        """Performs a single iteration of PSO, updating the given particles."""
+        comparator = self.function.comparator
+        # Update position and value.
+        for p in particles:
+            # TODO: keep track of bestparticle.
+            self.move_and_evaluate(p)
+
+        # Communication phase.
+        for p in particles:
+            # TODO: create a Random instance for the iterneighbors method.
+            for i in self.topology.iterneighbors(particle):
+                # Send p's information to neighbor i.
+                neighbor = particles[i]
+                neighbor.nbest_cand(p.bestpos, p.bestval, comparator)
+                if self.transitive_best:
+                    neighbor.nbest_cand(p.nbestpos, p.nbestval, comparator)
+
+    ##########################################################################
+    # MapReduce Implementation
 
     def run(self, job):
         """Run Mrs PSO function
@@ -49,8 +103,12 @@ class MrsPSO(mrs.MapReduce):
         except IOError:
             tty = None
 
+        # TODO: Add a batches loop.
 
-        particles = [(str(p.id), repr(p)) for p in self.particles]
+        rand = self.random(0)
+        particles = [(str(p.id), repr(p)) for p in
+                self.topology.newparticles(rand)]
+
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(particles)
@@ -123,19 +181,17 @@ class MrsPSO(mrs.MapReduce):
         print "# DONE"
 
     ##########################################################################
-    # PRIMARY MAPREDUCE
+    # Primary MapReduce
 
     def pso_map(key, value):
+        comparator = self.function.comparator
         particle = Particle(pid=int(key), state=value)
-
-        # Update the particle:
-        newpos, newvel = motion(particle)
-        value = function(newpos)
-        particle.update(newpos, newvel, value, comparator)
+        self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
         message = particle.make_message()
-        for dep_id in particle.deps:
+        # TODO: create a Random instance for the iterneighbors method.
+        for dep_id in self.topology.iterneighbors(particle):
             if dep_id == particle.id:
                 particle.nbest_cand(particle.pbestpos, particle.pbestval,
                         comparator)
@@ -146,6 +202,7 @@ class MrsPSO(mrs.MapReduce):
         yield (str(key), repr(particle))
 
     def pso_reduce(key, value_iter):
+        comparator = self.function.comparator
         particle = None
         best = None
         bestval = float('inf')
@@ -167,12 +224,13 @@ class MrsPSO(mrs.MapReduce):
 
 
     ##########################################################################
-    # MAPREDUCE TO FIND BEST PARTICLE
+    # MapReduce to Find the Best Particle
 
     def collapse_map(key, value):
         yield '0', value
 
     def findbest_reduce(key, value_iter):
+        comparator = self.function.comparator
         best = None
         for value in value_iter:
             p = Particle(state=value)
@@ -183,6 +241,16 @@ class MrsPSO(mrs.MapReduce):
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
+
+    def new_population(self):
+        """Creates a list of n new random particles."""
+
+    def move_and_evaluate(self, particle):
+        """Moves, evaluates, and updates the given particle."""
+        # TODO: should we skip motion in the first iteration?
+        newpos, newvel = self.motion(particle)
+        value = self.function(newpos)
+        particle.update(newpos, newvel, value, self.function.comparator)
 
     def cli_startup(self):
         """Checks whether the repository is dirty and reports options."""
@@ -219,243 +287,23 @@ class MrsPSO(mrs.MapReduce):
             print ""
             sys.stdout.flush()
 
-
-##############################################################################
-# POPULATION
-
-
-class Population(object):
-    """Population of particles."""
-    def __init__(self, constraints, **kargs):
-        """Initialize Population instance using a function instance."""
-        self.particles = []
-        self._bestparticle = None
-        self.constraints = constraints
-
-    def mrsdataset(self, job, partitions=None):
-        """Create a Mrs DataSet for the particles in the population.
-        
-        The number of partitions may be specified.
-        """
-        particles = [(str(p.id), repr(p)) for p in self.particles]
-
-        if partitions is None:
-            partitions = len(particles)
-
-        dataset = job.local_data(particles, parter=mrs.mod_partition,
-                splits=partitions)
-        return dataset
-
-    def get_particles(self):
-        """Return a list of all particles in the population."""
-        return self.particles
-
-    def bestparticle(self):
-        return self._bestparticle
-
-    def set_bestparticle(self, particle):
-        self._bestparticle = particle
-
-    def __len__(self):
-        return len(self.particles)
-
-    def numparticles(self):
-        return len(self.particles)
-
-    def add_random(self, n=1):
-        """Add n new random particles to the population."""
-        from cubes.cube import Cube
-        # Fully connected sociometry:
-        #deps = range(Particle.next_id, Particle.next_id + n)
-        deps = range(n)
-        dep_str = 'all-%s' % n
-        sizes = [abs(cr-cl) for cl,cr in self.constraints]
-        vconstraints = [(-s,s) for s in sizes]
-        c = Cube(self.constraints)
-        vc = Cube(vconstraints)
-        for i in xrange(n):
-            newpos = c.random_vec(self.rand)
-            newvel = vc.random_vec(self.rand)
-            p = Particle(newpos, newvel, pid=i)
-            p.deps = deps
-            p.dep_str = dep_str
-            # Loosely connected ring sociometry:
-            p.deps = [i%n for i in xrange(i-1,i+2)]
-            p.dep_str = ''
-            for i in xrange(len(p.deps)):
-                p.dep_str  += str(p.deps[i]) + ','
-            p.dep_str = p.dep_str[:-1]
-            # End loosely connected ring sociometry - uncomment these blocks
-            # for ring (changing the constant in the first line as desired)
-            # Comment them out for star
-            self.particles.append(p)
-
-    def __str__(self):
-        return '\n'.join(str(p) for p in self.particles)
-
-    def __repr__(self):
-        return str(self)
-
-
-##############################################################################
-
-#class StandardPSO(ParamObj):
-class StandardPSO:
-    def __init__(self):
-        self.rand = Random()
-        self.nparts = nparts
-        self.func = function
-        self.particles = {}
-        self.motion = motion
-
-        self.func.setup(self.dims)
-        self.motion.setup(self.comparator, self.func.constraints)
-
-    def iterevals(self):
-        for i, (particle, soc) in enumerate(self.particles):
-            yield soc, i
-
     def setup(self):
-        self.iters = 0
-        self._bestparticle = None
-        self.last_updated_particle = None
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        p, soc = self.evaliter.next()
-        self.last_updated_particle = p
-        return p, soc
-
-    def _iterevals(self):
-        # First create the particles:
-        n = self.startparticles
-        sim = self.simulation
-        for i, p in enumerate(sim.iternewparticles( numparts=n )):
-            # Set up the index and yield self, from which everything can be
-            # obtained.  We yield here because each particle creation is a
-            # function evaluation.
-            p.idx = i
-            if self._bestparticle is None:
-                self._bestparticle = p
-            elif self.is_better(p.bestval, self._bestparticle.bestval):
-                self._bestparticle = p
-            self.addparticle( p )
-            # We have to set initialized BEFORE we yield so that it's ready
-            # AFTER we yield
-            self.iters += 1
-            yield p, self
-
-        while True:
-            # Now update all of the particles in batch
-            np = self.numparticles()
-            newstates = [None] * np
-            # We move them in batches, which requires us to keep track of a set
-            # of new values and to set them all at once.
-            particles = tuple(self.iterparticles())
-            bestpart = None
-            bestval = None
-            bestidx = None
-
-            sim.motion.pre_batch( self )
-            for i, p in enumerate(particles):
-                if bestpart is None or self.is_better(p.bestval,bestval):
-                    bestpart = p
-                    bestval = p.bestval
-                    bestidx = i
-                self.update_nbest(p)
-                newstates[i] = sim.motion(p)
-            sim.motion.post_batch( self )
-            bestpos = bestpart.bestpos
-
-            for i, (p, state) in enumerate(izip(particles, newstates)):
-                pos, vel = state
-                val = sim.func(pos)
-                p.update(pos, vel, val, sim.comparator)
-                p.new = False
-                self.iters += 1
-                if self.is_better( p.bestval, self._bestparticle.bestval ):
-                    self._bestparticle = p
-                yield p, self
-
-    def addparticle(self, particle):
-        self.particles.append(particle)
-
-    def iterparticles(self):
-        return iter(self.particles)
-
-    def bestparticle(self):
-        return self._bestparticle
-
-    def update_nbest(self, particle):
-        """Updates the global best for this particle"""
-        for i in self.iterneighbors(particle):
-            p = self.particles[i]
-            particle.nbest_cand(p.bestpos, p.bestval, self.is_better)
-            if self.transitive_best:
-                particle.nbest_cand(p.nbestpos, p.nbestval, self.is_better)
-
-    def numparticles(self):
-        return len(self.particles)
-
-
-def main():
-    # Create the simulation arguments, output header information.
-    if not options.quiet:
-        from datetime import datetime
-        date = datetime.now()
-        print "# Date run: %d-%d-%d" %(date.year, date.month, date.day)
-        print "# ** OPTIONS **"
-        for o in parser.option_list:
-            if o.dest is not None:
-                print "#     %s = %r" % (o.dest, getattr(options,o.dest))
-
-    # Perform the simulation in batches
-    for batch in xrange(options.batches):
-        function = param.instantiate(options, 'func')
-        topology = param.instantiate(options, 'top')
-        motion = param.instantiate(options, 'motion')
-        output = param.instantiate(options, 'out')
-
         try:
-            tmpfiles = function.tmpfiles()
+            self.tmpfiles = function.tmpfiles()
         except AttributeError:
-            tmpfiles = []
+            self.tmpfiles = []
 
-        simiter = sim.iterbatches()
-
-        # Separate by two blank lines and a header.
-        print
-        print
-        if (options.batches > 1):
-            print "# Batch %d" % batch
-
-        # Perform the simulation.
-        output.start()
-        try:
-            for i in xrange(options.iters):
-                soc, iters = simiter.next()
-                if 0 == (i+1) % output.freq:
-                    outputter(soc, iters)
-            print "# DONE" 
-        except KeyboardInterrupt, e:
-            print "# INTERRUPTED"
-        except Exception, e:
-            if options.verbose:
-                raise
-            else:
-                print "# ERROR"
-
-        for f in tmpfiles:
+    def cleanup(self):
+        for f in self.tmpfiles:
             os.unlink(f)
 
+
 ##############################################################################
-# BUSYWORK
+# Busywork
 
 def update_parser(parser):
     """Adds PSO options to an OptionParser instance."""
-    # Set the default Mrs implementation to Bypass.
+    # Set the default Mrs implementation to Bypass (instead of MapReduce).
     parser.usage = parser.usage.replace('Serial', 'Bypass')
     parser.set_default('mrs', 'Bypass')
 
@@ -519,6 +367,6 @@ def update_parser(parser):
 
 
 if __name__ == '__main__':
-    mrs.main(MrsPSO, update_parser)
+    mrs.main(StandardPSO, update_parser)
 
 # vim: et sw=4 sts=4

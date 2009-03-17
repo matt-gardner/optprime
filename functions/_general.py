@@ -1,6 +1,5 @@
 from __future__ import division
 from mrs.param import ParamObj, Param
-from itertools import izip
 
 class _Base(ParamObj):
     _params = dict(
@@ -13,9 +12,15 @@ class _Base(ParamObj):
             )
 
     def setup(self):
+        import operator
         self._set_constraints(((0,0),)*self.dims)
+        if maximize:
+            self.comparator = operator.gt
+        else:
+            self.comparator = operator.lt
 
     def _set_constraints(self, constraints):
+        from itertools import izip
         self.dims = len(constraints)
         if ',' in self.center:
             center = [float(x) for x in self.center.split(',')]

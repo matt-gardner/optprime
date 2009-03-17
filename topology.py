@@ -41,17 +41,17 @@ class _Topology(object):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
-    def newparticles(self):
+    def newparticles(self, rand):
         """Yields new particles.
 
         Particles are distributed uniformly within the constraints.  The
         generator stops after creating the configured number of particles.
         """
         from particle import Particle
-        for x in xrange(self.num):
-            newpos = self.cube.random_vec(self.rand)
-            newvel = self.vcube.random_vec(self.rand)
-            yield Particle(newpos, newvel)
+        for i in xrange(self.num):
+            newpos = self.cube.random_vec(rand)
+            newvel = self.vcube.random_vec(rand)
+            yield Particle(pos=newpos, vel=newvel, pid=i)
 
 
 class Ring(_Topology):
