@@ -9,12 +9,12 @@ from amlpso.cubes.cube import Cube
 
 
 class _Base(ParamObj):
-    def setup(self, function, *args, **kargs):
+    def setup(self, function, seed, *args, **kargs):
         if function.maximize:
             self.comparator = operator.gt
         else:
             self.comparator = operator.lt
-        self.rand = random.Random()
+        self.rand = random.Random(seed)
         constraints = function.constraints
         self.dims = len(constraints)
         self.cube = Cube(constraints)
