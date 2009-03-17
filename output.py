@@ -135,9 +135,11 @@ class Stats(Output):
 
     require_all = True
 
-    def __init__(self):
+    def start(self):
+        self.num_recent = 4
         self.iters = 0
         self.not_updated = 0
+        self.stagnant_iters = 0
         self.last_val = 0
         self.counter = dict()
         self.changes = 0
@@ -145,13 +147,28 @@ class Stats(Output):
         self.recently_seen_changes = 0
         self.bestidx = 0
         self.recentlyseen = []
-        self.num_recent = 4
+        self.num_pbest_updates = 0
+        self.num_pbest_possible_updates = 0
+        self.prevpbest = dict()
 
     def __call__(self, soc, iters):
         best = soc.bestparticle()
         self.iters += 1
+        if self.iters == 1:
+            for particle in soc.particles:
+                self.prevpbest[particle.idx] = 0
+        stagnant = True
+        for particle in soc.particles:
+            if particle.pbestval != self.prevpbest[particle.idx]:
+                self.num_pbest_updates += 1
+                self.prevpbest[particle.idx] = particle.pbestval
+                stagnant = False
+            self.num_pbest_possible_updates += 1
         if best.pbestval == self.last_val:
             self.not_updated += 1
+            if stagnant:
+                self.stagnant_iters += 1
+                print iters, best.pbestval, 'Stagnant!'
             print iters, best.pbestval
         else:
             self.last_val = best.pbestval
@@ -171,10 +188,10 @@ class Stats(Output):
 
     def finish(self):
         print 'Stats:'
-        #for idx in self.counter:
-            #print idx, self.counter[idx]/self.changes
         print 'Percent of iterations that nbest was not updated:'
         print self.not_updated/self.iters
+        print 'Number of stagnant iterations: %d (%d\%)' % (self.stagnant_iters,
+                self.stagnant_iters/self.iters)
         print 'Percent of nbest updates that were by the same particle:'
         print self.consistent_changes/self.changes
         print 'Percent of nbest updates that were by recently seen particles:'
