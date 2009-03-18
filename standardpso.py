@@ -222,11 +222,11 @@ class StandardPSO(mrs.MapReduce):
 
         for value in value_iter:
             record = Particle(pid=int(key), state=value)
-            if comparator(record.nbestval, bestval):
-                best = record
-                bestval = record.nbestval
-
-            if not record.is_message():
+            if record.is_message():
+                if comparator(record.nbestval, bestval):
+                    best = record
+                    bestval = record.nbestval
+            else:
                 particle = record
 
         if particle:
