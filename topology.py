@@ -63,19 +63,19 @@ class Ring(_Topology):
 
     def iterneighbors(self, particle):
         if not self.noselflink:
-            yield particle.idx
+            yield particle.pid
         for i in xrange(self.neighbors):
-            yield (particle.idx + i) % self.num
-            yield (particle.idx - i) % self.num
+            yield (particle.pid + i) % self.num
+            yield (particle.pid - i) % self.num
 
 
 class DRing(Ring):
     """Directed (one-way) Ring"""
     def iterneighbors(self, particle):
         if not self.noselflink:
-            yield particle.idx
+            yield particle.pid
         for i in xrange(self.neighbors):
-            yield (particle.idx + i) % self.num
+            yield (particle.pid + i) % self.num
 
 
 class Complete(_Topology):
@@ -99,7 +99,7 @@ class Rand(_Topology):
         from random import randint
         # Yield all of the particles up to this one, and all after, then this
         # one last, with probability equal to self.probability.
-        idx = particle.idx
+        pid = particle.pid
         num = len(self.particles)
         if (self.neighbors == -1):
             neighbors = num
@@ -108,7 +108,7 @@ class Rand(_Topology):
         for i in xrange(neighbors):
             yield randint(0,num-1)
         if not self.noselflink:
-            yield idx
+            yield pid
 
 
 class Islands(_Topology):
@@ -120,7 +120,7 @@ class Islands(_Topology):
     def iterneighbors(self, particle):
         # Particles are grouped into n islands, and communicate with all members
         # on the island, and no one else
-        idx = particle.idx
+        pid = particle.pid
         num_particles = len(self.particles)
         islands = self.num_islands
         if num_particles % islands != 0:
@@ -128,7 +128,7 @@ class Islands(_Topology):
             'num_particles % num_islands should be zero')
         step_size = int(num_particles/islands)
         for i in xrange(islands):
-            if idx in xrange(i*step_size, i*step_size + step_size):
+            if pid in xrange(i*step_size, i*step_size + step_size):
                 for j in xrange(i*step_size, i*step_size + step_size):
                     yield j
 
@@ -150,7 +150,7 @@ class CommunicatingIslands(_Topology):
     def iterneighbors(self, particle):
         # Particles are grouped into n islands, and communicate with all members
         # on the island, and no one else
-        idx = particle.idx
+        pid = particle.pid
         iter = particle.iters
         num = len(self.particles)
         islands = self.num_islands
@@ -164,22 +164,22 @@ class CommunicatingIslands(_Topology):
             # this is at least a temporary solution for the serial code
             if self.type_of_communication == 'Ring':
                  num_neighbors = int(self.percent_communication*num)
-                 for i in range(idx+1, idx+num_neighbors+1):
+                 for i in range(pid+1, pid+num_neighbors+1):
                      yield i % num
                  if not self.noselflink:
-                     yield idx
+                     yield pid
             elif self.type_of_communication == 'Random':
-                for i in xrange(0,idx):
+                for i in xrange(0,pid):
                     if random() < self.percent_communication: 
                         yield i
-                for i in xrange(idx+1,num):
+                for i in xrange(pid+1,num):
                     if random() < self.percent_communication: 
                         yield i
                 if not self.noselflink:
-                    yield idx
+                    yield pid
         else:
             for i in xrange(islands):
-                if idx in xrange(i*step_size, i*step_size + step_size):
+                if pid in xrange(i*step_size, i*step_size + step_size):
                     for j in xrange(i*step_size, i*step_size + step_size):
                         yield j
 

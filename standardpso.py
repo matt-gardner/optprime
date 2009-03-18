@@ -84,9 +84,9 @@ class StandardPSO(mrs.MapReduce):
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
             if not ((iteration-1) % output.freq):
                 kwds = {}
-                if 'iters' in output.args:
+                if 'iteration' in output.args:
                     kwds['iteration'] = iteration
-                if 'swarm' in output.args:
+                if 'particles' in output.args:
                     kwds['particles'] = particles
                 if 'best' in output.args:
                     best = None

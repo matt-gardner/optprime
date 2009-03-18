@@ -55,10 +55,11 @@ class Basic(Output):
 class Pair(Output):
     """Outputs the iteration and best value."""
 
-    args = frozenset(('best',))
+    args = frozenset(('best','iteration',))
 
     def __call__(self, **kwds):
         best = kwds['best']
+        iteration = kwds['iteration']
         print iteration, best.pbestval
         sys.stdout.flush()
 
@@ -125,7 +126,7 @@ class Everything(Output):
         time_per_iter = seconds / (iteration - self.last_iter)
         print iteration, best.pbestval, \
                 ",".join([str(x) for x in best.pbestpos]), \
-                "; Time: ", time_per_iter
+                "; Time:", time_per_iter
         sys.stdout.flush()
 
         self.last_time = now
@@ -142,8 +143,8 @@ class Swarm(Output):
         particles = kwds['particles']
         print iteration, len(particles)
         for part in particles:
-            print part.val, ' '.join(str(x) for x in part.pos), \
-                    part.pbestval, ' '.join(str(x) for x in part.pbestpos)
+            print part.val, ','.join(str(x) for x in part.pos), \
+                    part.pbestval, ','.join(str(x) for x in part.pbestpos)
         print
 
 
@@ -215,5 +216,84 @@ class Stats(Output):
         print 'Percent of best updates that were by recently seen particles:'
         print self.recently_seen_changes/self.changes
 
+class BranchStats(Output):
+    """Outputs stats about which branch of execution particles took."""
+
+    args = frozenset(('iteration', 'particles', 'best'))
+
+    def __init__(self):
+        self.iters = 0
+        self.prevpbest = dict()
+        self.prevnbest = dict()
+        self.PnotN = dict()
+        self.PandN = dict()
+        self.PandNMe = dict()
+        self.notPnotN = dict()
+        self.notPbutN = dict()
+
+
+    def __call__(self, **kwds):
+        best = kwds['best']
+        iteration = kwds['iteration']
+        particles = kwds['particles']
+        self.iters += 1
+        if self.iters == 1:
+            for particle in particles:
+                self.prevpbest[particle.pid] = 0
+                self.prevnbest[particle.pid] = 0
+                self.PnotN[particle.pid] = 0
+                self.PandN[particle.pid] = 0
+                self.PandNMe[particle.pid] = 0
+                self.notPnotN[particle.pid] = 0
+                self.notPbutN[particle.pid] = 0
+
+        for particle in particles:
+            # Updated nbest
+            if particle.nbestval != self.prevnbest[particle.pid]:
+                if particle.nbestval == particle.pbestval:
+                    self.PandNMe[particle.pid] += 1
+                else:
+                    if particle.pbestval != self.prevpbest[particle.pid]:
+                        self.PandN[particle.pid] += 1
+                    else:
+                        self.notPbutN[particle.pid] += 1
+            # Did not update nbest
+            else:
+                if particle.pbestval != self.prevpbest[particle.pid]:
+                    self.PnotN[particle.pid] += 1
+                else:
+                    self.notPnotN[particle.pid] += 1
+            self.prevpbest[particle.pid] = particle.pbestval
+            self.prevnbest[particle.pid] = particle.nbestval
+        print iteration, best.pbestval
+
+    def finish(self):
+        print 'Stats:'
+        print 'Individual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        avenotpnotn = []
+        avepnotn = []
+        avepandnme = []
+        avenotpbutn = []
+        avepandn = []
+        for pid in self.PnotN:
+            notpnotn = self.notPnotN[pid]/self.iters
+            avenotpnotn.append(notpnotn)
+            pnotn = self.PnotN[pid]/self.iters
+            avepnotn.append(pnotn)
+            pandnme = self.PandNMe[pid]/self.iters
+            avepandnme.append(pandnme)
+            notpbutn = self.notPbutN[pid]/self.iters
+            avenotpbutn.append(notpbutn)
+            pandn = self.PandN[pid]/self.iters
+            avepandn.append(pandn)
+            print pid,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
+
+        print 'Averages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        notpnotn = sum(avenotpnotn)/len(avenotpnotn)
+        pnotn = sum(avepnotn)/len(avepnotn)
+        pandnme = sum(avepandnme)/len(avepandnme)
+        notpbutn = sum(avenotpbutn)/len(avenotpbutn)
+        pandn = sum(avepandn)/len(avepandn)
+        print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
 
 # vim: et sw=4 sts=4
