@@ -161,13 +161,17 @@ class Stats(Output):
         self.last_val = 0
         self.counter = dict()
         self.changes = 0
+        self.bestpid = 0
         self.consistent_changes = 0
         self.recently_seen_changes = 0
-        self.bestidx = 0
         self.recentlyseen = []
         self.num_pbest_updates = 0
         self.num_pbest_possible_updates = 0
         self.prevpbest = dict()
+        self.prevnbest = dict()
+        self.stagnant_count = dict()
+        self.iters_stagnant = dict()
+        self.num_particles = 0
 
     def __call__(self, **kwds):
         best = kwds['best']
@@ -176,19 +180,49 @@ class Stats(Output):
         if self.iters == 1:
             for particle in particles:
                 self.prevpbest[particle.pid] = 0
+                self.stagnant_count[particle.pid] = 0
+                self.counter[particle.pid] = 0
+                self.iters_stagnant[particle.pid] = 0
+                self.prevnbest[particle.pid] = 0
+                self.num_particles += 1
         stagnant = True
+
+        # Things to check for each particle at each iteration
+        numstagnant = 0
+        really_stagnant = 0
         for particle in particles:
+            # Updated pbest
             if particle.pbestval != self.prevpbest[particle.pid]:
                 self.num_pbest_updates += 1
-                self.prevpbest[particle.pid] = particle.pbestval
+                self.iters_stagnant[particle.pid] = 0
                 stagnant = False
+            else:
+                # Updated nbest
+                if particle.nbestval != self.prevnbest[particle.pid]:
+                    pass
+                # Didn't update either - stagnant particle
+                else: 
+                    numstagnant += 1
+                    self.stagnant_count[particle.pid] += 1
+                    self.iters_stagnant[particle.pid] += 1
+                    if self.iters_stagnant[particle.pid] > 30:
+                        really_stagnant += 1
+            self.prevpbest[particle.pid] = particle.pbestval
+            self.prevnbest[particle.pid] = particle.nbestval
             self.num_pbest_possible_updates += 1
+
+        # Done checking each particle, check the global best and print output
+        # gbest was not updated
         if best.pbestval == self.last_val:
             self.not_updated += 1
             if stagnant:
                 self.stagnant_iters += 1
-                print self.iters, best.pbestval, 'Stagnant!'
-            print self.iters, best.pbestval
+                print self.iters, best.pbestval, '\tStagnant!', '\tStagnant for more than '+\
+                        '30 iterations:',really_stagnant
+            else:
+                print self.iters, best.pbestval, '\tStagnant particles:',numstagnant, \
+                        '\tStagnant for more than 30 iterations:',really_stagnant
+        # gbest was updated
         else:
             self.last_val = best.pbestval
             if best.pid in self.recentlyseen:
@@ -199,22 +233,35 @@ class Stats(Output):
                 self.recentlyseen.append(best.pid)
                 self.recentlyseen = self.recentlyseen[-self.num_recent:]
             self.bestpid = best.pid
-            if best.pid not in self.counter:
-                self.counter[best.pid] = 0
             self.counter[best.pid] += 1
             self.changes += 1
-            print self.iters, best.pbestval, best.pid
+            print self.iters, best.pbestval, best.pid, '\tStagnant particles:',\
+                    numstagnant, '\tStagnant for more than 30 iterations:',\
+                    really_stagnant
 
     def finish(self):
         print 'Stats:'
-        print 'Percent of iterations that best was not updated:'
+        print 'Individual Particles: (Percent stagnant, percent particle'+\
+                ' was the gbest)'
+        num_worthless = 0
+        for pid in self.stagnant_count:
+            percentstag = self.stagnant_count[pid]/self.iters
+            if percentstag > .9 and self.counter[pid] == 0:
+                num_worthless += 1
+            print pid, percentstag, self.counter[pid]/self.changes
+        print 'Percent of iterations that gbest was not updated:'
         print self.not_updated/self.iters
-        print 'Number of stagnant iterations: %d (%d\%)' % (self.stagnant_iters,
-                self.stagnant_iters/self.iters)
-        print 'Percent of best updates that were by the same particle:'
+        print 'Number of stagnant iterations:'
+        print '%d (%f' % (self.stagnant_iters, self.stagnant_iters/self.iters)+'%)'
+        print 'Pbest updates/possible pbest updates:'
+        print self.num_pbest_updates/self.num_pbest_possible_updates
+        print 'Percent of gbest updates that were by the same particle:'
         print self.consistent_changes/self.changes
-        print 'Percent of best updates that were by recently seen particles:'
+        print 'Percent of gbest updates that were by recently seen particles:'
         print self.recently_seen_changes/self.changes
+        print 'Percent of particles that updated pbest less than 10% of the time:'
+        print num_worthless/len(self.counter)
+
 
 class BranchStats(Output):
     """Outputs stats about which branch of execution particles took."""
