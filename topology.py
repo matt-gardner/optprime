@@ -64,7 +64,7 @@ class Ring(_Topology):
     def iterneighbors(self, particle):
         if not self.noselflink:
             yield particle.pid
-        for i in xrange(self.neighbors):
+        for i in xrange(1,self.neighbors+1):
             yield (particle.pid + i) % self.num
             yield (particle.pid - i) % self.num
 
@@ -74,7 +74,7 @@ class DRing(Ring):
     def iterneighbors(self, particle):
         if not self.noselflink:
             yield particle.pid
-        for i in xrange(self.neighbors):
+        for i in xrange(1,self.neighbors+1):
             yield (particle.pid + i) % self.num
 
 
@@ -89,6 +89,7 @@ class Complete(_Topology):
 
 
 class Rand(_Topology):
+    """Random topology (pick n particles and send a message to them)"""
     _params = dict(
         neighbors=Param(default=-1, type='int',
             doc='Number of neighbors to send to.  Default of -1 means all '+
@@ -97,10 +98,8 @@ class Rand(_Topology):
 
     def iterneighbors(self, particle):
         from random import randint
-        # Yield all of the particles up to this one, and all after, then this
-        # one last, with probability equal to self.probability.
         pid = particle.pid
-        num = len(self.particles)
+        num = self.num
         if (self.neighbors == -1):
             neighbors = num
         else:
