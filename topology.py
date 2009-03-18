@@ -64,7 +64,7 @@ class Ring(_Topology):
     def iterneighbors(self, particle):
         if not self.noselflink:
             yield particle.pid
-        for i in xrange(self.neighbors):
+        for i in xrange(1,self.neighbors+1):
             yield (particle.pid + i) % self.num
             yield (particle.pid - i) % self.num
 
@@ -74,7 +74,7 @@ class DRing(Ring):
     def iterneighbors(self, particle):
         if not self.noselflink:
             yield particle.pid
-        for i in xrange(self.neighbors):
+        for i in xrange(1,self.neighbors+1):
             yield (particle.pid + i) % self.num
 
 
@@ -89,6 +89,7 @@ class Complete(_Topology):
 
 
 class Rand(_Topology):
+    """Random topology (pick n particles and send a message to them)"""
     _params = dict(
         neighbors=Param(default=-1, type='int',
             doc='Number of neighbors to send to.  Default of -1 means all '+
@@ -97,10 +98,8 @@ class Rand(_Topology):
 
     def iterneighbors(self, particle):
         from random import randint
-        # Yield all of the particles up to this one, and all after, then this
-        # one last, with probability equal to self.probability.
         pid = particle.pid
-        num = len(self.particles)
+        num = self.num
         if (self.neighbors == -1):
             neighbors = num
         else:
@@ -121,7 +120,7 @@ class Islands(_Topology):
         # Particles are grouped into n islands, and communicate with all members
         # on the island, and no one else
         pid = particle.pid
-        num_particles = len(self.particles)
+        num_particles = self.num
         islands = self.num_islands
         if num_particles % islands != 0:
             raise ValueError('Uneven split between islands! '+
@@ -142,9 +141,9 @@ class CommunicatingIslands(_Topology):
         type_of_communication=Param(default='Ring',
             doc='The sociometry to use at each inter-island communication (only'
             +' Ring and Random'),
-        percent_communication=Param(default=1, type='float',
-            doc='Percent of neighboring islands to communicate with (1 means '+
-            'star)'),
+        neighbors=Param(default=-1, type='float',
+            doc='Number of nieghbors to communicate with during inter-island '+\
+                    'communication. -1 means everyone.'),
         )
 
     def iterneighbors(self, particle):
@@ -152,7 +151,7 @@ class CommunicatingIslands(_Topology):
         # on the island, and no one else
         pid = particle.pid
         iter = particle.iters
-        num = len(self.particles)
+        num = self.num
         islands = self.num_islands
         if num % islands != 0:
             raise ValueError('Uneven split between islands! '+
@@ -162,19 +161,19 @@ class CommunicatingIslands(_Topology):
             # It's time to tell the other islands what's going on
             # There are probably smarter ways to do this communication, but
             # this is at least a temporary solution for the serial code
-            if self.type_of_communication == 'Ring':
-                 num_neighbors = int(self.percent_communication*num)
-                 for i in range(pid+1, pid+num_neighbors+1):
-                     yield i % num
+            if self.neighbors == -1:
+                for i in range(self.num):
+                    yield i
+            elif self.type_of_communication == 'Ring':
+                 for i in range(1, self.neighbors+1):
+                     yield (pid+i) % num
+                     yield (pid-i) % num
                  if not self.noselflink:
                      yield pid
             elif self.type_of_communication == 'Random':
-                for i in xrange(0,pid):
-                    if random() < self.percent_communication: 
-                        yield i
-                for i in xrange(pid+1,num):
-                    if random() < self.percent_communication: 
-                        yield i
+                from random import randint
+                for i in xrange(self.neighbors):
+                    yield randint(0,num-1)
                 if not self.noselflink:
                     yield pid
         else:
