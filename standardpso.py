@@ -205,11 +205,7 @@ class StandardPSO(mrs.MapReduce):
         message = particle.make_message()
         # TODO: create a Random instance for the iterneighbors method.
         for dep_id in self.topology.iterneighbors(particle):
-            if dep_id == particle.pid:
-                particle.nbest_cand(particle.pbestpos, particle.pbestval,
-                        comparator)
-            else:
-                yield (str(dep_id), repr(message))
+            yield (str(dep_id), repr(message))
 
         # Emit the particle without changing its id:
         yield (str(key), repr(particle))
@@ -233,7 +229,8 @@ class StandardPSO(mrs.MapReduce):
             particle.nbest_cand(best.nbestpos, bestval, comparator)
             yield repr(particle)
         else:
-            yield repr(best)
+            raise RuntimeError("Didn't find particle %d in the reduce step" %
+                    key)
 
     ##########################################################################
     # MapReduce to Find the Best Particle
