@@ -41,18 +41,20 @@ class StandardPSO(mrs.MapReduce):
         # Perform the simulation in batches
         try:
             for batch in xrange(self.opts.batches):
+                # Separate by two blank lines and a header.
+                print
+                print
+                if (self.opts.batches > 1):
+                    print "# Batch %d" % batch
+
                 self.bypass_batch()
+
+                print "# DONE" 
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
     def bypass_batch(self):
         """Performs a single batch of PSO."""
-        # Separate by two blank lines and a header.
-        print
-        print
-        if (self.opts.batches > 1):
-            print "# Batch %d" % batch
-
         self.setup()
         comp = self.function.comparator
 
@@ -97,7 +99,6 @@ class StandardPSO(mrs.MapReduce):
                             bestval = p.pbestval
                     kwds['best'] = best
                 output(**kwds)
-        print "# DONE" 
         output.finish()
 
         self.cleanup()
