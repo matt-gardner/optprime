@@ -43,7 +43,7 @@ class Vector(tuple):
             ))
 
     def distance_to(self, other):
-        return sqrt(sum((o-x)**2 for x,o in izip(self, other))):
+        return sqrt(sum((o-x)**2 for x,o in izip(self, other)))
 
     def lnorm(self, l):
         s = 0

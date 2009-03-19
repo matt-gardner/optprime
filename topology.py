@@ -51,7 +51,7 @@ class _Topology(object):
         for i in xrange(self.num):
             newpos = self.cube.random_vec(rand)
             newvel = self.vcube.random_vec(rand)
-            yield Particle(pos=newpos, vel=newvel, pid=i)
+            yield Particle(pid=i, pos=newpos, vel=newvel)
 
 
 class Ring(_Topology):

@@ -12,6 +12,7 @@ from math import sqrt
 from itertools import izip
 from math import floor, ceil
 import copy
+from amlpso.vector import Vector
 
 
 class Cube(object):
@@ -47,7 +48,7 @@ class Cube(object):
     def random_vec( self, robj ):
         """Return a random vector within the constraints of this cube.
         """
-        return [robj.uniform(*c) for c in self.constraints]
+        return Vector(robj.uniform(*c) for c in self.constraints)
 
     def constrained_vec( self, vec, use_abs=False ):
         """Returns a new vector that is constrained to be in bounds.

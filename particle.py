@@ -174,7 +174,7 @@ class Message(object):
         strings = (str(self.sender),
                 repr(self.position),
                 repr(self.value))
-        return 'm:%s % (';'.join(strings))
+        return 'm:%s' % (';'.join(strings))
 
 
 def unpack(state):
