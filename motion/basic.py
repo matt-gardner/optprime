@@ -20,7 +20,7 @@ class _Base(ParamObj):
         vconstraints = [(-s,s) for s in sizes]
         self.vcube = Cube(vconstraints)
 
-    def __call__(self, particle, rand):
+    def __call__(self, particle):
         raise NotImplementedError
 
 
@@ -39,7 +39,7 @@ class Constricted(_Base):
         p1, p2 = [Vector(x) for x in zip(*self.cube.constraints)]
         self.diaglength = abs(p1 - p2)
 
-    def __call__(self, particle, rand):
+    def __call__(self, particle):
         """Get the next position and velocity from this particle."""
 
         phi = self.phi1 + self.phi2
@@ -49,8 +49,9 @@ class Constricted(_Base):
         else:
             s = kappa
 
-        r1 = Vector([rand.uniform(0, self.phi1) for x in xrange(self.dims)])
-        r2 = Vector([rand.uniform(0, self.phi2) for x in xrange(self.dims)])
+        uniform = particle.rand.uniform
+        r1 = Vector(uniform(0, self.phi1) for x in xrange(self.dims))
+        r2 = Vector(uniform(0, self.phi2) for x in xrange(self.dims))
 
         grel = particle.nbestpos - particle.pos
         prel = particle.pbestpos - particle.pos
@@ -83,7 +84,7 @@ class BasicAdaptive(_Base):
     def setup(self, *args, **kargs):
         super(BasicAdaptive, self).setup(*args, **kargs)
 
-    def __call__(self, particle, rand):
+    def __call__(self, particle):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -100,8 +101,8 @@ class BasicAdaptive(_Base):
 
         dims, k, c1, c2 = self.dims, self.k, self.c1, self.c2
 
-        r1 = Vector(rand.uniform(0,c1) for x in xrange(dims))
-        r2 = Vector(rand.uniform(0,c2) for x in xrange(dims))
+        r1 = Vector(particle.rand.uniform(0,c1) for x in xrange(dims))
+        r2 = Vector(particle.rand.uniform(0,c2) for x in xrange(dims))
 
         pos, vel, dt = particle.pos, particle.vel, particle.dt
 
@@ -130,7 +131,7 @@ class BasicAdaptive(_Base):
 
 
 class BasicGauss(_Base):
-    def __call__(self, particle, rand):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -142,8 +143,8 @@ class BasicGauss(_Base):
 
         # Generate a Gaussian around the velocity vectors according to Clerc's
         # paper.
-        gvel = Vector([rand.gauss(x,abs(x)/2) for x in grel])
-        pvel = Vector([rand.gauss(x,abs(x)/2) for x in prel])
+        gvel = Vector(particle.rand.gauss(x,abs(x)/2) for x in grel)
+        pvel = Vector(particle.rand.gauss(x,abs(x)/2) for x in prel)
 
         newvel = chi * (particle.vel + gvel + pvel)
 

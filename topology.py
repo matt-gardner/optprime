@@ -39,7 +39,7 @@ class _Topology(object):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
-    def newparticles(self, rand):
+    def newparticles(self, batch, rand):
         """Yields new particles.
 
         Particles are distributed uniformly within the constraints.  The
@@ -49,7 +49,13 @@ class _Topology(object):
         for i in xrange(self.num):
             newpos = self.cube.random_vec(rand)
             newvel = self.vcube.random_vec(rand)
-            yield Particle(pid=i, pos=newpos, vel=newvel)
+            p = Particle(pid=i, pos=newpos, vel=newvel)
+            p.batches = batch
+            yield p
+
+    def iterneighbors(self, particle):
+        """Yields the particle ids of the neighbors of the give particle."""
+        raise NotImplementedError
 
 
 class Ring(_Topology):
@@ -95,7 +101,7 @@ class Rand(_Topology):
         )
 
     def iterneighbors(self, particle):
-        from random import randint
+        randrange = particle.rand.randrange
         pid = particle.pid
         num = self.num
         if (self.neighbors == -1):
@@ -103,7 +109,7 @@ class Rand(_Topology):
         else:
             neighbors = self.neighbors
         for i in xrange(neighbors):
-            yield randint(0,num-1)
+            yield randrange(num)
         if not self.noselflink:
             yield pid
 
@@ -169,9 +175,9 @@ class CommunicatingIslands(_Topology):
                  if not self.noselflink:
                      yield pid
             elif self.type_of_communication == 'Random':
-                from random import randint
+                randrange = particle.rand.randrange()
                 for i in xrange(self.neighbors):
-                    yield randint(0,num-1)
+                    yield randrange(num)
                 if not self.noselflink:
                     yield pid
         else:

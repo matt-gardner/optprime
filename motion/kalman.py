@@ -30,7 +30,7 @@ class Kalman(basic._Base):
 
         self.filters = {}
 
-    def getfilter(self, particle, rand):
+    def getfilter(self, particle):
         if id(particle) in self.filters:
             return self.filters[id(particle)]
 
@@ -41,7 +41,7 @@ class Kalman(basic._Base):
         if self.randinit:
             from cubes.cube import Cube
             c = Cube(self.constraints)
-            prior = c.random_vec(rand) + c.random_vec(rand)
+            prior = c.random_vec(particle.rand) + c.random_vec(particle.rand)
         else:
             prior = list(particle.pos) + list(particle.vel)
 
@@ -93,19 +93,17 @@ class Kalman(basic._Base):
         self.filters[id(particle)] = kalman
         return self.filters[id(particle)]
 
-    def __call__(self, particle, rand):
+    def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
-        kalman = self.getfilter(particle, rand)
-
-        rand = self.rand
+        kalman = self.getfilter(particle, particle.rand)
 
         grel = particle.nbestpos - particle.pos
         if self.norandscale:
             newvel = 1.0 * grel
         else:
-            newvel = rand.uniform(0,2) * grel
+            newvel = particle.rand.uniform(0,2) * grel
 
         if self.restrictvel:
             self.cube.constrain_vec(newvel, True)

@@ -12,9 +12,9 @@ class Particle(object):
     generated.
 
     Sample repr:
-    p:128,4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
+    p:128;10;300;4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
     Interpretation of repr:
-      pid   pos       vel    value   pbpos   pbval  gbpos   gbval
+     pid bat iters  pos      vel    value   pbpos   pbval  gbpos   gbval
 
     Note: A particle's global best is only used in the MapReduce
     implementation--the neighborhood stuff for the normal PSO implementation
@@ -29,6 +29,7 @@ class Particle(object):
 
     def __init__(self, pid, pos, vel, value=None):
         self.pid = pid
+        self.batches = 0
         self.iters = 0
 
         if value is None:
@@ -42,8 +43,7 @@ class Particle(object):
         self.nbestpos = pos
         self.nbestval = value
 
-        self.stagnantcount = 0
-        self.improvedcount = 0
+        self.rand = None
 
     def copy(self, newpid):
         """Performs a deep copy and returns the new Particle.
@@ -55,6 +55,7 @@ class Particle(object):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
+        p.batches = self.batches
         p.iters = self.iters
         return p
 
@@ -71,13 +72,8 @@ class Particle(object):
         self.value = newval
         self.iters += 1
         if isbetterfunc(self.value, self.pbestval):
-            self.stagnantcount = 0
-            self.improvedcount += 1
             self.pbestval = newval
             self.pbestpos = newpos
-        else:
-            self.stagnantcount += 1
-            self.improvedcount = 0
 
     def nbest_cand(self, potential_pos, potential_val, comparator):
         """Update nbest if the given value is better than the current nbest."""
@@ -96,11 +92,6 @@ class Particle(object):
         self.pbestval = value
         self.nbestpos = pos
         self.nbestval = value
-        self.resetcounts()
-
-    def resetcounts(self):
-        self.stagnantcount = 0
-        self.improvedcount = 0
 
     def __str__(self):
         return "pos: %r; vel: %r; value: %r; pbestpos: %r; pbestval: %r" % (
@@ -108,10 +99,11 @@ class Particle(object):
 
     def __repr__(self):
         # Note: We don't set the dep_str from self.deps anymore.
-        fields = (self.pos, self.vel, self.value,
-                self.pbestpos, self.pbestval, self.nbestpos, self.nbestval)
+        fields = (self.pid, self.batches, self.iters, self.pos, self.vel,
+                self.value, self.pbestpos, self.pbestval, self.nbestpos,
+                self.nbestval)
         strings = (repr(field) for field in fields)
-        return 'p:%s' % (';'.join(fields))
+        return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
     @classmethod
     def unpack(cls, state):
@@ -122,16 +114,18 @@ class Particle(object):
         prefix = self.CLASS_ID + ':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (pid, pos_str, vel_str, value_str, pbestpos_str, pbestval_str,
-                nbestpos_str, nbestval_str) = state.split(';')
-        pos = Vector.unpack(pos_str)
-        vel = Vector.unpack(vel_str)
-        value = float(value_str)
+        (batches, pid, iters, pos, vel, value, pbestpos, pbestval,
+                nbestpos, nbestval) = state.split(';')
+        pos = Vector.unpack(pos)
+        vel = Vector.unpack(vel)
+        value = float(value)
         p = cls(pid, pos, vel, value)
-        p.pbestpos = Vector.unpack(pbestpos_str)
-        p.pbestval = float(pbestval_str)
-        p.nbestpos = Vector.unpack(nbestpos_str)
-        p.nbestval = float(nbestval_str)
+        p.batches = int(batches)
+        p.iters = int(iters)
+        p.pbestpos = Vector.unpack(pbestpos)
+        p.pbestval = float(pbestval)
+        p.nbestpos = Vector.unpack(nbestpos)
+        p.nbestval = float(nbestval)
         return p
 
 
@@ -164,17 +158,16 @@ class Message(object):
         prefix = self.CLASS_ID + ':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        sender_str, pos_str, value_str = state.split(';')
-        sender = int(sender_str)
-        pos = Vector.unpack(pos_str)
-        value = float(value_str)
+        sender, pos, value = state.split(';')
+        sender = int(sender)
+        pos = Vector.unpack(pos)
+        value = float(value)
         return cls(sender, pos, value)
 
     def __repr__(self):
-        strings = (str(self.sender),
-                repr(self.position),
-                repr(self.value))
-        return 'm:%s' % (';'.join(strings))
+        fields = (self.sender, self.position, self.value)
+        strings = (repr(field) for field in fields)
+        return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
 
 def unpack(state):

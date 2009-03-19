@@ -8,10 +8,6 @@ from mrs import param
 from particle import Particle
 
 
-# TODO: We currently assume that your nbest is the best pbest you've ever seen
-# among all of your neighbors; an alternative interpretation might be that
-# it's the best pbest among all of your current neighbors.
-
 # TODO: allow the initial set of particles to be given
 
 
@@ -46,21 +42,19 @@ class StandardPSO(mrs.MapReduce):
                 print
                 if (self.opts.batches > 1):
                     print "# Batch %d" % batch
-
-                self.bypass_batch()
-
+                self.bypass_batch(batch)
                 print "# DONE" 
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
-    def bypass_batch(self):
+    def bypass_batch(self, batch):
         """Performs a single batch of PSO."""
         self.setup()
         comp = self.function.comparator
 
         # Create the Population.
         rand = self.random(0)
-        particles = list(self.topology.newparticles(rand))
+        particles = list(self.topology.newparticles(batch, rand))
 
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
@@ -70,12 +64,10 @@ class StandardPSO(mrs.MapReduce):
         for iteration in xrange(1, 1 + self.opts.iters):
             # Update position and value.
             for p in particles:
-                # TODO: keep track of bestparticle.
                 self.move_and_evaluate(p)
 
             # Communication phase.
             for p in particles:
-                # TODO: create a Random instance for the iterneighbors method.
                 for i in self.topology.iterneighbors(p):
                     # Send p's information to neighbor i.
                     neighbor = particles[i]
@@ -252,12 +244,26 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
 
-    def move_and_evaluate(self, particle):
+    def move_and_evaluate(self, p):
         """Moves, evaluates, and updates the given particle."""
-        # TODO: should we skip motion in the first iteration?
-        newpos, newvel = self.motion(particle)
+        self.set_particle_rand(p)
+        if p.iters > 0:
+            newpos, newvel = self.motion(p)
+        else:
+            newpos, newvel = p.pos, p.vel
+        # TODO(?): value = self.function(newpos, p.rand)
         value = self.function(newpos)
-        particle.update(newpos, newvel, value, self.function.comparator)
+        p.update(newpos, newvel, value, self.function.comparator)
+
+    def set_particle_rand(self, p):
+        """Makes a Random for the given particle and saves it to `p.rand`.
+
+        Note that the Random depends on the particle id, iteration, and batch.
+        """
+        from mrs.impl import SEED_BITS
+        base = 2 ** SEED_BITS
+        offset = 1 + base * (p.pid + base * (p.iters + base * p.batches))
+        p.rand = self.random(offset)
 
     def cli_startup(self):
         """Checks whether the repository is dirty and reports options."""
