@@ -12,9 +12,9 @@ class Particle(object):
     generated.
 
     Sample repr:
-    4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
+    p:128,4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
     Interpretation of repr:
-       pos       vel    val     pbpos   pbval  gbpos   gbval
+      pid   pos       vel    value   pbpos   pbval  gbpos   gbval
 
     Note: A particle's global best is only used in the MapReduce
     implementation--the neighborhood stuff for the normal PSO implementation
@@ -25,53 +25,35 @@ class Particle(object):
     awkward, so we stopped doing that.  Hopefully other code won't depend
     on it too much.
     """
-    def __init__(self, pos=None, vel=None, val=None, pid=None, state=None):
+    CLASS_ID = 'p'
+
+    def __init__(self, pid, pos, vel, value=None):
         self.pid = pid
         self.iters = 0
 
-        # TODO: move all of the `state` grabbing stuff into a separate factory
-        # function, which will clean up the __init__ function dramatically.
-        if state is not None:
-            (pos_str, vel_str, val_str, pbestpos_str, pbestval_str,
-                    nbestpos_str, nbestval_str) = state.split(';')
-            pos = [float(field) for field in pos_str.split(',')]
-            vel = [float(field) for field in vel_str.split(',')]
-            val = float(val_str)
-            pbestpos = [float(field) for field in pbestpos_str.split(',')]
-            pbestval = float(pbestval_str)
-            nbestpos = [float(field) for field in nbestpos_str.split(',')]
-            nbestval = float(nbestval_str)
+        if value is None:
+            value = float('inf')
 
-        self.dims = len(pos)
-
-        if vel is None:
-            vel = [0.0] * self.dims
-        if val is None:
-            val = float('inf')
-
-        if state is None:
-            pbestpos = pos
-            pbestval = val
-            nbestpos = pos
-            nbestval = val
-
-        self.pos = Vector(pos)
-        self.vel = Vector(vel)
-        self.val = val
-        self.pbestpos = Vector(pbestpos)
-        self.pbestval = pbestval
-        self.nbestpos = Vector(nbestpos)
-        self.nbestval = nbestval
+        self.pos = pos
+        self.vel = vel
+        self.value = value
+        self.pbestpos = pos
+        self.pbestval = value
+        self.nbestpos = pos
+        self.nbestval = value
 
         self.stagnantcount = 0
         self.improvedcount = 0
 
-    def copy(self):
-        """Performs a deep copy and returns the new Particle."""
-        p = Particle(self.pos, self.vel, self.val)
-        p.pbestpos = Vector(self.pbestpos)
+    def copy(self, newpid):
+        """Performs a deep copy and returns the new Particle.
+
+        An id must be specified for the new particle.
+        """
+        p = Particle(newpid, self.pos, self.vel, self.value)
+        p.pbestpos = self.pbestpos
         p.pbestval = self.pbestval
-        p.nbestpos = Vector(self.nbestpos)
+        p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
         p.iters = self.iters
         return p
@@ -81,21 +63,14 @@ class Particle(object):
 
         This is used only in the Mrs PSO implementation.
         """
-        p = Particle(self.pos, self.vel, self.val)
-        p.pbestpos = Vector(self.pbestpos)
-        p.pbestval = self.pbestval
-        # We send our personal best to contribute to their global best.
-        p.nbestpos = Vector(self.pbestpos)
-        p.nbestval = self.pbestval
-        p.iters = self.iters
-        return p
+        return Message(self.pid, self.pos, self.value)
 
     def update(self, newpos, newvel, newval, isbetterfunc=operator.lt):
         self.pos = Vector(newpos)
         self.vel = Vector(newvel)
-        self.val = newval
+        self.value = newval
         self.iters += 1
-        if isbetterfunc(self.val, self.pbestval):
+        if isbetterfunc(self.value, self.pbestval):
             self.stagnantcount = 0
             self.improvedcount += 1
             self.pbestval = newval
@@ -113,18 +88,14 @@ class Particle(object):
         else:
             return False
 
-    def is_message(self):
-        """Is this a message (True) or a full-fledged particle (False)"""
-        return self.dep_str == ''
-
-    def reset(self, pos, vel, val):
+    def reset(self, pos, vel, value):
         self.pos = Vector(pos)
         self.vel = Vector(vel)
-        self.val = val
-        self.pbestpos = Vector(pos)
-        self.pbestval = val
-        self.nbestpos = Vector(pos)
-        self.nbestval = val
+        self.value = value
+        self.pbestpos = pos
+        self.pbestval = value
+        self.nbestpos = pos
+        self.nbestval = value
         self.resetcounts()
 
     def resetcounts(self):
@@ -132,17 +103,90 @@ class Particle(object):
         self.improvedcount = 0
 
     def __str__(self):
-        return "pos: %r; vel: %r; val: %r; pbestpos: %r; pbestval: %r" % (
-                self.pos, self.vel, self.val, self.pbestpos, self.pbestval)
+        return "pos: %r; vel: %r; value: %r; pbestpos: %r; pbestval: %r" % (
+                self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
 
     def __repr__(self):
         # Note: We don't set the dep_str from self.deps anymore.
-        return ';'.join((self.dep_str,
-                        ','.join(str(x) for x in self.pos),
-                        ','.join(str(x) for x in self.vel),
-                        str(self.val),
-                        ','.join(str(x) for x in self.pbestpos),
-                        str(self.pbestval),
-                        ','.join(str(x) for x in self.nbestpos),
-                        str(self.nbestval)))
+        fields = (self.pos, self.vel, self.value,
+                self.pbestpos, self.pbestval, self.nbestpos, self.nbestval)
+        strings = (repr(field) for field in fields)
+        return 'p:%s' % (';'.join(fields))
 
+    @classmethod
+    def unpack(cls, state):
+        """Unpacks a state string, returning a new Particle.
+
+        The state string would have been created with repr(particle).
+        """
+        prefix = self.CLASS_ID + ':'
+        assert state.startswith(prefix)
+        state = state[len(prefix):]
+        (pid, pos_str, vel_str, value_str, pbestpos_str, pbestval_str,
+                nbestpos_str, nbestval_str) = state.split(';')
+        pos = Vector.unpack(pos_str)
+        vel = Vector.unpack(vel_str)
+        value = float(value_str)
+        p = cls(pid, pos, vel, value)
+        p.pbestpos = Vector.unpack(pbestpos_str)
+        p.pbestval = float(pbestval_str)
+        p.nbestpos = Vector.unpack(nbestpos_str)
+        p.nbestval = float(nbestval_str)
+        return p
+
+
+class Message(object):
+    """Message used to update bests in Mrs PSO.
+
+    Sample repr:
+    m:128,4.3,-2.1;.7;0.0074
+    Interpretation of repr:
+    sender   pos      value
+
+    Attributes:
+        position: Position of the particle.
+        value: Value of the particle at `position`.
+        sender: ID of the sending particle.
+    """
+    CLASS_ID = 'm'
+
+    def __init__(self, sender, position, value):
+        self.sender = sender
+        self.position = position
+        self.value = value
+
+    @classmethod
+    def unpack(self, state):
+        """Unpacks a state string, returning a new Message.
+
+        The state string would have been created with repr(particle).
+        """
+        prefix = self.CLASS_ID + ':'
+        assert state.startswith(prefix)
+        state = state[len(prefix):]
+        sender_str, pos_str, value_str = state.split(';')
+        sender = int(sender_str)
+        pos = Vector.unpack(pos_str)
+        value = float(value_str)
+        return cls(sender, pos, value)
+
+    def __repr__(self):
+        strings = (str(self.sender),
+                repr(self.position),
+                repr(self.value))
+        return 'm:%s % (';'.join(strings))
+
+
+def unpack(state):
+    """Unpacks a state string, returning a Particle or Message."""
+    start, _ = state.split(':', 1)
+    try:
+        cls = CLASS_IDS[start]
+    except KeyError:
+        raise ValueError('Cannot unpack a state string of class "%s".' % start)
+    return cls.unpack(state)
+
+
+# Valid class identifiers and their corresponding classes.
+CLASSES = (Particle, Message)
+CLASS_IDS = dict((cls.CLASS_ID, cls) for cls in CLASSES)

@@ -175,7 +175,7 @@ class StandardPSO(mrs.MapReduce):
                 pop.particles = []
                 for bucket in output_data:
                     for reduce_id, particle in bucket:
-                        pop.particles.append(Particle(state=particle))
+                        pop.particles.append(Particle.unpack(state))
 
                 if not outputter.require_all:
                     pop.set_bestparticle(pop.particles[0])
@@ -198,7 +198,8 @@ class StandardPSO(mrs.MapReduce):
 
     def pso_map(key, value):
         comparator = self.function.comparator
-        particle = Particle(pid=int(key), state=value)
+        particle = Particle.unpack(value)
+        assert particle.pid == key
         self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
@@ -242,7 +243,7 @@ class StandardPSO(mrs.MapReduce):
         comparator = self.function.comparator
         best = None
         for value in value_iter:
-            p = Particle(state=value)
+            p = Particle.unpack(value)
             if (best is None) or (comparator(p.pbestval, best.pbestval)):
                 best = p
         yield repr(best)

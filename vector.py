@@ -22,11 +22,16 @@ class VectorSizeError(TypeError): pass
 
 class Vector(tuple):
     """Immutable vector object."""
-    def __init__(self, *args, **kargs):
-        super(Vector,self).__init__(*args)
+    @classmethod
+    def unpack(cls, string):
+        """Creates a new Vector from a repr string."""
+        return cls(float(field) for field in string.split(','))
+
+    def __repr__(self):
+        return ','.join(repr(x) for x in self)
 
     def __neg__(self):
-        return Vector([-x for x in self])
+        return Vector(-x for x in self)
 
     def cross3d(self, other):
         """Cross this vector with the other vector."""
@@ -38,10 +43,7 @@ class Vector(tuple):
             ))
 
     def distance_to(self, other):
-        s = 0.0
-        for i, (x,o) in enumerate(izip(self,other)):
-            s += (o-x)**2
-        return sqrt(s)
+        return sqrt(sum((o-x)**2 for x,o in izip(self, other))):
 
     def lnorm(self, l):
         s = 0
@@ -50,18 +52,18 @@ class Vector(tuple):
         return s**(1/l)
 
     def __abs__(self):
-        return sqrt(sum(imap(operator.mul,self,self)))
+        return sqrt(sum(x*x for x in self))
 
     def normalized(self, mag=None):
         if mag is None:
             mag = abs(self)
         if mag > 0:
-            return Vector([x/mag for x in self])
+            return Vector(x/mag for x in self)
         else:
             return self
 
     def dot(self, other):
-        return sum([x * y for x, y in izip(self,other)])
+        return sum(x * y for x, y in izip(self,other))
 
 # Add element-wise operators to the Vector class.
 for opname in OVERRIDES:
