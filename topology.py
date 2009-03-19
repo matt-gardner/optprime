@@ -23,8 +23,6 @@ class _Topology(object):
     def setup(self, func):
         from cubes.cube import Cube
 
-        self.dims = func.dims
-
         ispace = self.initscale
         ioffset = self.initoffset
 

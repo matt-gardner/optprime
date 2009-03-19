@@ -17,20 +17,20 @@ class Pivot(basic._Base):
         # ---- Direction ----
         vec = Vector()
         for i in xrange(dims):
-            vec.append(self.rand.gauss(0,1))
+            vec.append(rand.gauss(0,1))
 
         # ---- Random Radius ----
         if uniformity > 0:
-            r = self.rand.uniform(0,1) ** (pw*uniformity)
+            r = rand.uniform(0,1) ** (pw*uniformity)
         else:
             sdev = abs(uniformity)
-            r = abs(self.rand.gauss(0,sdev))
+            r = abs(rand.gauss(0,sdev))
 
         # ---- finish the vector ----
         frac = radius * r / abs(vec)
         return vec * frac
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Implements the Simple Pivot motion approach"""
         distance = abs(particle.pbestpos - particle.nbestpos)
 

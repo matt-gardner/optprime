@@ -27,7 +27,7 @@ class StandardPSO(mrs.MapReduce):
         self.topology = param.instantiate(opts, 'top')
 
         self.function.setup()
-        self.motion.setup(self.function, opts.mrs__seed)
+        self.motion.setup(self.function)
         self.topology.setup(self.function)
 
     ##########################################################################

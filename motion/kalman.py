@@ -4,7 +4,6 @@ from amlpso.vector import Vector
 
 from Numeric import array, dot, transpose, identity, zeros
 from LinearAlgebra import inverse
-from RandomArray import multivariate_normal as mn
 
 import sys
 
@@ -31,7 +30,7 @@ class Kalman(basic._Base):
 
         self.filters = {}
 
-    def getfilter(self, particle):
+    def getfilter(self, particle, rand):
         if id(particle) in self.filters:
             return self.filters[id(particle)]
 
@@ -41,10 +40,8 @@ class Kalman(basic._Base):
 
         if self.randinit:
             from cubes.cube import Cube
-            from random import Random
             c = Cube(self.constraints)
-            r = Random()
-            prior = c.random_vec(r) + c.random_vec(r)
+            prior = c.random_vec(rand) + c.random_vec(rand)
         else:
             prior = list(particle.pos) + list(particle.vel)
 
@@ -96,11 +93,11 @@ class Kalman(basic._Base):
         self.filters[id(particle)] = kalman
         return self.filters[id(particle)]
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
-        kalman = self.getfilter(particle)
+        kalman = self.getfilter(particle, rand)
 
         rand = self.rand
 
@@ -125,7 +122,9 @@ class Kalman(basic._Base):
         else:
             mean, var = kalman.filt()
 
-        newstate = mn(mean, var)
+        raise NotImplementedError("Hey!  RandomArray.multivariate_normal "
+                "can't take a Random instance!")
+        newstate = multivariate_normal(mean, var)
         return Vector(newstate[:self.dims]),Vector(newstate[self.dims:])
 
 

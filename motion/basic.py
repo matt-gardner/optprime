@@ -1,7 +1,6 @@
 from __future__ import division
 import operator
 from math import sqrt
-import random
 
 from mrs.param import ParamObj, Param
 from amlpso.vector import Vector
@@ -9,12 +8,11 @@ from amlpso.cubes.cube import Cube
 
 
 class _Base(ParamObj):
-    def setup(self, function, seed, *args, **kargs):
+    def setup(self, function, *args, **kargs):
         if function.maximize:
             self.comparator = operator.gt
         else:
             self.comparator = operator.lt
-        self.rand = random.Random(seed)
         constraints = function.constraints
         self.dims = len(constraints)
         self.cube = Cube(constraints)
@@ -22,7 +20,7 @@ class _Base(ParamObj):
         vconstraints = [(-s,s) for s in sizes]
         self.vcube = Cube(vconstraints)
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         raise NotImplementedError
 
 
@@ -41,7 +39,7 @@ class Constricted(_Base):
         p1, p2 = [Vector(x) for x in zip(*self.cube.constraints)]
         self.diaglength = abs(p1 - p2)
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Get the next position and velocity from this particle."""
 
         phi = self.phi1 + self.phi2
@@ -51,9 +49,8 @@ class Constricted(_Base):
         else:
             s = kappa
 
-        uniform = self.rand.uniform
-        r1 = Vector([uniform(0, self.phi1) for x in xrange(self.dims)])
-        r2 = Vector([uniform(0, self.phi2) for x in xrange(self.dims)])
+        r1 = Vector([rand.uniform(0, self.phi1) for x in xrange(self.dims)])
+        r2 = Vector([rand.uniform(0, self.phi2) for x in xrange(self.dims)])
 
         grel = particle.nbestpos - particle.pos
         prel = particle.pbestpos - particle.pos
@@ -86,7 +83,7 @@ class BasicAdaptive(_Base):
     def setup(self, *args, **kargs):
         super(BasicAdaptive, self).setup(*args, **kargs)
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -103,8 +100,8 @@ class BasicAdaptive(_Base):
 
         dims, k, c1, c2 = self.dims, self.k, self.c1, self.c2
 
-        r1 = Vector([self.rand.uniform(0,c1) for x in xrange(dims)])
-        r2 = Vector([self.rand.uniform(0,c2) for x in xrange(dims)])
+        r1 = Vector(rand.uniform(0,c1) for x in xrange(dims))
+        r2 = Vector(rand.uniform(0,c2) for x in xrange(dims))
 
         pos, vel, dt = particle.pos, particle.vel, particle.dt
 
@@ -133,11 +130,9 @@ class BasicAdaptive(_Base):
 
 
 class BasicGauss(_Base):
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
-
-        gauss = self.rand.gauss
 
         phi = 2/0.97225 # per Clerc's 2003 TRIBES paper
         chi = 1/(phi - 1 + sqrt(phi**2 - 2*phi))
@@ -147,8 +142,8 @@ class BasicGauss(_Base):
 
         # Generate a Gaussian around the velocity vectors according to Clerc's
         # paper.
-        gvel = Vector([gauss(x,abs(x)/2) for x in grel])
-        pvel = Vector([gauss(x,abs(x)/2) for x in prel])
+        gvel = Vector([rand.gauss(x,abs(x)/2) for x in grel])
+        pvel = Vector([rand.gauss(x,abs(x)/2) for x in prel])
 
         newvel = chi * (particle.vel + gvel + pvel)
 

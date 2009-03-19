@@ -33,7 +33,7 @@ class Link1(basic._Base):
         else:
             self.sdev = math.sqrt( self.variance )
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         # Here we get the new gnorm dependent on whether we include pbest or not
         if self.usepbest:
             gnorm1 = particle.nbestpos - particle.pos
@@ -72,7 +72,7 @@ class Link1(basic._Base):
         pw = weight
         gw = 1 - pw
 
-        gauss = self.rand.gauss
+        gauss = rand.gauss
         sdev = self.sdev
 
         nvel = pw * pnorm + gw * gnorm
@@ -130,7 +130,7 @@ class Link2(basic._Base):
         self.sdev = math.sqrt(self.variance)
         self.sizes = [abs(r-l) for l,r in self.constraints]
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         if self.usepbest:
             gnorm1 = particle.nbestpos - particle.pos
             gnorm2 = particle.pbestpos - particle.pos
@@ -153,7 +153,7 @@ class Link2(basic._Base):
                     weight = 0
             else:
                 weight = self.weight
-            pw = self.rand.gauss(weight, self.sdev)
+            pw = rand.gauss(weight, self.sdev)
             gw = 1 - pw
 
             gnorm = gw * gnorm1 + pw * gnorm2
@@ -190,7 +190,7 @@ class Link2(basic._Base):
                 weight = 0
         else:
             weight = self.weight
-        pw = self.rand.gauss(weight, self.sdev)
+        pw = rand.gauss(weight, self.sdev)
         gw = 1 - pw
 
         # We create a new normal vector and then give it the right magnitude by
@@ -207,13 +207,13 @@ class Link2(basic._Base):
                 nvel = pnorm
 
         # Pick a random element of the vector and randomize it.
-        elidx = self.rand.randrange(0,len(nvel))
+        elidx = rand.randrange(0,len(nvel))
         if self.craziness == -1:
-            nvel = Vector([self.rand.gauss(x,max(abs(x)/2,s*0.00001)) 
-                for x,s in izip(nvel,self.sizes)])
+            nvel = Vector(rand.gauss(x,max(abs(x)/2,s*0.00001)) 
+                for x,s in izip(nvel,self.sizes))
         else:
             sdev = self.sdev * self.craziness
-            nvel[elidx] = self.rand.gauss(nvel[elidx], sdev)
+            nvel[elidx] = rand.gauss(nvel[elidx], sdev)
 
 
         nvel.normalize()
@@ -244,13 +244,13 @@ class Link3(basic._Base):
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdevs = [math.sqrt(self.cfac * s) for s in self.sizes]
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         predpos = particle.pos + particle.vel
         goodpos = particle.pbestpos
 
         diffpos = predpos - goodpos
 
-        #pw = self.rand.gauss( self.weight, self.cfac )
+        #pw = rand.gauss( self.weight, self.cfac )
         if self.weight == -1:
             try:
                 weight = particle.nbestval / (particle.pbestval
@@ -269,8 +269,7 @@ class Link3(basic._Base):
         sdevs = [max(self.craziness*s,sdev) 
                 for s,sdev in izip(diffpos,self.sdevs)]
 
-        gauss = self.rand.gauss
-        newpos = Vector([gauss(x,sdev) for x,sdev in izip(meanpos,sdevs)])
+        newpos = Vector(rand.gauss(x,sdev) for x,sdev in izip(meanpos,sdevs))
         newvel = newpos - particle.pos
 
         return None, newvel
@@ -293,7 +292,7 @@ class Link4(basic._Base):
         self.sizes = [abs(r-l) for l,r in self.constraints]
         self.sdev = math.sqrt(self.variance)
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         predpos = particle.pos + particle.vel
         goodpos = particle.nbestpos
 
@@ -305,7 +304,7 @@ class Link4(basic._Base):
                 weight = 0
         else:
             weight = self.weight
-        pw = self.rand.gauss(weight, self.sdev)
+        pw = rand.gauss(weight, self.sdev)
         gw = 1 - pw
 
         newpos = pw * predpos + gw * goodpos
