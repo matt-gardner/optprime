@@ -278,7 +278,6 @@ class BranchStats(Output):
         self.notPnotN = dict()
         self.notPbutN = dict()
 
-
     def __call__(self, **kwds):
         best = kwds['best']
         iteration = kwds['iteration']

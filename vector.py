@@ -65,18 +65,21 @@ class Vector(tuple):
     def dot(self, other):
         return sum(x * y for x, y in izip(self,other))
 
-# Add element-wise operators to the Vector class.
-for opname in OVERRIDES:
-    op = getattr(operator, opname)
 
+def make_binary_op(opname):
+    op = getattr(operator, opname)
     def binary_op(self, other):
         if isinstance(other, SEQUENCETYPES):
             if len(self) != len(other):
                 raise VectorSizeError
-            return Vector([op(*pair) for pair in izip(self,other)])
+            return Vector([op(*pair) for pair in izip(self, other)])
         else:
             return Vector([op(x,other) for x in self])
+    return binary_op
 
+
+def make_rbinary_op(opname):
+    op = getattr(operator, opname)
     def rbinary_op(self, other):
         if isinstance(other, SEQUENCETYPES):
             if len(self) != len(other):
@@ -84,9 +87,14 @@ for opname in OVERRIDES:
             return Vector([op(o,x) for (x,o) in izip(self,other)])
         else:
             return Vector([op(other,x) for x in self])
+    return rbinary_op
 
+
+# Add element-wise operators to the Vector class.
+for opname in OVERRIDES:
+    binary_op = make_binary_op(opname)
+    rbinary_op = make_rbinary_op(opname)
     setattr(Vector, opname, binary_op)
-    setattr(Vector, '__i' + opname[2:], binary_op)
     setattr(Vector, '__r' + opname[2:], rbinary_op)
 
 
