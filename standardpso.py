@@ -41,11 +41,11 @@ class StandardPSO(mrs.MapReduce):
         # Perform the simulation in batches
         try:
             for batch in xrange(self.opts.batches):
-                self.bypass_batch()
+                self.bypass_batch(batch)
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
-    def bypass_batch(self):
+    def bypass_batch(self, batch):
         """Performs a single batch of PSO."""
         # Separate by two blank lines and a header.
         print
