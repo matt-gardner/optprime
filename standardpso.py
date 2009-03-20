@@ -53,7 +53,7 @@ class StandardPSO(mrs.MapReduce):
         comp = self.function.comparator
 
         # Create the Population.
-        rand = self.random(0)
+        rand = self.initialization_rand(batch)
         particles = list(self.topology.newparticles(batch, rand))
 
         # Perform PSO Iterations.  The iteration number represents the total
@@ -111,7 +111,7 @@ class StandardPSO(mrs.MapReduce):
 
         # TODO: Add a batches loop.
 
-        rand = self.random(0)
+        rand = self.initialization_rand(batch)
         particles = [(str(p.pid), repr(p)) for p in
                 self.topology.newparticles(rand)]
 
@@ -264,6 +264,16 @@ class StandardPSO(mrs.MapReduce):
         base = 2 ** SEED_BITS
         offset = 1 + base * (p.pid + base * (p.iters + base * p.batches))
         p.rand = self.random(offset)
+
+    def initialization_rand(self, batch):
+        """Returns a new Random for the given batch number.
+
+        This ensures that each batch will have a unique initial swarm state.
+        """
+        from mrs.impl import SEED_BITS
+        base = 2 ** SEED_BITS
+        offset = 2 + base * batch
+        return self.random(offset)
 
     def cli_startup(self):
         """Checks whether the repository is dirty and reports options."""
