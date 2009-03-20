@@ -48,7 +48,11 @@ class StandardPSO(mrs.MapReduce):
             print "# INTERRUPTED"
 
     def bypass_batch(self, batch):
-        """Performs a single batch of PSO."""
+        """Performs a single batch of PSO without MapReduce.
+
+        Compare to the run_batch method, which uses MapReduce to do the same
+        thing.
+        """
         self.setup()
         comp = self.function.comparator
 
@@ -109,11 +113,29 @@ class StandardPSO(mrs.MapReduce):
         except IOError:
             tty = None
 
-        # TODO: Add a batches loop.
+        # Perform the simulation in batches
+        try:
+            for batch in xrange(self.opts.batches):
+                # Separate by two blank lines and a header.
+                print
+                print
+                if (self.opts.batches > 1):
+                    print "# Batch %d" % batch
+                self.run_batch(job, batch, tty)
+                print "# DONE" 
+        except KeyboardInterrupt, e:
+            print "# INTERRUPTED"
 
+    def run_batch(self, job, batch, tty):
+        """Performs a single batch of PSO using MapReduce.
+
+        Compare to the bypass_batch method, which does the same thing without
+        using MapReduce.
+        """
+        self.setup()
         rand = self.initialization_rand(batch)
         particles = [(str(p.pid), repr(p)) for p in
-                self.topology.newparticles(rand)]
+                self.topology.newparticles(batch, rand)]
 
         numtasks = self.opts.numtasks
         if not numtasks:
@@ -121,22 +143,27 @@ class StandardPSO(mrs.MapReduce):
         new_data = job.local_data(particles, parter=mrs.mod_partition,
                 splits=numtasks)
 
+        output = param.instantiate(self.opts, 'out')
+        output.start()
+
         iters = 1
         running = True
         while True:
             # Check whether we need to collect output for the previous
             # iteration.
             output_data = None
-            if (iters != 1) and (((iters-1) % opts.outputfreq) == 0):
-                if outputter.require_all:
+            if ((iters-2) % opts.outputfreq) == 0:
+                if 'particles' in output.args:
                     output_data = new_data
-                else:
+                elif 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
                     collapsed_data = job.map_data(new_data, collapse_map,
                             splits=1)
                     output_data = job.reduce_data(collapsed_data,
                             findbest_reduce, splits=1)
+                else:
+                    output_data = None
 
             if (opts.iterations >= 0) and (iters > opts.iterations):
                 # The previous iteration was the last iteration.
@@ -164,14 +191,17 @@ class StandardPSO(mrs.MapReduce):
                         ready = job.wait(output_data)
 
                 # Download output_data and update population accordingly.
-                output_data.fetchall()
-                pop.particles = []
-                for bucket in output_data:
-                    for reduce_id, particle in bucket:
-                        pop.particles.append(Particle.unpack(state))
+                if 'best' in output.args or 'particles' in output.args:
+                    output_data.fetchall()
+                    particles = []
+                    for bucket in output_data:
+                        for reduce_id, particle in bucket:
+                            particles.append(Particle.unpack(state))
 
-                if not outputter.require_all:
-                    pop.set_bestparticle(pop.particles[0])
+                    if 'particles' in output.args:
+                        # FIXME: loop over the particles and find the best.
+                    else:
+                        best = particles[0]
 
                 # Print out the results.
                 outputter(pop, iters)
@@ -183,8 +213,7 @@ class StandardPSO(mrs.MapReduce):
 
             iters += 1
 
-        self.output.finish()
-        print "# DONE"
+        output.finish()
 
     ##########################################################################
     # Primary MapReduce
@@ -196,7 +225,7 @@ class StandardPSO(mrs.MapReduce):
         self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
-        message = particle.make_message()
+        message = particle.make_message(self.opts.transitive_best)
         # TODO: create a Random instance for the iterneighbors method.
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
