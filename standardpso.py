@@ -146,49 +146,54 @@ class StandardPSO(mrs.MapReduce):
         output = param.instantiate(self.opts, 'out')
         output.start()
 
-        iters = 1
-        running = True
-        while True:
-            # Check whether we need to collect output for the previous
-            # iteration.
-            output_data = None
-            if ((iters-2) % opts.outputfreq) == 0:
-                if 'particles' in output.args:
-                    output_data = new_data
-                elif 'best' in output.args:
+        # Perform iterations.  Note: we submit the next iteration while the
+        # previous is being computed.  Also, the next PSO iteration depends on
+        # the same data as the output phase, so they can run concurrently.
+        last_best = None
+        last_swarm = None
+        next_best = None
+        for iteration in xrange(1, 1 + self.opts.iters):
+            interm_data = job.map_data(new_data, pso_map, splits=numtasks,
+                    parter=mrs.mod_partition)
+            next_swarm = job.reduce_data(interm_data, pso_reduce,
+                    splits=numtasks, parter=mrs.mod_partition)
+
+            if not ((iteration - 1) % output.freq):
+                if 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
-                    collapsed_data = job.map_data(new_data, collapse_map,
+                    collapsed_data = job.map_data(next_swarm, collapse_map,
                             splits=1)
-                    output_data = job.reduce_data(collapsed_data,
+                    next_best = job.reduce_data(collapsed_data,
                             findbest_reduce, splits=1)
-                else:
-                    output_data = None
 
-            if (opts.iterations >= 0) and (iters > opts.iterations):
-                # The previous iteration was the last iteration.
-                running = False
-            else:
-                # Submit one PSO iteration to the job:
-                interm_data = job.map_data(new_data, pso_map, splits=numtasks,
-                        parter=mrs.mod_partition)
-                new_data = job.reduce_data(interm_data, pso_reduce,
-                        splits=numtasks, parter=mrs.mod_partition)
-
-            if output_data:
-                # Note: The next PSO iteration is being computed concurrently
-                # with the output phase (they both depend on the same data).
-
-                ready = []
-                while not ready:
-                    if tty:
-                        ready = job.wait(output_data, timeout=1.0)
-                        if ready:
-                            print >>tty, "Finished iteration", iters-1
-                        else:
-                            print >>tty, job.status()
+            waitset = set()
+            if last_swarm:
+                waitset.add(last_swarm)
+            if last_best:
+                waitset.add(last_best)
+            while waitset:
+                if tty:
+                    ready = job.wait(timeout=1.0, *waitset)
+                    if last_swarm in ready:
+                        print >>tty, "Finished iteration", last_iteration
                     else:
-                        ready = job.wait(output_data)
+                        print >>tty, job.status()
+                else:
+                    ready = job.wait(*waitset)
+
+                ####################################
+                # FIX ALL OF THE OUTPUT STUFF HERE:
+
+                if last_swarm in ready:
+                    waitset.remove(last_swarm)
+                    if 'particles' in output.args:
+                        # FIXME
+                        pass
+
+                if last_best in ready:
+                    # FIXME
+                    pass
 
                 # Download output_data and update population accordingly.
                 if 'best' in output.args or 'particles' in output.args:
@@ -204,15 +209,18 @@ class StandardPSO(mrs.MapReduce):
                     else:
                         best = particles[0]
 
-                # Print out the results.
-                outputter(pop, iters)
-                sys.stdout.flush()
+                    # Print out the results.
+                    outputter(pop, iters)
+                    sys.stdout.flush()
 
-            if not running:
-                job.wait(new_data)
-                break
+                if not running:
+                    job.wait(new_data)
+                    break
 
-            iters += 1
+            # Set up for the next iteration.
+            last_iteration = iteration
+            last_swarm = next_swarm
+            last_best = next_best
 
         output.finish()
 
@@ -335,7 +343,7 @@ class StandardPSO(mrs.MapReduce):
             print '#   amlpso:', amlpso_status
             print '#   mrs:', mrs_status
             print "# Options:"
-            for key, value in sorted(self.opts.__dict__.iteritems()):
+            for key, value in sorted(vars(self.opts).iteritems()):
                 print '#   %s = %s' % (key, value)
             print ""
             sys.stdout.flush()
