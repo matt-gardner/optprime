@@ -200,6 +200,7 @@ class StandardPSO(mrs.MapReduce):
 
                     if 'particles' in output.args:
                         # FIXME: loop over the particles and find the best.
+                        pass
                     else:
                         best = particles[0]
 
