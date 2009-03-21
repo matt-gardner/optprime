@@ -214,7 +214,7 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # Primary MapReduce
 
-    def pso_map(key, value):
+    def pso_map(self, key, value):
         comparator = self.function.comparator
         particle = Particle.unpack(value)
         assert particle.pid == key
@@ -229,7 +229,7 @@ class StandardPSO(mrs.MapReduce):
         # Emit the particle without changing its id:
         yield (str(key), repr(particle))
 
-    def pso_reduce(key, value_iter):
+    def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
         best = None
@@ -254,10 +254,10 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    def collapse_map(key, value):
+    def collapse_map(self, key, value):
         yield '0', value
 
-    def findbest_reduce(key, value_iter):
+    def findbest_reduce(self, key, value_iter):
         comparator = self.function.comparator
         best = None
         for value in value_iter:
@@ -300,12 +300,12 @@ class StandardPSO(mrs.MapReduce):
         offset = 2 + base * batch
         return self.random(offset)
 
-    def findbest(particles, comparator):
+    def findbest(self, particles, comparator):
         """Returns the best particle from the given list."""
         best = None
         bestval = None
         for p in particles:
-            if (best is None) or comp(p.pbestval, bestval):
+            if (best is None) or comparator(p.pbestval, bestval):
                 best = p
                 bestval = p.pbestval
         return best
