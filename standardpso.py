@@ -5,7 +5,7 @@ import sys, optparse, operator
 
 import mrs
 from mrs import param
-from particle import Particle
+from particle import Particle, Message, unpack
 
 
 # TODO: allow the initial set of particles to be given
@@ -134,7 +134,7 @@ class StandardPSO(mrs.MapReduce):
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(init_particles)
-        new_data = job.local_data(init_particles, parter=mrs.mod_partition,
+        new_data = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
 
         output = param.instantiate(self.opts, 'out')
@@ -147,10 +147,10 @@ class StandardPSO(mrs.MapReduce):
         last_out_data = None
         next_out_data = None
         for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, pso_map, splits=numtasks,
-                    parter=mrs.mod_partition)
-            next_swarm = job.reduce_data(interm_data, pso_reduce,
-                    splits=numtasks, parter=mrs.mod_partition)
+            interm_data = job.map_data(last_swarm, self.pso_map,
+                    splits=numtasks, parter=self.mod_partition)
+            next_swarm = job.reduce_data(interm_data, self.pso_reduce,
+                    splits=numtasks, parter=self.mod_partition)
 
             if not ((iteration - 1) % output.freq):
                 if 'particles' in output.args:
@@ -158,10 +158,10 @@ class StandardPSO(mrs.MapReduce):
                 if 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
-                    collapsed_data = job.map_data(next_swarm, collapse_map,
-                            splits=1)
+                    collapsed_data = job.map_data(next_swarm,
+                            self.collapse_map, splits=1)
                     next_out_data = job.reduce_data(collapsed_data,
-                            findbest_reduce, splits=1)
+                            self.findbest_reduce, splits=1)
 
             waitset = set()
             if iteration > 1:
@@ -216,8 +216,8 @@ class StandardPSO(mrs.MapReduce):
 
     def pso_map(self, key, value):
         comparator = self.function.comparator
-        particle = Particle.unpack(value)
-        assert particle.pid == key
+        particle = unpack(value)
+        assert particle.pid == int(key)
         self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
@@ -236,13 +236,15 @@ class StandardPSO(mrs.MapReduce):
         bestval = float('inf')
 
         for value in value_iter:
-            record = Particle(pid=int(key), state=value)
-            if record.is_message():
+            record = unpack(value)
+            if isinstance(record, Particle):
+                particle = record
+            elif isinstance(record, Message):
                 if comparator(record.nbestval, bestval):
                     best = record
                     bestval = record.nbestval
             else:
-                particle = record
+                raise ValueError
 
         if particle:
             particle.nbest_cand(best.nbestpos, bestval, comparator)

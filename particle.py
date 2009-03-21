@@ -118,11 +118,12 @@ class Particle(object):
 
         The state string would have been created with repr(particle).
         """
-        prefix = self.CLASS_ID + ':'
+        prefix = cls.CLASS_ID + ':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (batches, pid, iters, pos, vel, value, pbestpos, pbestval,
+        (pid, batches, iters, pos, vel, value, pbestpos, pbestval,
                 nbestpos, nbestval) = state.split(';')
+        pid = int(pid)
         pos = Vector.unpack(pos)
         vel = Vector.unpack(vel)
         value = float(value)
@@ -157,12 +158,12 @@ class Message(object):
         self.value = value
 
     @classmethod
-    def unpack(self, state):
+    def unpack(cls, state):
         """Unpacks a state string, returning a new Message.
 
         The state string would have been created with repr(particle).
         """
-        prefix = self.CLASS_ID + ':'
+        prefix = cls.CLASS_ID + ':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
         sender, pos, value = state.split(';')
