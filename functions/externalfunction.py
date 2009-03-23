@@ -26,9 +26,12 @@ class ExternalFunction(_general._Base):
                 type='int',
                 default=0),
             open_every_time=Param(doc='Open the executable every time, instead of '+
-                'assuming that it will stay open',
+                'assuming that it will stay open (only if using stdin)',
                 type='int',
-                default=0)
+                default=0),
+            constraintsfile=Param(doc='File to get a set of constraints from - be sure'+
+                ' you have the right format! (one line for each dimension: low,high)',
+                default=''),
             )
 
     def setup(self):
@@ -36,7 +39,14 @@ class ExternalFunction(_general._Base):
         if self.externfunc == '':
             raise Exception('Must supply an external function!')
         super(ExternalFunction, self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
+        if self.constraintsfile == '':
+            self._set_constraints(((-50,50),) * self.dims)
+        else:
+            f = open(self.constraintsfile)
+            lines = f.readlines()
+            constraints = [map(float,line.split(',')) for line in lines]
+            constraints = map(tuple, constraints)
+            self._set_constraints(tuple(constraints))
         self.ERROR = float('inf')
         if self.stdin and not self.open_every_time:
             self.func_proc = subprocess.Popen((self.externfunc), stdout=subprocess.PIPE,
