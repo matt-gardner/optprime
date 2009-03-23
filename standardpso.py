@@ -146,13 +146,14 @@ class StandardPSO(mrs.MapReduce):
         last_swarm = new_data
         last_out_data = None
         next_out_data = None
-        last_iteration = None
+        last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
             interm_data = job.map_data(last_swarm, self.pso_map,
                     splits=numtasks, parter=self.mod_partition)
             next_swarm = job.reduce_data(interm_data, self.pso_reduce,
                     splits=numtasks, parter=self.mod_partition)
 
+            next_out_data = None
             if not ((iteration - 1) % output.freq):
                 if 'particles' in output.args:
                     next_out_data = next_swarm
@@ -174,24 +175,22 @@ class StandardPSO(mrs.MapReduce):
                     ready = job.wait(timeout=1.0, *waitset)
                     if last_swarm in ready:
                         print >>tty, "Finished iteration", last_iteration
-                    else:
-                        print >>tty, job.status()
                 else:
                     ready = job.wait(*waitset)
 
                 # Download output data and store as `particles`.
                 if last_out_data in ready:
-                    if 'particles' in output.args:
+                    if 'best' in output.args or 'particles' in output.args:
                         last_out_data.fetchall()
                         particles = []
                         for bucket in last_out_data:
                             for reduce_id, particle in bucket:
-                                particles.append(Particle.unpack(state))
+                                particles.append(Particle.unpack(particle))
 
                 waitset -= set(ready)
 
             # Print out the results.
-            if last_iteration and not ((last_iteration - 1) % output.freq):
+            if last_iteration > 0 and not ((last_iteration - 1) % output.freq):
                 kwds = {}
                 if 'iteration' in output.args:
                     kwds['iteration'] = last_iteration
