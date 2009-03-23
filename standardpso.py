@@ -5,7 +5,7 @@ import sys, optparse, operator
 
 import mrs
 from mrs import param
-from particle import Particle
+from particle import Particle, Message, unpack
 
 
 # TODO: allow the initial set of particles to be given
@@ -87,13 +87,7 @@ class StandardPSO(mrs.MapReduce):
                 if 'particles' in output.args:
                     kwds['particles'] = particles
                 if 'best' in output.args:
-                    best = None
-                    bestval = None
-                    for p in particles:
-                        if (best is None) or comp(p.pbestval, bestval):
-                            best = p
-                            bestval = p.pbestval
-                    kwds['best'] = best
+                    kwds['best'] = self.findbest(particles, comp)
                 output(**kwds)
         output.finish()
 
@@ -134,94 +128,96 @@ class StandardPSO(mrs.MapReduce):
         """
         self.setup()
         rand = self.initialization_rand(batch)
-        particles = [(str(p.pid), repr(p)) for p in
+        init_particles = [(str(p.pid), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
 
         numtasks = self.opts.numtasks
         if not numtasks:
-            numtasks = len(particles)
-        new_data = job.local_data(particles, parter=mrs.mod_partition,
+            numtasks = len(init_particles)
+        new_data = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
 
         output = param.instantiate(self.opts, 'out')
         output.start()
 
-        iters = 1
-        running = True
-        while True:
-            # Check whether we need to collect output for the previous
-            # iteration.
-            output_data = None
-            if ((iters-2) % opts.outputfreq) == 0:
+        # Perform iterations.  Note: we submit the next iteration while the
+        # previous is being computed.  Also, the next PSO iteration depends on
+        # the same data as the output phase, so they can run concurrently.
+        last_swarm = new_data
+        last_out_data = None
+        next_out_data = None
+        last_iteration = 0
+        for iteration in xrange(1, 1 + self.opts.iters):
+            interm_data = job.map_data(last_swarm, self.pso_map,
+                    splits=numtasks, parter=self.mod_partition)
+            next_swarm = job.reduce_data(interm_data, self.pso_reduce,
+                    splits=numtasks, parter=self.mod_partition)
+
+            next_out_data = None
+            if not ((iteration - 1) % output.freq):
                 if 'particles' in output.args:
-                    output_data = new_data
-                elif 'best' in output.args:
+                    next_out_data = next_swarm
+                if 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
-                    collapsed_data = job.map_data(new_data, collapse_map,
-                            splits=1)
-                    output_data = job.reduce_data(collapsed_data,
-                            findbest_reduce, splits=1)
+                    collapsed_data = job.map_data(next_swarm,
+                            self.collapse_map, splits=1)
+                    next_out_data = job.reduce_data(collapsed_data,
+                            self.findbest_reduce, splits=1)
+
+            waitset = set()
+            if iteration > 1:
+                waitset.add(last_swarm)
+            if last_out_data:
+                waitset.add(last_out_data)
+            while waitset:
+                if tty:
+                    ready = job.wait(timeout=1.0, *waitset)
+                    if last_swarm in ready:
+                        print >>tty, "Finished iteration", last_iteration
                 else:
-                    output_data = None
+                    ready = job.wait(*waitset)
 
-            if (opts.iterations >= 0) and (iters > opts.iterations):
-                # The previous iteration was the last iteration.
-                running = False
-            else:
-                # Submit one PSO iteration to the job:
-                interm_data = job.map_data(new_data, pso_map, splits=numtasks,
-                        parter=mrs.mod_partition)
-                new_data = job.reduce_data(interm_data, pso_reduce,
-                        splits=numtasks, parter=mrs.mod_partition)
+                # Download output data and store as `particles`.
+                if last_out_data in ready:
+                    if 'best' in output.args or 'particles' in output.args:
+                        last_out_data.fetchall()
+                        particles = []
+                        for bucket in last_out_data:
+                            for reduce_id, particle in bucket:
+                                particles.append(Particle.unpack(particle))
 
-            if output_data:
-                # Note: The next PSO iteration is being computed concurrently
-                # with the output phase (they both depend on the same data).
+                waitset -= set(ready)
 
-                ready = []
-                while not ready:
-                    if tty:
-                        ready = job.wait(output_data, timeout=1.0)
-                        if ready:
-                            print >>tty, "Finished iteration", iters-1
-                        else:
-                            print >>tty, job.status()
-                    else:
-                        ready = job.wait(output_data)
-
-                # Download output_data and update population accordingly.
-                if 'best' in output.args or 'particles' in output.args:
-                    output_data.fetchall()
-                    particles = []
-                    for bucket in output_data:
-                        for reduce_id, particle in bucket:
-                            particles.append(Particle.unpack(state))
-
-                    if 'particles' in output.args:
-                        # FIXME: loop over the particles and find the best.
-                    else:
+            # Print out the results.
+            if last_iteration > 0 and not ((last_iteration - 1) % output.freq):
+                kwds = {}
+                if 'iteration' in output.args:
+                    kwds['iteration'] = last_iteration
+                if 'particles' in output.args:
+                    kwds['particles'] = particles
+                if 'best' in output.args:
+                    if len(particles) == 1:
                         best = particles[0]
+                    else:
+                        best = self.findbest(particles, comp)
+                    kwds['best'] = best
+                output(**kwds)
 
-                # Print out the results.
-                outputter(pop, iters)
-                sys.stdout.flush()
-
-            if not running:
-                job.wait(new_data)
-                break
-
-            iters += 1
+            # Set up for the next iteration.
+            last_iteration = iteration
+            last_swarm = next_swarm
+            last_out_data = next_out_data
 
         output.finish()
 
     ##########################################################################
     # Primary MapReduce
 
-    def pso_map(key, value):
+    def pso_map(self, key, value):
         comparator = self.function.comparator
-        particle = Particle.unpack(value)
-        assert particle.pid == key
+        particle = unpack(value)
+        assert particle.pid == int(key)
         self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
@@ -233,23 +229,25 @@ class StandardPSO(mrs.MapReduce):
         # Emit the particle without changing its id:
         yield (str(key), repr(particle))
 
-    def pso_reduce(key, value_iter):
+    def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
         best = None
         bestval = float('inf')
 
         for value in value_iter:
-            record = Particle(pid=int(key), state=value)
-            if record.is_message():
-                if comparator(record.nbestval, bestval):
-                    best = record
-                    bestval = record.nbestval
-            else:
+            record = unpack(value)
+            if isinstance(record, Particle):
                 particle = record
+            elif isinstance(record, Message):
+                if comparator(record.value, bestval):
+                    best = record
+                    bestval = record.value
+            else:
+                raise ValueError
 
         if particle:
-            particle.nbest_cand(best.nbestpos, bestval, comparator)
+            particle.nbest_cand(best.position, bestval, comparator)
             yield repr(particle)
         else:
             raise RuntimeError("Didn't find particle %d in the reduce step" %
@@ -258,10 +256,10 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    def collapse_map(key, value):
+    def collapse_map(self, key, value):
         yield '0', value
 
-    def findbest_reduce(key, value_iter):
+    def findbest_reduce(self, key, value_iter):
         comparator = self.function.comparator
         best = None
         for value in value_iter:
@@ -304,6 +302,16 @@ class StandardPSO(mrs.MapReduce):
         offset = 2 + base * batch
         return self.random(offset)
 
+    def findbest(self, particles, comparator):
+        """Returns the best particle from the given list."""
+        best = None
+        bestval = None
+        for p in particles:
+            if (best is None) or comparator(p.pbestval, bestval):
+                best = p
+                bestval = p.pbestval
+        return best
+
     def cli_startup(self):
         """Checks whether the repository is dirty and reports options."""
         import cli
@@ -334,7 +342,7 @@ class StandardPSO(mrs.MapReduce):
             print '#   amlpso:', amlpso_status
             print '#   mrs:', mrs_status
             print "# Options:"
-            for key, value in sorted(self.opts.__dict__.iteritems()):
+            for key, value in sorted(vars(self.opts).iteritems()):
                 print '#   %s = %s' % (key, value)
             print ""
             sys.stdout.flush()
