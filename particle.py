@@ -176,6 +176,11 @@ class Message(object):
         strings = (repr(field) for field in fields)
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
+class SEParticle(Particle):
+
+    def __init__(self, pid, pos, vel, value=None, is_child=False, pparent=-1, 
+            nparent=-1):
+        super(SEParticle, self).__init__(pid, pos, vel, value)
 
 def unpack(state):
     """Unpacks a state string, returning a Particle or Message."""
