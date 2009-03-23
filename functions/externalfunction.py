@@ -24,6 +24,10 @@ class ExternalFunction(_general._Base):
             stdin=Param(doc='Get parameters from stdin instead of as commandline '+
                 'arguments',
                 type='int',
+                default=0),
+            open_every_time=Param(doc='Open the executable every time, instead of '+
+                'assuming that it will stay open',
+                type='int',
                 default=0)
             )
 
@@ -34,13 +38,16 @@ class ExternalFunction(_general._Base):
         super(ExternalFunction, self).setup()
         self._set_constraints(((-50,50),) * self.dims)
         self.ERROR = float('inf')
-        if self.stdin == 1:
+        if self.stdin and not self.open_every_time:
             self.func_proc = subprocess.Popen((self.externfunc), stdout=subprocess.PIPE,
                 stdin=subprocess.PIPE)
 
     def __call__(self, vec):
         import subprocess
         if self.stdin:
+            if self.open_every_time:
+                self.func_proc = subprocess.Popen((self.externfunc), 
+                        stdout=subprocess.PIPE, stdin=subprocess.PIPE)
             self.func_proc.stdin.write(' '.join(str(x) for x in vec)+' ')
             retval = self.func_proc.stdout.readline()
         else:
