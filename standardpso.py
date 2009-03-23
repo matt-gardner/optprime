@@ -146,6 +146,7 @@ class StandardPSO(mrs.MapReduce):
         last_swarm = new_data
         last_out_data = None
         next_out_data = None
+        last_iteration = None
         for iteration in xrange(1, 1 + self.opts.iters):
             interm_data = job.map_data(last_swarm, self.pso_map,
                     splits=numtasks, parter=self.mod_partition)
@@ -181,16 +182,16 @@ class StandardPSO(mrs.MapReduce):
                 # Download output data and store as `particles`.
                 if last_out_data in ready:
                     if 'particles' in output.args:
-                        output_data.fetchall()
+                        last_out_data.fetchall()
                         particles = []
-                        for bucket in output_data:
+                        for bucket in last_out_data:
                             for reduce_id, particle in bucket:
                                 particles.append(Particle.unpack(state))
 
                 waitset -= set(ready)
 
             # Print out the results.
-            if not ((last_iteration - 1) % output.freq):
+            if last_iteration and not ((last_iteration - 1) % output.freq):
                 kwds = {}
                 if 'iteration' in output.args:
                     kwds['iteration'] = last_iteration
