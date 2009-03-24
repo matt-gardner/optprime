@@ -240,14 +240,15 @@ class StandardPSO(mrs.MapReduce):
             if isinstance(record, Particle):
                 particle = record
             elif isinstance(record, Message):
-                if comparator(record.value, bestval):
+                if (best is None) or comparator(record.value, bestval):
                     best = record
                     bestval = record.value
             else:
                 raise ValueError
 
         if particle:
-            particle.nbest_cand(best.position, bestval, comparator)
+            if best:
+                particle.nbest_cand(best.position, bestval, comparator)
             yield repr(particle)
         else:
             raise RuntimeError("Didn't find particle %d in the reduce step" %
