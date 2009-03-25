@@ -29,7 +29,7 @@ class ExternalFunction(_general._Base):
                 doc='Re-open the executable for every call, instead of keeping'
                     ' it open (only if using stdin).  If the function'
                     'evaluation takes a significant amount of time, do this.'),
-            constraints=Param(default='',
+            constraintsfile=Param(default='',
                 doc='Constraints file, formatted as one "low,high" line for '
                     'each dimension'),
             quiet=Param(type='bool',
@@ -41,10 +41,10 @@ class ExternalFunction(_general._Base):
         if self.exe == '':
             raise Exception('Must supply an external function!')
         super(ExternalFunction, self).setup()
-        if self.constraints == '':
+        if self.constraintsfile == '':
             self._set_constraints(((-50,50),) * self.dims)
         else:
-            f = open(self.constraints)
+            f = open(self.constraintsfile)
             lines = f.readlines()
             constraints = [map(float,line.split(',')) for line in lines]
             constraints = map(tuple, constraints)
