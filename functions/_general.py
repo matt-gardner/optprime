@@ -5,8 +5,9 @@ class _Base(ParamObj):
     _params = dict(
             dims=Param(default=2, type='int', shortopt='-d',
                 doc='Number of dimensions'),
-            center=Param(default=0.5, type='float',
-                doc='Relative center of function, between 0 and 1.'),
+            # center is a string because it might be multidimensional
+            center=Param(default='0.5', type='str',
+                doc='Relative center of function, between 0 and 1 per dim.'),
             maximize=Param(type='bool',
                 doc='Maximize the function instead of minimizing.'),
             )
