@@ -101,7 +101,9 @@ class StandardPSO(mrs.MapReduce):
         
         This is run on the master.
         """
-        self.cli_startup()
+        if not self.cli_startup():
+            return
+
         try:
             tty = open('/dev/tty', 'w')
         except IOError:
@@ -316,7 +318,10 @@ class StandardPSO(mrs.MapReduce):
         return best
 
     def cli_startup(self):
-        """Checks whether the repository is dirty and reports options."""
+        """Checks whether the repository is dirty and reports options.
+
+        Returns True if startup succeeded, otherwise False.
+        """
         import cli
         import sys
 
@@ -328,12 +333,12 @@ class StandardPSO(mrs.MapReduce):
                 print >>sys.stderr, (('Repository amlpso (%s) is dirty!'
                         '  Use --hey-im-testing if necessary.') %
                         amlpso_status.directory)
-                sys.exit(-1)
+                return False
             if mrs_status.dirty:
                 print >>sys.stderr, (('Repository mrs (%s) is dirty!'
                         '  Use --hey-im-testing if necessary.') %
                         mrs_status.directory)
-                sys.exit(-1)
+                return False
 
         # Report command-line options.
         if not self.opts.quiet:
@@ -349,6 +354,8 @@ class StandardPSO(mrs.MapReduce):
                 print '#   %s = %s' % (key, value)
             print ""
             sys.stdout.flush()
+
+        return True
 
     def setup(self):
         try:
