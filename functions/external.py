@@ -27,8 +27,7 @@ class ExternalFunction(_general._Base):
                     'arguments'),
             dont_persist=Param(type='bool',
                 doc='Re-open the executable for every call, instead of keeping'
-                    ' it open (only if using stdin).  If the function'
-                    'evaluation takes a significant amount of time, do this.'),
+                    ' it open (only if using stdin).'),
             constraintsfile=Param(default='',
                 doc='Constraints file, formatted as one "low,high" line for '
                     'each dimension'),
