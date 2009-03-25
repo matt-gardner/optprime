@@ -240,6 +240,8 @@ class StandardPSO(mrs.MapReduce):
             if isinstance(record, Particle):
                 particle = record
             elif isinstance(record, Message):
+                if record.value is None:
+                    continue
                 if (best is None) or comparator(record.value, bestval):
                     best = record
                     bestval = record.value
