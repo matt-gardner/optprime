@@ -21,17 +21,21 @@ class ExternalFunction(_general._Base):
     _params = dict(
             externfunc=Param(doc='External function (must be an executable file)',
                 default=''),
-            stdin=Param(doc='Get parameters from stdin instead of as commandline '+
+            stdin=Param(doc='Get parameters from stdin instead of as commandline '
                 'arguments',
                 type='int',
                 default=0),
-            open_every_time=Param(doc='Open the executable every time, instead of '+
+            open_every_time=Param(doc='Open the executable every time, instead of '
                 'assuming that it will stay open (only if using stdin)',
                 type='int',
                 default=0),
-            constraintsfile=Param(doc='File to get a set of constraints from - be sure'+
+            constraintsfile=Param(doc='File to get a set of constraints from - be sure'
                 ' you have the right format! (one line for each dimension: low,high)',
                 default=''),
+            quiet=Param(doc="Don't print messages to and from the external "+
+                "program",
+                type='bool'
+                ),
             )
 
     def setup(self):
@@ -53,6 +57,7 @@ class ExternalFunction(_general._Base):
                 stdin=subprocess.PIPE)
 
     def __call__(self, vec):
+        import sys
         import subprocess
         if self.stdin:
             if self.open_every_time:
@@ -67,6 +72,11 @@ class ExternalFunction(_general._Base):
             func_proc = subprocess.Popen(tuple(command), stdout=subprocess.PIPE)
             retcode = func_proc.wait()
             if retcode < 0:
-                return self.ERROR
+                raise ValueError('External program returned a nonzero exit code')
             retval = func_proc.stdout.readline()
+        if not self.quiet:
+            print >> sys.stderr, 'Sent to program:',' '.join(str(x) for x in vec)+' '
+            print >> sys.stderr, 'Received from program:',retval
         return float(retval)
+
+
