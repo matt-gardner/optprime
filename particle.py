@@ -7,23 +7,37 @@ import operator
 class Particle(object):
     """Particle for Particle Swarm Optimization.
     
-    Initialization can be done by either a repr string or a position (with
-    optional velocity, value).  If a particle id is not specified, one will be
-    generated.
+    The particle assumes that the position and velocity are Vectors so it
+    doesn't have to coerce them.
 
-    Sample repr:
-    p:128;10;300;4.3,-2.1;-0.4,0.7;0.0074;4.3,-2.1;0.0074;1.8,0.5;0.00023
-    Interpretation of repr:
-     pid bat iters  pos      vel    value   pbpos   pbval  gbpos   gbval
+    We create a simple particle with unspecified value.  Note that the empty
+    value, pbestval, and nbestval are represented as empty fields.
 
-    Note: A particle's global best is only used in the MapReduce
-    implementation--the neighborhood stuff for the normal PSO implementation
-    needs to be converted over somehow.
+    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> repr(p)
+    'p:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;'
+    >>>
 
-    Also note: the old implementation had Particle inheriting from Vector,
-    with the position and the particle being the same thing.  This is
-    awkward, so we stopped doing that.  Hopefully other code won't depend
-    on it too much.
+    Adding more detailed state to the particle shows what the full particle
+    representation looks like.
+
+    >>> p.batches = 100
+    >>> p.iters = 200
+    >>> p.pbestpos = Vector((6.0, 7.0))
+    >>> p.nbestpos = Vector((8.0, 9.0))
+    >>> p.value = -10.0
+    >>> p.pbestval = -11.0
+    >>> p.nbestval = -12.0
+    >>> repr(p)
+    'p:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0'
+    >>>
+
+    A new particle is created by unpacking a repr string.  The repr string
+    of the new particle is identical to the repr string of the old particle.
+    >>> q = Particle.unpack(repr(p))
+    >>> repr(q) == repr(p)
+    True
+    >>>
     """
     CLASS_ID = 'p'
 
@@ -31,9 +45,6 @@ class Particle(object):
         self.pid = pid
         self.batches = 0
         self.iters = 0
-
-        if value is None:
-            value = float('inf')
 
         self.pos = pos
         self.vel = vel
@@ -73,20 +84,35 @@ class Particle(object):
             m = Message(self.pid, self.pbestpos, self.pbestval)
         return m
 
-    def update(self, newpos, newvel, newval, isbetterfunc=operator.lt):
+    def update(self, newpos, newvel, newval, comparator=operator.lt):
+        """Uses the given pos, vel, and value, and considers a new pbest."""
         self.pos = Vector(newpos)
         self.vel = Vector(newvel)
         self.value = newval
         self.iters += 1
-        if isbetterfunc(self.value, self.pbestval):
+        if self.isbetter(newval, self.pbestval, comparator):
             self.pbestval = newval
             self.pbestpos = newpos
 
+    # TODO: add some doctests.
     def nbest_cand(self, potential_pos, potential_val, comparator):
         """Update nbest if the given value is better than the current nbest."""
-        if comparator(potential_val, self.nbestval):
+        if self.isbetter(potential_val, self.nbestval, comparator):
             self.nbestpos = Vector(potential_pos)
             self.nbestval = potential_val
+
+    # TODO: add some doctests.
+    @staticmethod
+    def isbetter(potential, old, comparator):
+        """Finds whether the potential value is better than the old value.
+
+        Unlike using the comparator directly, None values are shunned.
+        """
+        if potential is None:
+            return False
+        elif old is None:
+            return True
+        elif comparator(potential, old):
             return True
         else:
             return False
@@ -109,7 +135,7 @@ class Particle(object):
         fields = (self.pid, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,
                 self.nbestval)
-        strings = (repr(field) for field in fields)
+        strings = ((repr(x) if x is not None else '') for x in fields)
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
     @classmethod
@@ -126,29 +152,45 @@ class Particle(object):
         pid = int(pid)
         pos = Vector.unpack(pos)
         vel = Vector.unpack(vel)
-        value = float(value)
+        if value:
+            value = float(value)
+        else:
+            value = None
         p = cls(pid, pos, vel, value)
         p.batches = int(batches)
         p.iters = int(iters)
         p.pbestpos = Vector.unpack(pbestpos)
-        p.pbestval = float(pbestval)
+        if pbestval:
+            p.pbestval = float(pbestval)
+        else:
+            p.pbestval = None
         p.nbestpos = Vector.unpack(nbestpos)
-        p.nbestval = float(nbestval)
+        if nbestval:
+            p.nbestval = float(nbestval)
+        else:
+            p.nbestval = None
         return p
 
 
 class Message(object):
     """Message used to update bests in Mrs PSO.
 
-    Sample repr:
-    m:128,4.3,-2.1;.7;0.0074
-    Interpretation of repr:
-    sender   pos      value
+    >>> m = Message(128, Vector((1.0, 2.0)), -5.0)
+    >>> repr(m)
+    'm:128;1.0,2.0;-5.0'
+    >>>
+
+    Empty values should still work, too.
+
+    >>> m = Message(128, Vector((1.0, 2.0)), None)
+    >>> repr(m)
+    'm:128;1.0,2.0;'
+    >>>
 
     Attributes:
+        sender: ID of the sending particle.
         position: Position of the particle.
         value: Value of the particle at `position`.
-        sender: ID of the sending particle.
     """
     CLASS_ID = 'm'
 
@@ -174,14 +216,15 @@ class Message(object):
 
     def __repr__(self):
         fields = (self.sender, self.position, self.value)
-        strings = (repr(field) for field in fields)
+        strings = ((repr(x) if x is not None else '') for x in fields)
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
-class SEParticle(Particle):
 
+class SEParticle(Particle):
     def __init__(self, pid, pos, vel, value=None, is_child=False, pparent=-1, 
             nparent=-1):
         super(SEParticle, self).__init__(pid, pos, vel, value)
+
 
 def unpack(state):
     """Unpacks a state string, returning a Particle or Message."""
@@ -196,3 +239,7 @@ def unpack(state):
 # Valid class identifiers and their corresponding classes.
 CLASSES = (Particle, Message)
 CLASS_IDS = dict((cls.CLASS_ID, cls) for cls in CLASSES)
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()
