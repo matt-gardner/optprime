@@ -56,6 +56,8 @@ class ExternalFunction(_general._Base):
     def __call__(self, vec):
         import sys
         import subprocess
+        if not self.quiet:
+            print >> sys.stderr, 'Sending to program:',' '.join(repr(x) for x in vec)+' '
         if self.stdin:
             if self.dont_persist:
                 self.func_proc = subprocess.Popen((self.exe), 
@@ -72,7 +74,6 @@ class ExternalFunction(_general._Base):
                 raise ValueError('External program returned a nonzero exit code')
             retval = func_proc.stdout.readline()
         if not self.quiet:
-            print >> sys.stderr, 'Sent to program:',' '.join(repr(x) for x in vec)+' '
             print >> sys.stderr, 'Received from program:',retval
         return float(retval)
 
