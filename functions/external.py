@@ -14,7 +14,7 @@ class ExternalFunction(_general._Base):
     set to true, the function must take arguments from stdin instead of as
     command line arguments.  In that case, the process is never closed, so it 
     should run faster.  The executable should be a loop that waits on stdin and 
-    spits out to stdout.  That behavior can be overridden with dont_persist.
+    spits out to stdout.  That behavior can be overridden with restart.
     """
 
     from mrs.param import Param
@@ -25,8 +25,8 @@ class ExternalFunction(_general._Base):
             stdin=Param(type='bool',
                 doc='Get parameters from stdin instead of as commandline '
                     'arguments'),
-            dont_persist=Param(type='bool',
-                doc='Re-open the executable for every call, instead of keeping'
+            restart=Param(type='bool',
+                doc='Restart the executable for every call instead of keeping'
                     ' it open (only if using stdin).'),
             constraintsfile=Param(default='',
                 doc='Constraints file, formatted as one "low,high" line for '
@@ -36,37 +36,36 @@ class ExternalFunction(_general._Base):
             )
 
     def setup(self):
-        import subprocess
-        if self.exe == '':
-            raise Exception('Must supply an external function!')
+        from subprocess import Popen, PIPE
         super(ExternalFunction, self).setup()
-        if self.constraintsfile == '':
+        if not self.exe:
+            raise RuntimeError('Must supply an external function!')
+        if not self.constraintsfile:
             self._set_constraints(((-50,50),) * self.dims)
         else:
             f = open(self.constraintsfile)
-            lines = f.readlines()
-            constraints = [map(float,line.split(',')) for line in lines]
-            constraints = map(tuple, constraints)
+            constraints = []
+            for line in f:
+                fields = line.split(',')
+                constraint = tuple(float(x) for x in fields)
+                constraints.append(constraint)
             self._set_constraints(tuple(constraints))
-        self.ERROR = float('inf')
-        if self.stdin and not self.dont_persist:
-            self.func_proc = subprocess.Popen((self.exe), stdout=subprocess.PIPE,
-                stdin=subprocess.PIPE)
+        if self.stdin and not self.restart:
+            self.func_proc = Popen((self.exe), stdout=PIPE, stdin=PIPE)
 
     def __call__(self, vec):
         import sys
         import subprocess
         if self.stdin:
-            if self.dont_persist:
-                self.func_proc = subprocess.Popen((self.exe), 
-                        stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-            self.func_proc.stdin.write(' '.join(repr(x) for x in vec)+' ')
+            if self.restart:
+                self.func_proc = Popen((self.exe), stdout=PIPE, stdin=PIPE)
+            self.func_proc.stdin.write(' '.join(repr(x) for x in vec)+'\n')
             retval = self.func_proc.stdout.readline()
         else:
             command = [self.exe]
             for x in vec:
                 command.append(repr(x))
-            func_proc = subprocess.Popen(tuple(command), stdout=subprocess.PIPE)
+            func_proc = Popen(tuple(command), stdout=PIPE)
             retcode = func_proc.wait()
             if retcode != 0:
                 raise ValueError('External program returned a nonzero exit code')
