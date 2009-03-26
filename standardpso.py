@@ -32,7 +32,8 @@ class StandardPSO(mrs.MapReduce):
     def bypass(self):
         """Run a "native" version of PSO without MapReduce."""
 
-        self.cli_startup()
+        if not self.cli_startup():
+            return
 
         # Perform the simulation in batches
         try:

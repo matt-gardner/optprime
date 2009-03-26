@@ -139,7 +139,6 @@ class Particle(object):
         True
         >>> 
         """
-
         if potential is None:
             return False
         elif old is None:
@@ -163,7 +162,6 @@ class Particle(object):
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
 
     def __repr__(self):
-        # Note: We don't set the dep_str from self.deps anymore.
         fields = (self.pid, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,
                 self.nbestval)
@@ -235,7 +233,7 @@ class Message(object):
     def unpack(cls, state):
         """Unpacks a state string, returning a new Message.
 
-        The state string would have been created with repr(particle).
+        The state string would have been created with repr(message).
         """
         prefix = cls.CLASS_ID + ':'
         assert state.startswith(prefix)
