@@ -97,7 +97,7 @@ class Particle(object):
     def nbest_cand(self, potential_pos, potential_val, comparator):
         """Update nbest if the given value is better than the current nbest.
         
-        >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.)))
+        >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
         >>> p.nbestval = -12.0
         >>> p.nbestpos
         1.0,2.0
@@ -121,20 +121,25 @@ class Particle(object):
     def isbetter(potential, old, comparator):
         """Finds whether the potential value is better than the old value.
 
-        Unlike using the comparator directly, None values are shunned.
-
         >>> Particle.isbetter(4,3,operator.lt)
         False
         >>> Particle.isbetter(3,4,operator.lt)
         True
+        >>>
+
+        Unlike using the comparator directly, None values are shunned:
+
         >>> Particle.isbetter(None,4,operator.lt)
         False
         >>> Particle.isbetter(None,None,operator.lt)
         False
         >>> Particle.isbetter(4,None,operator.lt)
         True
+        >>> Particle.isbetter(4,None,operator.gt)
+        True
         >>> 
         """
+
         if potential is None:
             return False
         elif old is None:
