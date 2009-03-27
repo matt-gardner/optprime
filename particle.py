@@ -84,29 +84,60 @@ class Particle(object):
             m = Message(self.pid, self.pbestpos, self.pbestval)
         return m
 
-    def update(self, newpos, newvel, newval, comparator=operator.lt):
+    def update(self, newpos, newvel, newval, comparator):
         """Uses the given pos, vel, and value, and considers a new pbest."""
-        self.pos = Vector(newpos)
-        self.vel = Vector(newvel)
+        self.pos = newpos
+        self.vel = newvel
         self.value = newval
         self.iters += 1
         if self.isbetter(newval, self.pbestval, comparator):
             self.pbestval = newval
             self.pbestpos = newpos
 
-    # TODO: add some doctests.
     def nbest_cand(self, potential_pos, potential_val, comparator):
-        """Update nbest if the given value is better than the current nbest."""
+        """Update nbest if the given value is better than the current nbest.
+        
+        >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+        >>> p.nbestval = -12.0
+        >>> p.nbestpos
+        1.0,2.0
+        >>> p.nbest_cand(Vector((1.0,1.0)),-10.0,operator.lt)
+        >>> p.nbestval
+        -12.0
+        >>> p.nbestpos
+        1.0,2.0
+        >>> p.nbest_cand(Vector((2.0,2.0)),-15,operator.lt)
+        >>> p.nbestval
+        -15
+        >>> p.nbestpos
+        2.0,2.0
+        >>> 
+        """
         if self.isbetter(potential_val, self.nbestval, comparator):
-            self.nbestpos = Vector(potential_pos)
+            self.nbestpos = potential_pos
             self.nbestval = potential_val
 
-    # TODO: add some doctests.
     @staticmethod
     def isbetter(potential, old, comparator):
         """Finds whether the potential value is better than the old value.
 
-        Unlike using the comparator directly, None values are shunned.
+        >>> Particle.isbetter(4,3,operator.lt)
+        False
+        >>> Particle.isbetter(3,4,operator.lt)
+        True
+        >>>
+
+        Unlike using the comparator directly, None values are shunned:
+
+        >>> Particle.isbetter(None,4,operator.lt)
+        False
+        >>> Particle.isbetter(None,None,operator.lt)
+        False
+        >>> Particle.isbetter(4,None,operator.lt)
+        True
+        >>> Particle.isbetter(4,None,operator.gt)
+        True
+        >>> 
         """
         if potential is None:
             return False
@@ -118,8 +149,8 @@ class Particle(object):
             return False
 
     def reset(self, pos, vel, value):
-        self.pos = Vector(pos)
-        self.vel = Vector(vel)
+        self.pos = pos
+        self.vel = vel
         self.value = value
         self.pbestpos = pos
         self.pbestval = value
@@ -131,7 +162,6 @@ class Particle(object):
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
 
     def __repr__(self):
-        # Note: We don't set the dep_str from self.deps anymore.
         fields = (self.pid, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,
                 self.nbestval)
@@ -203,7 +233,7 @@ class Message(object):
     def unpack(cls, state):
         """Unpacks a state string, returning a new Message.
 
-        The state string would have been created with repr(particle).
+        The state string would have been created with repr(message).
         """
         prefix = cls.CLASS_ID + ':'
         assert state.startswith(prefix)
