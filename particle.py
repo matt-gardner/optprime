@@ -220,6 +220,32 @@ class Message(object):
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
 
+class Swarm(list):
+    """A set of particles.
+
+    >>> s = Swarm(particles)
+    >>>
+    """
+    CLASS_ID = 's'
+
+    @classmethod
+    def unpack(cls, state):
+        """Unpacks a state string, returning a new Swarm.
+
+        The state string would have been created with repr(swarm).
+        """
+        prefix = cls.CLASS_ID + ':'
+        assert state.startswith(prefix)
+        state = state[len(prefix):]
+        particle_strings = state.split('&')
+        particles = [Particle.unpack(s) for s in particle_strings]
+        return cls(particles)
+
+    def __repr__(self):
+        strings = (repr(p) for p in self)
+        return '%s:%s' % (self.CLASS_ID, '&'.join(strings))
+
+
 class SEParticle(Particle):
     def __init__(self, pid, pos, vel, value=None, is_child=False, pparent=-1, 
             nparent=-1):
