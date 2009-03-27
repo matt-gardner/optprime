@@ -1,7 +1,6 @@
 from __future__ import division
 from itertools import izip, chain
 import _general
-from iterextra import itergroup
 
 try:
     from scipy import stats
@@ -13,6 +12,7 @@ except ImportError:
 
 #RBF_STDDEV = 10
 RBF_STDDEV = 25
+
 
 class RBF(_general._Base):
     """Radial Basis Function Network
@@ -122,6 +122,27 @@ class RBF(_general._Base):
         csvfile.close()
         return (csvfilename,)
 
+
+def itergroup(iterator, count):
+    """Iterate in groups of 'count' values. If there aren't enough values, the
+    last result is padded with None."""
+    iterator = iter(iterator)
+    values_left = [1]
+    def values():
+        values_left[0] = 0
+        for x in range(count):
+            try:
+                yield iterator.next()
+                values_left[0] = 1
+            except StopIteration:
+                yield None
+    while 1:
+        value = tuple(values())
+        if not values_left[0]:
+            raise StopIteration
+        yield value
+
+
 def get_rbf_plot_func(inputdims, vec):
     """Get an easy to use function for the given number of input dimensions and
     the given vec."""
@@ -146,6 +167,7 @@ def get_rbf_plot_func(inputdims, vec):
         def function(x):
             return rbf.net_value(vec, x)
     return function
+
 
 def generate_points(bases, points, inputdims, randomseed):
     """Create a random RBF and generate points with it."""
