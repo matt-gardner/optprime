@@ -55,8 +55,17 @@ class SubswarmPSO(standardpso.StandardPSO):
             # Communication phase.
             for swarm in subswarms:
                 self.set_swarm_rand(swarm)
+                # TODO: try "best in swarm" as an alternative approach.
+                p = swarm[0]
                 for n in self.link.iterneighbors(swarm):
-                    neighbor = subswarms[n]
+                    neighbor_swarm = subswarms[n]
+                    swarm_head = neighbor_swarm[0]
+                    self.set_particle_rand(swarm_head)
+                    for m in self.topology.iterneighbors(swarm_head):
+                        neighbor = neighbor_swarm[m]
+                        neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
+                        if self.opts.transitive_best:
+                            neighbor.nbest_cand(p.nbestpos, p.nbestval, comp)
                     # FIXME: communication
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
