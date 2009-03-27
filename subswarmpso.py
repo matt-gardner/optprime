@@ -2,6 +2,7 @@
 
 from __future__ import division
 import sys, optparse, operator
+from itertools import chain
 
 import mrs
 from mrs import param
@@ -16,17 +17,10 @@ class SubswarmPSO(standardpso.StandardPSO):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
-        super(StandardPSO, self).__init__(opts, args)
+        super(SubswarmPSO, self).__init__(opts, args)
 
-        self.tmpfiles = None
-        self.function = param.instantiate(opts, 'func')
-        self.motion = param.instantiate(opts, 'motion')
-        self.topology = param.instantiate(opts, 'top')
-        self.subtop = param.instantiate(opts, 'subtop')
-
-        self.function.setup()
-        self.motion.setup(self.function)
-        self.topology.setup(self.function)
+        self.link = param.instantiate(opts, 'link')
+        self.link.setup(self.function)
 
     ##########################################################################
     # Bypass Implementation
@@ -42,26 +36,30 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         # Create the Population.
         rand = self.initialization_rand(batch)
-        subswarms = [Swarm(self.subtop.newparticles(batch, rand))
-                for i in xrange(self.topology.num)]
+        subswarms = [Swarm(self.topology.newparticles(batch, rand))
+                for i in xrange(self.link.num)]
 
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
         # particle by the end of the iteration.
         output = param.instantiate(self.opts, 'out')
         output.start()
-        for iteration in xrange(1, 1 + self.opts.iters):
-            self.bypass_iteration(particles)
+        outer_iters = self.opts.iters // self.opts.subiters
+        for i in xrange(1, 1 + outer_iters):
+            iteration = i * self.opts.subiters
+            for swarm in subswarms:
+                for j in xrange(self.opts.subiters):
+                    self.bypass_iteration(swarm)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
-            if not ((iteration-1) % output.freq):
+            if not ((i-1) % output.freq):
                 kwds = {}
                 if 'iteration' in output.args:
                     kwds['iteration'] = iteration
                 if 'particles' in output.args:
                     kwds['particles'] = particles
                 if 'best' in output.args:
-                    kwds['best'] = self.findbest(particles, comp)
+                    kwds['best'] = self.findbest(chain(*subswarms), comp)
                 output(**kwds)
         output.finish()
 
@@ -69,32 +67,6 @@ class SubswarmPSO(standardpso.StandardPSO):
 
     ##########################################################################
     # MapReduce Implementation
-
-    def run(self, job):
-        """Run Mrs PSO function
-        
-        This is run on the master.
-        """
-        if not self.cli_startup():
-            return
-
-        try:
-            tty = open('/dev/tty', 'w')
-        except IOError:
-            tty = None
-
-        # Perform the simulation in batches
-        try:
-            for batch in xrange(self.opts.batches):
-                # Separate by two blank lines and a header.
-                print
-                print
-                if (self.opts.batches > 1):
-                    print "# Batch %d" % batch
-                self.run_batch(job, batch, tty)
-                print "# DONE" 
-        except KeyboardInterrupt, e:
-            print "# INTERRUPTED"
 
     def run_batch(self, job, batch, tty):
         """Performs a single batch of PSO using MapReduce.
@@ -285,12 +257,12 @@ def update_parser(parser):
     parser.add_option('-s','--subiters',
             dest='subiters', type='int',
             help='Number of iterations per subswarm between iterations',
-            default=100,
+            default=10,
             )
     return parser
 
 
 if __name__ == '__main__':
-    mrs.main(StandardPSO, update_parser)
+    mrs.main(SubswarmPSO, update_parser)
 
 # vim: et sw=4 sts=4
