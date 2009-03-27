@@ -62,6 +62,14 @@ class _Topology(object):
         raise NotImplementedError
 
 
+class Isolated(_Topology):
+    """Independent isolated particles."""
+
+    def iterneighbors(self, particle):
+        if not self.noselflink:
+            yield particle.id
+
+
 class Ring(_Topology):
     """Bidirectional Ring (aka lbest)"""
     _params = dict(
