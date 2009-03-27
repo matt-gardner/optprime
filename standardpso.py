@@ -135,7 +135,7 @@ class StandardPSO(mrs.MapReduce):
         """
         self.setup()
         rand = self.initialization_rand(batch)
-        init_particles = [(str(p.pid), repr(p)) for p in
+        init_particles = [(str(p.id), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
 
         numtasks = self.opts.numtasks
@@ -224,7 +224,7 @@ class StandardPSO(mrs.MapReduce):
     def pso_map(self, key, value):
         comparator = self.function.comparator
         particle = unpack(value)
-        assert particle.pid == int(key)
+        assert particle.id == int(key)
         self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
@@ -299,7 +299,7 @@ class StandardPSO(mrs.MapReduce):
         """
         from mrs.impl import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = 1 + base * (p.pid + base * (p.iters + base * p.batches))
+        offset = 1 + base * (p.id + base * (p.iters + base * p.batches))
         p.rand = self.random(offset)
 
     def initialization_rand(self, batch):

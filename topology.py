@@ -8,6 +8,10 @@ class _Topology(object):
     A Topology object can create particles and determine neighborhoods, but it
     does not hold swarm state.  Thus, multiple independent swarms should be
     able to share the same Topology object.
+
+    Although we usually think of the members of a topology as particles, we
+    occasionally build up topologies of swarms, too.  In most cases, the
+    distinction is irrelevant to the topology.
     """
     _params = dict(
         num=Param(default=20, type='int', shortopt='-n',
@@ -39,7 +43,7 @@ class _Topology(object):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
-    def newparticles(self, batch, rand):
+    def newparticles(self, batch, rand, initid=0):
         """Yields new particles.
 
         Particles are distributed uniformly within the constraints.  The
@@ -49,7 +53,7 @@ class _Topology(object):
         for i in xrange(self.num):
             newpos = self.cube.random_vec(rand)
             newvel = self.vcube.random_vec(rand)
-            p = Particle(pid=i, pos=newpos, vel=newvel)
+            p = Particle(pid=(i + initid), pos=newpos, vel=newvel)
             p.batches = batch
             yield p
 
@@ -67,19 +71,19 @@ class Ring(_Topology):
 
     def iterneighbors(self, particle):
         if not self.noselflink:
-            yield particle.pid
+            yield particle.id
         for i in xrange(1,self.neighbors+1):
-            yield (particle.pid + i) % self.num
-            yield (particle.pid - i) % self.num
+            yield (particle.id + i) % self.num
+            yield (particle.id - i) % self.num
 
 
 class DRing(Ring):
     """Directed (one-way) Ring"""
     def iterneighbors(self, particle):
         if not self.noselflink:
-            yield particle.pid
+            yield particle.id
         for i in xrange(1,self.neighbors+1):
-            yield (particle.pid + i) % self.num
+            yield (particle.id + i) % self.num
 
 
 class Complete(_Topology):
@@ -88,7 +92,7 @@ class Complete(_Topology):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
         for i in xrange(self.num):
-            if not (i == particle.pid and self.noselflink):
+            if not (i == particle.id and self.noselflink):
                 yield i
 
 
@@ -102,7 +106,7 @@ class Rand(_Topology):
 
     def iterneighbors(self, particle):
         randrange = particle.rand.randrange
-        pid = particle.pid
+        pid = particle.id
         num = self.num
         if (self.neighbors == -1):
             neighbors = num
@@ -123,7 +127,7 @@ class Islands(_Topology):
     def iterneighbors(self, particle):
         # Particles are grouped into n islands, and communicate with all members
         # on the island, and no one else
-        pid = particle.pid
+        pid = particle.id
         num_particles = self.num
         islands = self.num_islands
         if num_particles % islands != 0:
@@ -153,7 +157,7 @@ class CommunicatingIslands(_Topology):
     def iterneighbors(self, particle):
         # Particles are grouped into n islands, and communicate with all members
         # on the island, and no one else
-        pid = particle.pid
+        pid = particle.id
         iter = particle.iters
         num = self.num
         islands = self.num_islands

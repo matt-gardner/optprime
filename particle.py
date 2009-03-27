@@ -42,7 +42,7 @@ class Particle(object):
     CLASS_ID = 'p'
 
     def __init__(self, pid, pos, vel, value=None):
-        self.pid = pid
+        self.id = pid
         self.batches = 0
         self.iters = 0
 
@@ -79,9 +79,9 @@ class Particle(object):
         sent instead of the pbest.
         """
         if transitive_best:
-            m = Message(self.pid, self.nbestpos, self.nbestval)
+            m = Message(self.id, self.nbestpos, self.nbestval)
         else:
-            m = Message(self.pid, self.pbestpos, self.pbestval)
+            m = Message(self.id, self.pbestpos, self.pbestval)
         return m
 
     def update(self, newpos, newvel, newval, comparator):
@@ -162,7 +162,7 @@ class Particle(object):
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
 
     def __repr__(self):
-        fields = (self.pid, self.batches, self.iters, self.pos, self.vel,
+        fields = (self.id, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,
                 self.nbestval)
         strings = ((repr(x) if x is not None else '') for x in fields)
@@ -250,7 +250,7 @@ class Message(object):
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
 
-class Swarm(list):
+class Swarm(object):
     """A set of particles.
 
     >>> s = Swarm(particles)
@@ -258,28 +258,51 @@ class Swarm(list):
     """
     CLASS_ID = 's'
 
+    def __init__(self, sid, particles):
+        self.id = sid
+        self.particles = list(particles)
+
+        self.rand = None
+
+    def __len__(self):
+        return len(self.particles)
+
+    def __getitem__(self, item):
+        return self.particles[item]
+
+    def __iter__(self):
+        return iter(self.particles)
+
+    def iters(self):
+        return self.particles[0].iters
+
+    def batches(self):
+        return self.particles[0].batches
+
     @classmethod
     def unpack(cls, state):
         """Unpacks a state string, returning a new Swarm.
 
         The state string would have been created with repr(swarm).
         """
+        strings = state.split('&')
+        start = strings[0]
         prefix = cls.CLASS_ID + ':'
-        assert state.startswith(prefix)
-        state = state[len(prefix):]
-        particle_strings = state.split('&')
-        particles = [Particle.unpack(s) for s in particle_strings]
-        return cls(particles)
+        assert start.startswith(prefix)
+        sid = int(start[len(prefix):])
+        particles = [Particle.unpack(s) for s in strings[1:]]
+        return cls(sid, particles)
 
     def __repr__(self):
-        strings = (repr(p) for p in self)
-        return '%s:%s' % (self.CLASS_ID, '&'.join(strings))
+        strings = ['%s:%s' % (self.CLASS_ID, self.id)]
+        strings += [repr(p) for p in self.particles]
+        return '&'.join(strings)
 
 
 class SEParticle(Particle):
-    def __init__(self, pid, pos, vel, value=None, is_child=False, pparent=-1, 
+    def __init__(self, id, pos, vel, value=None, is_child=False, pparent=-1, 
             nparent=-1):
-        super(SEParticle, self).__init__(pid, pos, vel, value)
+        super(SEParticle, self).__init__(id, pos, vel, value)
 
 
 def unpack(state):

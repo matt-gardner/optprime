@@ -36,7 +36,8 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         # Create the Population.
         rand = self.initialization_rand(batch)
-        subswarms = [Swarm(self.topology.newparticles(batch, rand))
+        top = self.topology
+        subswarms = [Swarm(i, top.newparticles(batch, rand, i * top.num))
                 for i in xrange(self.link.num)]
 
         # Perform PSO Iterations.  The iteration number represents the total
@@ -50,6 +51,13 @@ class SubswarmPSO(standardpso.StandardPSO):
             for swarm in subswarms:
                 for j in xrange(self.opts.subiters):
                     self.bypass_iteration(swarm)
+
+            # Communication phase.
+            for swarm in subswarms:
+                self.set_swarm_rand(swarm)
+                for n in self.link.iterneighbors(swarm):
+                    neighbor = subswarms[n]
+                    # FIXME: communication
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
             if not ((i-1) % output.freq):
@@ -76,7 +84,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         """
         self.setup()
         rand = self.initialization_rand(batch)
-        init_particles = [(str(p.pid), repr(p)) for p in
+        init_particles = [(str(p.id), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
 
         numtasks = self.opts.numtasks
@@ -165,7 +173,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     def pso_map(self, key, value):
         comparator = self.function.comparator
         particle = unpack(value)
-        assert particle.pid == int(key)
+        assert particle.id == int(key)
         self.move_and_evaluate(particle)
 
         # Emit a message for each dependent particle:
@@ -222,25 +230,15 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
 
-    def set_particle_rand(self, p):
+    def set_swarm_rand(self, s):
         """Makes a Random for the given particle and saves it to `p.rand`.
 
         Note that the Random depends on the particle id, iteration, and batch.
         """
         from mrs.impl import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = 1 + base * (p.pid + base * (p.iters + base * p.batches))
-        p.rand = self.random(offset)
-
-    def initialization_rand(self, batch):
-        """Returns a new Random for the given batch number.
-
-        This ensures that each batch will have a unique initial swarm state.
-        """
-        from mrs.impl import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = 2 + base * batch
-        return self.random(offset)
+        offset = 3 + base * (s.id + base * (s.iters() + base * s.batches()))
+        s.rand = self.random(offset)
 
 
 ##############################################################################
