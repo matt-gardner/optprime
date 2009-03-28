@@ -34,7 +34,7 @@ class Particle(object):
 
     A new particle is created by unpacking a repr string.  The repr string
     of the new particle is identical to the repr string of the old particle.
-    >>> q = Particle.unpack(repr(p))
+    >>> q = unpack(repr(p))
     >>> repr(q) == repr(p)
     True
     >>>
@@ -253,7 +253,16 @@ class Message(object):
 class Swarm(object):
     """A set of particles.
 
-    >>> s = Swarm(particles)
+    >>> particles = [Particle(42, 1.0, 2.0), Particle(41, 3.0, 4.0)]
+    >>> s = Swarm(17, particles)
+    >>> repr(s)
+    's:17&p:42;0;0;1.0;2.0;;1.0;;1.0;&p:41;0;0;3.0;4.0;;3.0;;3.0;'
+    >>>
+
+    Test of round trip:
+    >>> t = unpack(repr(s))
+    >>> repr(t) == repr(s)
+    True
     >>>
     """
     CLASS_ID = 's'
@@ -316,7 +325,7 @@ def unpack(state):
 
 
 # Valid class identifiers and their corresponding classes.
-CLASSES = (Particle, Message)
+CLASSES = (Particle, Message, Swarm)
 CLASS_IDS = dict((cls.CLASS_ID, cls) for cls in CLASSES)
 
 if __name__ == '__main__':
