@@ -222,10 +222,12 @@ class StandardPSO(mrs.MapReduce):
     # Primary MapReduce
 
     def pso_map(self, key, value):
-        comparator = self.function.comparator
         particle = unpack(value)
         assert particle.id == int(key)
         self.move_and_evaluate(particle)
+
+        # Emit the particle without changing its id:
+        yield (key, repr(particle))
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best)
@@ -233,14 +235,11 @@ class StandardPSO(mrs.MapReduce):
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
 
-        # Emit the particle without changing its id:
-        yield (str(key), repr(particle))
-
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
         best = None
-        bestval = float('inf')
+        bestval = None
 
         for value in value_iter:
             record = unpack(value)
