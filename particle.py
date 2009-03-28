@@ -226,19 +226,19 @@ class Particle(object):
         if isinstance(other, Particle):
             return self.pbestval < other.pbestval
         else:
-            raise NotImplementedError
+            return NotImplemented
 
     def __gt__(self, other):
         if isinstance(other, Particle):
             return self.pbestval > other.pbestval
         else:
-            raise NotImplementedError
+            return NotImplemented
 
     def __eq__(self, other):
         if isinstance(other, Particle):
             return self.pbestval == other.pbestval
         else:
-            raise NotImplementedError
+            return NotImplemented
 
 
 class Message(object):
@@ -311,19 +311,19 @@ class Message(object):
         if isinstance(other, Message):
             return self.value < other.value
         else:
-            raise NotImplementedError
+            return NotImplemented
 
     def __gt__(self, other):
         if isinstance(other, Message):
             return self.value > other.value
         else:
-            raise NotImplementedError
+            return NotImplemented
 
     def __eq__(self, other):
         if isinstance(other, Message):
             return self.value == other.value
         else:
-            raise NotImplementedError
+            return NotImplemented
 
 
 class Swarm(object):
