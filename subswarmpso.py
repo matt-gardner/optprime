@@ -57,12 +57,12 @@ class SubswarmPSO(standardpso.StandardPSO):
                 self.set_swarm_rand(swarm)
                 # TODO: try "best in swarm" as an alternative approach.
                 p = swarm[0]
-                for n in self.link.iterneighbors(swarm):
-                    neighbor_swarm = subswarms[n]
+                for s_dep_id in self.link.iterneighbors(swarm):
+                    neighbor_swarm = subswarms[s_dep_id]
                     swarm_head = neighbor_swarm[0]
                     self.set_particle_rand(swarm_head)
-                    for m in self.topology.iterneighbors(swarm_head):
-                        neighbor = neighbor_swarm[m]
+                    for p_dep_id in self.topology.iterneighbors(swarm_head):
+                        neighbor = neighbor_swarm[p_dep_id]
                         neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
                         if self.opts.transitive_best:
                             neighbor.nbest_cand(p.nbestpos, p.nbestval, comp)
@@ -92,14 +92,17 @@ class SubswarmPSO(standardpso.StandardPSO):
         using MapReduce.
         """
         self.setup()
+
+        # Create the Population.
         rand = self.initialization_rand(batch)
-        init_particles = [(str(p.id), repr(p)) for p in
-                self.topology.newparticles(batch, rand)]
+        top = self.topology
+        subswarms = [Swarm(i, top.newparticles(batch, rand, i * top.num))
+                for i in xrange(self.link.num)]
 
         numtasks = self.opts.numtasks
         if not numtasks:
-            numtasks = len(init_particles)
-        new_data = job.local_data(init_particles, parter=self.mod_partition,
+            numtasks = len(subswarms)
+        new_data = job.local_data(subswarms, parter=self.mod_partition,
                 splits=numtasks)
 
         output = param.instantiate(self.opts, 'out')
@@ -108,37 +111,38 @@ class SubswarmPSO(standardpso.StandardPSO):
         # Perform iterations.  Note: we submit the next iteration while the
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
-        last_swarm = new_data
+        last_pso_data = new_data
         last_out_data = None
         next_out_data = None
         last_iteration = 0
-        for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.pso_map,
+        outer_iters = self.opts.iters // self.opts.subiters
+        for iteration in xrange(1, 1 + outer_iters):
+            interm_data = job.map_data(last_pso_data, self.pso_map,
                     splits=numtasks, parter=self.mod_partition)
-            next_swarm = job.reduce_data(interm_data, self.pso_reduce,
+            next_pso_data = job.reduce_data(interm_data, self.pso_reduce,
                     splits=numtasks, parter=self.mod_partition)
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
                 if 'particles' in output.args:
-                    next_out_data = next_swarm
+                    next_out_data = next_pso_data
                 if 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
-                    collapsed_data = job.map_data(next_swarm,
+                    collapsed_data = job.map_data(next_pso_data,
                             self.collapse_map, splits=1)
                     next_out_data = job.reduce_data(collapsed_data,
                             self.findbest_reduce, splits=1)
 
             waitset = set()
             if iteration > 1:
-                waitset.add(last_swarm)
+                waitset.add(last_pso_data)
             if last_out_data:
                 waitset.add(last_out_data)
             while waitset:
                 if tty:
                     ready = job.wait(timeout=1.0, *waitset)
-                    if last_swarm in ready:
+                    if last_pso_data in ready:
                         print >>tty, "Finished iteration", last_iteration
                 else:
                     ready = job.wait(*waitset)
@@ -171,7 +175,7 @@ class SubswarmPSO(standardpso.StandardPSO):
 
             # Set up for the next iteration.
             last_iteration = iteration
-            last_swarm = next_swarm
+            last_pso_data = next_pso_data
             last_out_data = next_out_data
 
         output.finish()
@@ -180,61 +184,55 @@ class SubswarmPSO(standardpso.StandardPSO):
     # Primary MapReduce
 
     def pso_map(self, key, value):
-        comparator = self.function.comparator
-        particle = unpack(value)
-        assert particle.id == int(key)
-        self.move_and_evaluate(particle)
+        swarm = unpack(value)
+        assert swarm.id == int(key)
+        self.bypass_iteration(swarm)
 
-        # Emit a message for each dependent particle:
+        # Emit the swarm.
+        yield (key, repr(swarm))
+
+        # Emit a message for each dependent swarm:
+        self.set_swarm_rand(swarm)
+        # TODO: try "best in swarm" as an alternative approach.
+        particle = swarm[0]
         message = particle.make_message(self.opts.transitive_best)
         # TODO: create a Random instance for the iterneighbors method.
-        for dep_id in self.topology.iterneighbors(particle):
+        for dep_id in self.topology.iterneighbors(swarm):
             yield (str(dep_id), repr(message))
-
-        # Emit the particle without changing its id:
-        yield (str(key), repr(particle))
 
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
-        particle = None
-        best = None
-        bestval = float('inf')
-
+        swarm = None
+        messages = []
         for value in value_iter:
             record = unpack(value)
-            if isinstance(record, Particle):
-                particle = record
+            if isinstance(record, Swarm):
+                swarm = record
             elif isinstance(record, Message):
-                if record.value is None:
-                    continue
-                if (best is None) or comparator(record.value, bestval):
-                    best = record
-                    bestval = record.value
+                messages.append(record)
             else:
                 raise ValueError
 
-        if particle:
-            if best:
-                particle.nbest_cand(best.position, bestval, comparator)
-            yield repr(particle)
-        else:
-            raise RuntimeError("Didn't find particle %d in the reduce step" %
-                    key)
+        assert swarm, 'Missing swarm %s in the reduce step' % key
+
+        best = self.findbest(messages, comparator)
+        if best:
+            swarm_head = swarm[0]
+            self.set_particle_rand(swarm_head)
+            for dep_id in self.topology.iterneighbors(swarm_head):
+                neighbor = neighbor_swarm[dep_id]
+                neighbor.nbest_cand(best.position, best.bestval, comparator)
+        yield repr(swarm)
 
     ##########################################################################
     # MapReduce to Find the Best Particle
 
     def collapse_map(self, key, value):
-        yield '0', value
-
-    def findbest_reduce(self, key, value_iter):
+        """Finds the best particle in the swarm and yields it with id 0."""
         comparator = self.function.comparator
-        best = None
-        for value in value_iter:
-            p = Particle.unpack(value)
-            if (best is None) or (comparator(p.pbestval, best.pbestval)):
-                best = p
-        yield repr(best)
+        swarm = Swarm.unpack(value)
+        best = self.findbest(swarm, comparator)
+        yield '0', best
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
