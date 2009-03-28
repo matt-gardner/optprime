@@ -38,6 +38,27 @@ class Particle(object):
     >>> repr(q) == repr(p)
     True
     >>>
+
+    Comparisons are based on the pbestval of the particle, not the id.
+
+    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> p.pbestval = 0.0
+    >>> q = Particle(7, p.pos, p.vel)
+    >>> q.pbestval = p.pbestval
+    >>> p == q
+    True
+    >>> p > q
+    False
+    >>> p > q
+    False
+    >>> q.pbestval = p.pbestval - 1
+    >>> p < q
+    False
+    >>> q < p
+    True
+    >>> p > q
+    True
+    >>>
     """
     CLASS_ID = 'p'
 
@@ -201,6 +222,24 @@ class Particle(object):
             p.nbestval = None
         return p
 
+    def __lt__(self, other):
+        if isinstance(other, Particle):
+            return self.pbestval < other.pbestval
+        else:
+            raise NotImplementedError
+
+    def __gt__(self, other):
+        if isinstance(other, Particle):
+            return self.pbestval > other.pbestval
+        else:
+            raise NotImplementedError
+
+    def __eq__(self, other):
+        if isinstance(other, Particle):
+            return self.pbestval == other.pbestval
+        else:
+            raise NotImplementedError
+
 
 class Message(object):
     """Message used to update bests in Mrs PSO.
@@ -215,6 +254,25 @@ class Message(object):
     >>> m = Message(128, Vector((1.0, 2.0)), None)
     >>> repr(m)
     'm:128;1.0,2.0;'
+    >>>
+
+    Comparisons are based on the value of the message, not the id.
+
+    >>> m = Message(128, Vector((1.0, 2.0)), -5.0)
+    >>> n = Message(42, m.position, m.value)
+    >>> m == n
+    True
+    >>> m > n
+    False
+    >>> m > n
+    False
+    >>> n.value = m.value - 1
+    >>> m < n
+    False
+    >>> n < m
+    True
+    >>> m > n
+    True
     >>>
 
     Attributes:
@@ -248,6 +306,24 @@ class Message(object):
         fields = (self.sender, self.position, self.value)
         strings = ((repr(x) if x is not None else '') for x in fields)
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
+
+    def __lt__(self, other):
+        if isinstance(other, Message):
+            return self.value < other.value
+        else:
+            raise NotImplementedError
+
+    def __gt__(self, other):
+        if isinstance(other, Message):
+            return self.value > other.value
+        else:
+            raise NotImplementedError
+
+    def __eq__(self, other):
+        if isinstance(other, Message):
+            return self.value == other.value
+        else:
+            raise NotImplementedError
 
 
 class Swarm(object):

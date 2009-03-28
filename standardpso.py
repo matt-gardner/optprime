@@ -238,26 +238,21 @@ class StandardPSO(mrs.MapReduce):
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
-        best = None
-        bestval = None
-
+        messages = []
         for value in value_iter:
             record = unpack(value)
             if isinstance(record, Particle):
                 particle = record
             elif isinstance(record, Message):
-                if record.value is None:
-                    continue
-                if (best is None) or comparator(record.value, bestval):
-                    best = record
-                    bestval = record.value
+                messages.append(record)
             else:
                 raise ValueError
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
+        best = self.findbest(messages, comparator)
         if best:
-            particle.nbest_cand(best.position, bestval, comparator)
+            particle.nbest_cand(best.position, best.value, comparator)
         yield repr(particle)
 
     ##########################################################################
@@ -268,11 +263,8 @@ class StandardPSO(mrs.MapReduce):
 
     def findbest_reduce(self, key, value_iter):
         comparator = self.function.comparator
-        best = None
-        for value in value_iter:
-            p = Particle.unpack(value)
-            if (best is None) or (comparator(p.pbestval, best.pbestval)):
-                best = p
+        particles = (Particle.unpack(value) for value in value_iter)
+        best = self.findbest(particles, comparator)
         yield repr(best)
 
     ##########################################################################
@@ -309,14 +301,12 @@ class StandardPSO(mrs.MapReduce):
         offset = 2 + base * batch
         return self.random(offset)
 
-    def findbest(self, particles, comparator):
-        """Returns the best particle from the given list."""
+    def findbest(self, candidates, comparator):
+        """Returns the best particle or message from the given candidates."""
         best = None
-        bestval = None
-        for p in particles:
-            if (best is None) or comparator(p.pbestval, bestval):
-                best = p
-                bestval = p.pbestval
+        for cand in candidates:
+            if (best is None) or comparator(cand, best):
+                best = cand
         return best
 
     def cli_startup(self):
