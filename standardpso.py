@@ -254,13 +254,11 @@ class StandardPSO(mrs.MapReduce):
             else:
                 raise ValueError
 
-        if particle:
-            if best:
-                particle.nbest_cand(best.position, bestval, comparator)
-            yield repr(particle)
-        else:
-            raise RuntimeError("Didn't find particle %d in the reduce step" %
-                    key)
+        assert particle, 'Missing particle %s in the reduce step' % key
+
+        if best:
+            particle.nbest_cand(best.position, bestval, comparator)
+        yield repr(particle)
 
     ##########################################################################
     # MapReduce to Find the Best Particle
