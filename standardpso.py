@@ -67,18 +67,7 @@ class StandardPSO(mrs.MapReduce):
         output = param.instantiate(self.opts, 'out')
         output.start()
         for iteration in xrange(1, 1 + self.opts.iters):
-            # Update position and value.
-            for p in particles:
-                self.move_and_evaluate(p)
-
-            # Communication phase.
-            for p in particles:
-                for i in self.topology.iterneighbors(p):
-                    # Send p's information to neighbor i.
-                    neighbor = particles[i]
-                    neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
-                    if self.opts.transitive_best:
-                        neighbor.nbest_cand(p.nbestpos, p.nbestval, comp)
+            self.bypass_iteration(particles)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
             if not ((iteration-1) % output.freq):
@@ -93,6 +82,21 @@ class StandardPSO(mrs.MapReduce):
         output.finish()
 
         self.cleanup()
+
+    def bypass_iteration(self, particles):
+        # Update position and value.
+        for p in particles:
+            self.move_and_evaluate(p)
+
+        # Communication phase.
+        comp = self.function.comparator
+        for p in particles:
+            for i in self.topology.iterneighbors(p):
+                # Send p's information to neighbor i.
+                neighbor = particles[i]
+                neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
+                if self.opts.transitive_best:
+                    neighbor.nbest_cand(p.nbestpos, p.nbestval, comp)
 
     ##########################################################################
     # MapReduce Implementation
@@ -131,7 +135,7 @@ class StandardPSO(mrs.MapReduce):
         """
         self.setup()
         rand = self.initialization_rand(batch)
-        init_particles = [(str(p.pid), repr(p)) for p in
+        init_particles = [(str(p.id), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
 
         numtasks = self.opts.numtasks
@@ -160,7 +164,7 @@ class StandardPSO(mrs.MapReduce):
             if not ((iteration - 1) % output.freq):
                 if 'particles' in output.args:
                     next_out_data = next_swarm
-                if 'best' in output.args:
+                elif 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
                     collapsed_data = job.map_data(next_swarm,
@@ -218,46 +222,37 @@ class StandardPSO(mrs.MapReduce):
     # Primary MapReduce
 
     def pso_map(self, key, value):
-        comparator = self.function.comparator
         particle = unpack(value)
-        assert particle.pid == int(key)
+        assert particle.id == int(key)
         self.move_and_evaluate(particle)
+
+        # Emit the particle without changing its id:
+        yield (key, repr(particle))
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best)
-        # TODO: create a Random instance for the iterneighbors method.
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
-
-        # Emit the particle without changing its id:
-        yield (str(key), repr(particle))
 
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
-        best = None
-        bestval = float('inf')
-
+        messages = []
         for value in value_iter:
             record = unpack(value)
             if isinstance(record, Particle):
                 particle = record
             elif isinstance(record, Message):
-                if record.value is None:
-                    continue
-                if (best is None) or comparator(record.value, bestval):
-                    best = record
-                    bestval = record.value
+                messages.append(record)
             else:
                 raise ValueError
 
-        if particle:
-            if best:
-                particle.nbest_cand(best.position, bestval, comparator)
-            yield repr(particle)
-        else:
-            raise RuntimeError("Didn't find particle %d in the reduce step" %
-                    key)
+        assert particle, 'Missing particle %s in the reduce step' % key
+
+        best = self.findbest(messages, comparator)
+        if best:
+            particle.nbest_cand(best.position, best.value, comparator)
+        yield repr(particle)
 
     ##########################################################################
     # MapReduce to Find the Best Particle
@@ -267,11 +262,8 @@ class StandardPSO(mrs.MapReduce):
 
     def findbest_reduce(self, key, value_iter):
         comparator = self.function.comparator
-        best = None
-        for value in value_iter:
-            p = Particle.unpack(value)
-            if (best is None) or (comparator(p.pbestval, best.pbestval)):
-                best = p
+        particles = (Particle.unpack(value) for value in value_iter)
+        best = self.findbest(particles, comparator)
         yield repr(best)
 
     ##########################################################################
@@ -295,7 +287,7 @@ class StandardPSO(mrs.MapReduce):
         """
         from mrs.impl import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = 1 + base * (p.pid + base * (p.iters + base * p.batches))
+        offset = 1 + base * (p.id + base * (p.iters + base * p.batches))
         p.rand = self.random(offset)
 
     def initialization_rand(self, batch):
@@ -308,14 +300,12 @@ class StandardPSO(mrs.MapReduce):
         offset = 2 + base * batch
         return self.random(offset)
 
-    def findbest(self, particles, comparator):
-        """Returns the best particle from the given list."""
+    def findbest(self, candidates, comparator):
+        """Returns the best particle or message from the given candidates."""
         best = None
-        bestval = None
-        for p in particles:
-            if (best is None) or comparator(p.pbestval, bestval):
-                best = p
-                bestval = p.pbestval
+        for cand in candidates:
+            if (best is None) or comparator(cand, best):
+                best = cand
         return best
 
     def cli_startup(self):

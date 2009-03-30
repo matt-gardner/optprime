@@ -34,15 +34,36 @@ class Particle(object):
 
     A new particle is created by unpacking a repr string.  The repr string
     of the new particle is identical to the repr string of the old particle.
-    >>> q = Particle.unpack(repr(p))
+    >>> q = unpack(repr(p))
     >>> repr(q) == repr(p)
+    True
+    >>>
+
+    Comparisons are based on the pbestval of the particle, not the id.
+
+    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> p.pbestval = 0.0
+    >>> q = Particle(7, p.pos, p.vel)
+    >>> q.pbestval = p.pbestval
+    >>> p == q
+    True
+    >>> p > q
+    False
+    >>> p > q
+    False
+    >>> q.pbestval = p.pbestval - 1
+    >>> p < q
+    False
+    >>> q < p
+    True
+    >>> p > q
     True
     >>>
     """
     CLASS_ID = 'p'
 
     def __init__(self, pid, pos, vel, value=None):
-        self.pid = pid
+        self.id = pid
         self.batches = 0
         self.iters = 0
 
@@ -79,9 +100,9 @@ class Particle(object):
         sent instead of the pbest.
         """
         if transitive_best:
-            m = Message(self.pid, self.nbestpos, self.nbestval)
+            m = Message(self.id, self.nbestpos, self.nbestval)
         else:
-            m = Message(self.pid, self.pbestpos, self.pbestval)
+            m = Message(self.id, self.pbestpos, self.pbestval)
         return m
 
     def update(self, newpos, newvel, newval, comparator):
@@ -162,7 +183,7 @@ class Particle(object):
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
 
     def __repr__(self):
-        fields = (self.pid, self.batches, self.iters, self.pos, self.vel,
+        fields = (self.id, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,
                 self.nbestval)
         strings = ((repr(x) if x is not None else '') for x in fields)
@@ -201,6 +222,24 @@ class Particle(object):
             p.nbestval = None
         return p
 
+    def __lt__(self, other):
+        if isinstance(other, Particle):
+            return self.pbestval < other.pbestval
+        else:
+            return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, Particle):
+            return self.pbestval > other.pbestval
+        else:
+            return NotImplemented
+
+    def __eq__(self, other):
+        if isinstance(other, Particle):
+            return self.pbestval == other.pbestval
+        else:
+            return NotImplemented
+
 
 class Message(object):
     """Message used to update bests in Mrs PSO.
@@ -215,6 +254,25 @@ class Message(object):
     >>> m = Message(128, Vector((1.0, 2.0)), None)
     >>> repr(m)
     'm:128;1.0,2.0;'
+    >>>
+
+    Comparisons are based on the value of the message, not the id.
+
+    >>> m = Message(128, Vector((1.0, 2.0)), -5.0)
+    >>> n = Message(42, m.position, m.value)
+    >>> m == n
+    True
+    >>> m > n
+    False
+    >>> m > n
+    False
+    >>> n.value = m.value - 1
+    >>> m < n
+    False
+    >>> n < m
+    True
+    >>> m > n
+    True
     >>>
 
     Attributes:
@@ -248,6 +306,82 @@ class Message(object):
         fields = (self.sender, self.position, self.value)
         strings = ((repr(x) if x is not None else '') for x in fields)
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
+
+    def __lt__(self, other):
+        if isinstance(other, Message):
+            return self.value < other.value
+        else:
+            return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, Message):
+            return self.value > other.value
+        else:
+            return NotImplemented
+
+    def __eq__(self, other):
+        if isinstance(other, Message):
+            return self.value == other.value
+        else:
+            return NotImplemented
+
+
+class Swarm(object):
+    """A set of particles.
+
+    >>> particles = [Particle(42, 1.0, 2.0), Particle(41, 3.0, 4.0)]
+    >>> s = Swarm(17, particles)
+    >>> repr(s)
+    's:17&p:42;0;0;1.0;2.0;;1.0;;1.0;&p:41;0;0;3.0;4.0;;3.0;;3.0;'
+    >>>
+
+    Test of round trip:
+    >>> t = unpack(repr(s))
+    >>> repr(t) == repr(s)
+    True
+    >>>
+    """
+    CLASS_ID = 's'
+
+    def __init__(self, sid, particles):
+        self.id = sid
+        self.particles = list(particles)
+
+        self.rand = None
+
+    def __len__(self):
+        return len(self.particles)
+
+    def __getitem__(self, item):
+        return self.particles[item]
+
+    def __iter__(self):
+        return iter(self.particles)
+
+    def iters(self):
+        return self.particles[0].iters
+
+    def batches(self):
+        return self.particles[0].batches
+
+    @classmethod
+    def unpack(cls, state):
+        """Unpacks a state string, returning a new Swarm.
+
+        The state string would have been created with repr(swarm).
+        """
+        strings = state.split('&')
+        start = strings[0]
+        prefix = cls.CLASS_ID + ':'
+        assert start.startswith(prefix)
+        sid = int(start[len(prefix):])
+        particles = [Particle.unpack(s) for s in strings[1:]]
+        return cls(sid, particles)
+
+    def __repr__(self):
+        strings = ['%s:%s' % (self.CLASS_ID, self.id)]
+        strings += [repr(p) for p in self.particles]
+        return '&'.join(strings)
 
 
 class SEParticle(Particle):
@@ -285,7 +419,7 @@ def unpack(state):
 
 
 # Valid class identifiers and their corresponding classes.
-CLASSES = (Particle, Message, SEParticle, SEMessage)
+CLASSES = (Particle, Message, SEParticle, SEMessage, Swarm)
 CLASS_IDS = dict((cls.CLASS_ID, cls) for cls in CLASSES)
 
 if __name__ == '__main__':
