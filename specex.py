@@ -28,6 +28,7 @@ class SpecExPSO(standardpso.StandardPSO):
         rand = self.initialization_rand(batch)
 
         first_iter_particles = list(self.topology.newparticles(batch, rand))
+        self.move_all(first_iter_particles)
         first_iter_children = []
         for p in first_iter_particles:
             for child in self.get_descendants(p):
@@ -167,10 +168,14 @@ class SpecExPSO(standardpso.StandardPSO):
     # Helper Functions 
 
     def just_evaluate(self, p):
+        """Evaluates the particle's position without moving it.  Updates the 
+        pbest of the particle if necessary."""
         value = self.function(p.pos)
         p.update_value(value, self.function.comparator)
 
     def just_move(self, p):
+        """Moves the particle without evaluating the function at the new
+        position.  Updates the iteration count for the particle."""
         self.set_particle_rand(p)
         if p.iters > 0:
             newpos, newvel = self.motion(p)
@@ -182,10 +187,11 @@ class SpecExPSO(standardpso.StandardPSO):
         for p in particles:
             self.just_move(p)
 
-    def get_descendants(self, p):
+    def get_descendants(self, p, neighbors):
+        """Gets the speculative descendants of a particle.  Assumes the particle
+        and its neighbors have already moved."""
         self.set_particle_rand(p)
 
-        pass
 
 
 ##############################################################################
