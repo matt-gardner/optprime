@@ -130,7 +130,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             if not ((iteration - 1) % output.freq):
                 if 'particles' in output.args:
                     next_out_data = next_pso_data
-                if 'best' in output.args:
+                elif 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
                     collapsed_data = job.map_data(next_pso_data,
