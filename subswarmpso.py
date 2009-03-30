@@ -200,7 +200,6 @@ class SubswarmPSO(standardpso.StandardPSO):
         # TODO: try "best in swarm" as an alternative approach.
         particle = swarm[0]
         message = particle.make_message(self.opts.transitive_best)
-        # TODO: create a Random instance for the iterneighbors method.
         for dep_id in self.topology.iterneighbors(swarm):
             yield (str(dep_id), repr(message))
 

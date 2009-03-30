@@ -231,7 +231,6 @@ class StandardPSO(mrs.MapReduce):
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best)
-        # TODO: create a Random instance for the iterneighbors method.
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
 
