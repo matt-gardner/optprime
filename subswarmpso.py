@@ -95,9 +95,13 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         # Create the Population.
         rand = self.initialization_rand(batch)
-        top = self.topology
-        subswarms = [Swarm(i, top.newparticles(batch, rand, i * top.num))
-                for i in xrange(self.link.num)]
+        subswarms = []
+        for i in xrange(self.link.num):
+            initid = i * self.topology.num
+            particles = self.topology.newparticles(batch, rand, initid)
+            swarm = Swarm(i, particles)
+            kvpair = str(i), repr(swarm)
+            subswarms.append(kvpair)
 
         numtasks = self.opts.numtasks
         if not numtasks:
@@ -220,8 +224,8 @@ class SubswarmPSO(standardpso.StandardPSO):
             swarm_head = swarm[0]
             self.set_particle_rand(swarm_head)
             for dep_id in self.topology.iterneighbors(swarm_head):
-                neighbor = neighbor_swarm[dep_id]
-                neighbor.nbest_cand(best.position, best.bestval, comparator)
+                neighbor = swarm[dep_id]
+                neighbor.nbest_cand(best.position, best.value, comparator)
         yield repr(swarm)
 
     ##########################################################################
@@ -232,7 +236,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         comparator = self.function.comparator
         swarm = Swarm.unpack(value)
         best = self.findbest(swarm, comparator)
-        yield '0', best
+        yield '0', repr(best)
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
