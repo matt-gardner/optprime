@@ -251,9 +251,27 @@ class Message(object):
 
 
 class SEParticle(Particle):
-    def __init__(self, pid, pos, vel, value=None, is_child=False, pparent=-1, 
-            nparent=-1):
+    """An extension to Particle that adds fields for speculative execution:
+
+    specpbest - boolean flag telling whether or not this SEParticle came from
+        assuming an updated pbest or not
+
+    specnbestid - int that holds the id of the particle this SEParticle guessed
+        was the new nbest.  -1 means there was no new nbest.
+    """
+    CLASS_ID = 'sep'
+    def __init__(self, pid, pos, vel, value=None, specpbest=False, 
+            specnbestid=-1):
         super(SEParticle, self).__init__(pid, pos, vel, value)
+        self.specpbest = specpbest
+        self.specnbestid = specnbestid
+
+class SEMessage(Message):
+    """
+    """
+    CLASS_ID = 'sem'
+    def __init__(self, sender, position, value):
+        super(SEMessage, sender, position, value)
 
 
 def unpack(state):
@@ -267,7 +285,7 @@ def unpack(state):
 
 
 # Valid class identifiers and their corresponding classes.
-CLASSES = (Particle, Message)
+CLASSES = (Particle, Message, SEParticle, SEMessage)
 CLASS_IDS = dict((cls.CLASS_ID, cls) for cls in CLASSES)
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ class SpecExPSO(mrs.MapReduce):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
-        super(StandardPSO, self).__init__(opts, args)
+        super(SpecExPSO, self).__init__(opts, args)
 
         self.tmpfiles = None
         self.function = param.instantiate(opts, 'func')
@@ -218,9 +218,11 @@ class SpecExPSO(mrs.MapReduce):
         p.update(newpos, newvel, value, self.function.comparator)
 
     def just_evaluate(self, p):
-        pass
+        value = self.function(p.pos)
+        p.update(p.pos, p.vel, value, self.function.comparator)
 
     def get_descendants(self, p):
+        self.set_particle_rand(p)
         pass
 
     def set_particle_rand(self, p):
