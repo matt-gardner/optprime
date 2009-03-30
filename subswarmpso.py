@@ -95,18 +95,15 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         # Create the Population.
         rand = self.initialization_rand(batch)
-        subswarms = []
-        for i in xrange(self.link.num):
-            initid = i * self.topology.num
-            particles = self.topology.newparticles(batch, rand, initid)
-            swarm = Swarm(i, particles)
-            kvpair = str(i), repr(swarm)
-            subswarms.append(kvpair)
+        top = self.topology
+        subswarms = [Swarm(i, top.newparticles(batch, rand, i * top.num))
+                for i in xrange(self.link.num)]
+        kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
 
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(subswarms)
-        new_data = job.local_data(subswarms, parter=self.mod_partition,
+        new_data = job.local_data(kvpairs, parter=self.mod_partition,
                 splits=numtasks)
 
         output = param.instantiate(self.opts, 'out')
@@ -190,7 +187,8 @@ class SubswarmPSO(standardpso.StandardPSO):
     def pso_map(self, key, value):
         swarm = unpack(value)
         assert swarm.id == int(key)
-        self.bypass_iteration(swarm)
+        for i in xrange(self.opts.subiters):
+            self.bypass_iteration(swarm)
 
         # Emit the swarm.
         yield (key, repr(swarm))
