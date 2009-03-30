@@ -26,6 +26,12 @@ class SpecExPSO(standardpso.StandardPSO):
         """
         self.setup()
         rand = self.initialization_rand(batch)
+
+        first_iter_particles = list(self.topology.newparticles(batch, rand))
+        first_iter_children = []
+        for p in first_iter_particles:
+            for child in self.get_descendants(p):
+                first_iter_children.append(child)
         init_particles = [(str(p.id), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
 
@@ -160,13 +166,25 @@ class SpecExPSO(standardpso.StandardPSO):
     ##########################################################################
     # Helper Functions 
 
-
     def just_evaluate(self, p):
         value = self.function(p.pos)
-        p.update(p.pos, p.vel, value, self.function.comparator)
+        p.update_value(value, self.function.comparator)
+
+    def just_move(self, p):
+        self.set_particle_rand(p)
+        if p.iters > 0:
+            newpos, newvel = self.motion(p)
+        else:
+            newpos, newvel = p.pos, p.vel
+        p.update_pos(newpos, newvel)
+
+    def move_all(self, particles):
+        for p in particles:
+            self.just_move(p)
 
     def get_descendants(self, p):
         self.set_particle_rand(p)
+
         pass
 
 

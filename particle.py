@@ -400,6 +400,19 @@ class SEParticle(Particle):
         self.specpbest = specpbest
         self.specnbestid = specnbestid
 
+    def update_value(self, newval, comparator):
+        """Updates the value of the particle, considers a new pbest"""
+        self.value = newval
+        if self.isbetter(newval, self.pbestval, comparator):
+            self.pbestval = newval
+            self.pbestpos = p.pos
+
+    def update_pos(self, newpos, newvel, comparator):
+        """Updates the position and velocity and iterations."""
+        self.pos = newpos
+        self.vel = newvel
+        self.iters += 1
+
 class SEMessage(Message):
     """
     """
