@@ -1,8 +1,8 @@
 from __future__ import division
-from mrs.param import Param
+from mrs.param import ParamObj, Param
 
 # TODO: should initscale and initoffset be moved into Function??
-class _Topology(object):
+class _Topology(ParamObj):
     """Swarm Topology
 
     A Topology object can create particles and determine neighborhoods, but it
