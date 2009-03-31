@@ -32,11 +32,9 @@ class SpecExPSO(standardpso.StandardPSO):
         first_iter_all = []
         for p in particles:
             first_iter_all.append(p)
-            print p.id, p.iters, p.pos
             neighbors = list(particles[x] for x in 
                     self.topology.iterneighbors(p))
             for child in self.get_descendants(p, neighbors):
-                print '  ',child.id, child.iters, child.pos
                 first_iter_all.append(child)
         init_particles = [(str(p.id), repr(p)) for p in
                 first_iter_all]
@@ -59,9 +57,9 @@ class SpecExPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.pso_map,
+            interm_data = job.map_data(last_swarm, self.sepso_map,
                     splits=numtasks, parter=self.mod_partition)
-            next_swarm = job.reduce_data(interm_data, self.pso_reduce,
+            next_swarm = job.reduce_data(interm_data, self.sepso_reduce,
                     splits=numtasks, parter=self.mod_partition)
 
             next_out_data = None
@@ -125,7 +123,7 @@ class SpecExPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    def pso_map(self, key, value):
+    def sepso_map(self, key, value):
         particle = unpack(value)
         assert particle.id == int(key)
         self.move_and_evaluate(particle)
@@ -138,7 +136,7 @@ class SpecExPSO(standardpso.StandardPSO):
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
 
-    def pso_reduce(self, key, value_iter):
+    def sepso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
         messages = []
