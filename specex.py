@@ -32,14 +32,15 @@ class SpecExPSO(standardpso.StandardPSO):
         first_iter_all = []
         for p in particles:
             first_iter_all.append(p)
-            print p.id
+            print p.id, p.iters, p.pos
             neighbors = list(particles[x] for x in 
                     self.topology.iterneighbors(p))
             for child in self.get_descendants(p, neighbors):
-                print '  ',child.id
+                print '  ',child.id, child.iters, child.pos
                 first_iter_all.append(child)
         init_particles = [(str(p.id), repr(p)) for p in
                 first_iter_all]
+        return
 
         numtasks = self.opts.numtasks
         if not numtasks:
