@@ -120,7 +120,7 @@ class Particle(object):
         self.value = newval
         if self.isbetter(newval, self.pbestval, comparator):
             self.pbestval = newval
-            self.pbestpos = p.pos
+            self.pbestpos = self.pos
 
     def update_pos(self, newpos, newvel, comparator):
         """Updates the position and velocity and iterations."""
@@ -405,6 +405,26 @@ class SEParticle(Particle):
 
     specnbestid - int that holds the id of the particle this SEParticle guessed
         was the new nbest.  -1 means there was no new nbest.
+
+    We'll redo some doctests here, as repr and unpack have changed.
+
+    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> p = SEParticle(p, False, 4)
+    >>> repr(p)
+    'sep:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;;False;4'
+    >>> p.batches = 100
+    >>> p.iters = 200
+    >>> p.pbestpos = Vector((6.0, 7.0))
+    >>> p.nbestpos = Vector((8.0, 9.0))
+    >>> p.value = -10.0
+    >>> p.pbestval = -11.0
+    >>> p.nbestval = -12.0
+    >>> repr(p)
+    'sep:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0;False;4'
+    >>> q = unpack(repr(p))
+    >>> repr(q) == repr(p)
+    True
+    >>>
     """
     CLASS_ID = 'sep'
     def __init__(self, p, specpbest=False, specnbestid=-1):
@@ -453,7 +473,35 @@ class SEParticle(Particle):
             p.nbestval = float(nbestval)
         else:
             p.nbestval = None
-        sep = cls(p, specpbest, specnbestid)
+        if specpbest == 'False':
+            specpbest = False
+        else:
+            specpbest = True
+        sep = cls(p, specpbest, int(specnbestid))
+        return sep
+
+    def make_message(self, transitive_best):
+        """Creates a pseudo-particle which will be sent to a neighbor.
+
+        This is used only in the Mrs PSO implementation.
+
+        The `transitive_best` option determines whether the nbest should be
+        sent instead of the pbest.
+        """
+        if transitive_best:
+            m = SEMessage(self.id, self.nbestpos, self.nbestval)
+        else:
+            m = SEMessage(self.id, self.pbestpos, self.pbestval)
+        return m
+
+    def make_real_particle(self):
+        p = Particle(self.id, self.pos, self.vel, self.value)
+        p.pbestpos = self.pbestpos
+        p.pbestval = self.pbestval
+        p.nbestpos = self.nbestpos
+        p.nbestval = self.nbestval
+        p.iters = self.iters
+        p.rand = None
         return p
 
     def __str__(self):
@@ -470,11 +518,33 @@ class SEParticle(Particle):
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
 class SEMessage(Message):
-    """
+    """A subclass of Message merely to tell which messages you get are orginal
+    particles and which ones are speculative.  The messages are exactly the
+    same in either case.
     """
     CLASS_ID = 'sem'
     def __init__(self, sender, position, value):
-        super(SEMessage, sender, position, value)
+        super(SEMessage, self).__init__(sender, position, value)
+
+    @classmethod
+    def unpack(cls, state):
+        """Unpacks a state string, returning a new Message.
+
+        The state string would have been created with repr(message).
+        """
+        prefix = cls.CLASS_ID + ':'
+        assert state.startswith(prefix)
+        state = state[len(prefix):]
+        sender, pos, value = state.split(';')
+        sender = int(sender)
+        pos = Vector.unpack(pos)
+        value = float(value)
+        return cls(sender, pos, value)
+
+    def __repr__(self):
+        fields = (self.sender, self.position, self.value)
+        strings = ((repr(x) if x is not None else '') for x in fields)
+        return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
 
 def unpack(state):

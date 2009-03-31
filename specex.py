@@ -13,10 +13,6 @@ from particle import Particle, Message, unpack, SEParticle, SEMessage
 
 
 class SpecExPSO(standardpso.StandardPSO):
-    def __init__(self, opts, args):
-        """Mrs Setup (run on both master and slave)"""
-
-        super(SpecExPSO, self).__init__(opts, args)
 
     ##########################################################################
     # MapReduce Implementation
@@ -38,7 +34,6 @@ class SpecExPSO(standardpso.StandardPSO):
                 first_iter_all.append(child)
         init_particles = [(str(p.id), repr(p)) for p in
                 first_iter_all]
-        return
 
         numtasks = self.opts.numtasks
         if not numtasks:
@@ -57,10 +52,22 @@ class SpecExPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.sepso_map,
-                    splits=numtasks, parter=self.mod_partition)
-            next_swarm = job.reduce_data(interm_data, self.sepso_reduce,
-                    splits=numtasks, parter=self.mod_partition)
+            if self.opts.reproduce_pso:
+                interm_data = job.map_data(last_swarm, 
+                        self.sepso_reproduction_map, splits=numtasks, 
+                        parter=self.mod_partition)
+                tmp_swarm = job.reduce_data(interm_data, 
+                        self.sepso_reproduction_reduce, splits=numtasks, 
+                        parter=self.mod_partition)
+                interm_data = job.map_data(tmp_swarm,
+                        self.sepso_reproduction_map2, splits=numtasks,
+                        parter=self.mod_partition)
+                next_swarm = job.reduce_data(interm_data,
+                        self.sepso_reproduction_reduce2, splits=numtasks,
+                        parter=self.mod_partition)
+                return
+            else:
+                raise RunTimeError("I haven't gotten this far yet!")
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
@@ -126,7 +133,7 @@ class SpecExPSO(standardpso.StandardPSO):
     def sepso_map(self, key, value):
         particle = unpack(value)
         assert particle.id == int(key)
-        self.move_and_evaluate(particle)
+        self.just_evaluate(particle)
 
         # Emit the particle without changing its id:
         yield (key, repr(particle))
@@ -136,7 +143,89 @@ class SpecExPSO(standardpso.StandardPSO):
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
 
-    def sepso_reduce(self, key, value_iter):
+    def sepso_reproduction_map(self, key, value):
+        print 'Map task for key',key,', value is',value
+        particle = unpack(value)
+        assert particle.id == int(key)
+        self.just_evaluate(particle)
+
+        # Emit the particle without changing its id:
+        yield (key, repr(particle))
+
+        # Emit a message for each dependent particle, but not if you're
+        # speculative, because that information doesn't do any good in the
+        # reproduction case.
+        if not isinstance(particle, SEParticle):
+            message = particle.make_message(self.opts.transitive_best)
+            for dep_id in self.topology.iterneighbors(particle):
+                yield (str(dep_id), repr(message))
+
+    def sepso_reproduction_reduce(self, key, value_iter):
+        comparator = self.function.comparator
+        particle = None
+        messages = []
+        children = []
+        children_messages = []
+        for value in value_iter:
+            record = unpack(value)
+            print key,'received message:',value
+            if type(record) == Particle:
+                particle = record
+            elif type(record) == Message:
+                messages.append(record)
+            elif type(record) == SEParticle:
+                children.append(record)
+            elif type(record) == SEMessage:
+                children_messages.append(record)
+            else:
+                raise ValueError
+
+        assert particle, 'Missing particle %s in the reduce step' % key
+
+        # Look at the messages to see which branch you actually took
+        best = self.findbest(messages, comparator)
+        if best:
+            particle.nbest_cand(best.position, best.value, comparator)
+        print 'Particle is now:',repr(particle)
+
+        # If you updated your pbest, then your current value will be your
+        # pbestval
+        updatedpbest = particle.pbestval == particle.value
+        if particle.nbestval == best.value:
+            bestid = best.sender
+        else:
+            bestid = -1
+
+        # Look through the children and pick the child that corresponds to the
+        # branch you took
+        newparticle = None
+        for child in children:
+            if child.specpbest == updatedpbest and \
+                child.specnbestid == bestid:
+                    newparticle = child.make_real_particle()
+                    print 'Found child for particle',key,updatedpbest,bestid
+                    break
+        if Particle.isbetter(particle.pbestval, newparticle.pbestval,
+                comparator):
+            newparticle.pbestpos = particle.pbestpos
+            newparticle.pbestval = particle.pbestval
+        yield repr(newparticle)
+
+    def sepso_reproduction_map2(self, key, value):
+        particle = unpack(value)
+        assert particle.id == int(key)
+
+        # Emit the particle without changing its id:
+        yield (key, repr(particle))
+
+        # Emit a message for each dependent particle, but not if you're
+        # speculative, because that information doesn't do any good in the
+        # reproduction case.
+        message = particle.make_message(self.opts.transitive_best)
+        for dep_id in self.topology.iterneighbors(particle):
+            yield (str(dep_id), repr(message))
+
+    def sepso_reproduction_reduce2(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
         messages = []
@@ -154,6 +243,7 @@ class SpecExPSO(standardpso.StandardPSO):
         best = self.findbest(messages, comparator)
         if best:
             particle.nbest_cand(best.position, best.value, comparator)
+        print 'Final particle after two iterations:',repr(particle)
         yield repr(particle)
 
     ##########################################################################
@@ -229,6 +319,13 @@ def update_parser(parser):
     parser = standardpso.update_parser(parser)
     parser.set_default('mrs', 'Serial')
     parser.usage = parser.usage.replace('Bypass', 'Serial')
+
+    parser.add_option('','--reproduce-pso',
+            dest='reproduce_pso', action='store_true',
+            help="Exactly reproduce PSO - don't use extra speculative "
+                "information",
+            default=False,
+            )
 
     return parser
 
