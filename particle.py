@@ -422,6 +422,52 @@ class SEParticle(Particle):
         self.specpbest = specpbest
         self.specnbestid = specnbestid
 
+    @classmethod
+    def unpack(cls, state):
+        """Unpacks a state string, returning a new SEParticle.
+
+        The state string would have been created with repr(separticle).
+        """
+        prefix = cls.CLASS_ID + ':'
+        assert state.startswith(prefix)
+        state = state[len(prefix):]
+        (id, batches, iters, pos, vel, value, pbestpos, pbestval,
+                nbestpos, nbestval, specpbest, specnbestid) = state.split(';')
+        id = int(id)
+        pos = Vector.unpack(pos)
+        vel = Vector.unpack(vel)
+        if value:
+            value = float(value)
+        else:
+            value = None
+        p = Particle(id, pos, vel, value)
+        p.batches = int(batches)
+        p.iters = int(iters)
+        p.pbestpos = Vector.unpack(pbestpos)
+        if pbestval:
+            p.pbestval = float(pbestval)
+        else:
+            p.pbestval = None
+        p.nbestpos = Vector.unpack(nbestpos)
+        if nbestval:
+            p.nbestval = float(nbestval)
+        else:
+            p.nbestval = None
+        sep = cls(p, specpbest, specnbestid)
+        return p
+
+    def __str__(self):
+        return "pos: %r; vel: %r; value: %r; pbestpos: %r; pbestval: %r; "\
+               "specpbest: %r; specnbestid: %r"% (
+                self.pos, self.vel, self.value, self.pbestpos, self.pbestval,
+                self.specpbest, self.specnbestid)
+
+    def __repr__(self):
+        fields = (self.id, self.batches, self.iters, self.pos, self.vel,
+                self.value, self.pbestpos, self.pbestval, self.nbestpos,
+                self.nbestval, self.specpbest, self.specnbestid)
+        strings = ((repr(x) if x is not None else '') for x in fields)
+        return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
 class SEMessage(Message):
     """
