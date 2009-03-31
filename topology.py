@@ -53,7 +53,7 @@ class _Topology(object):
         for i in xrange(self.num):
             newpos = self.cube.random_vec(rand)
             newvel = self.vcube.random_vec(rand)
-            p = Particle(pid=(i + initid), pos=newpos, vel=newvel)
+            p = Particle(id=(i + initid), pos=newpos, vel=newvel)
             p.batches = batch
             yield p
 
@@ -114,7 +114,7 @@ class Rand(_Topology):
 
     def iterneighbors(self, particle):
         randrange = particle.rand.randrange
-        pid = particle.id
+        id = particle.id
         num = self.num
         if (self.neighbors == -1):
             neighbors = num
@@ -123,6 +123,6 @@ class Rand(_Topology):
         for i in xrange(neighbors):
             yield randrange(num)
         if not self.noselflink:
-            yield pid
+            yield id
 
 

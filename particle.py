@@ -62,8 +62,8 @@ class Particle(object):
     """
     CLASS_ID = 'p'
 
-    def __init__(self, pid, pos, vel, value=None):
-        self.id = pid
+    def __init__(self, id, pos, vel, value=None):
+        self.id = id
         self.batches = 0
         self.iters = 0
 
@@ -77,12 +77,12 @@ class Particle(object):
 
         self.rand = None
 
-    def copy(self, newpid):
+    def copy(self, newid):
         """Performs a deep copy and returns the new Particle.
 
         An id must be specified for the new particle.
         """
-        p = Particle(newpid, self.pos, self.vel, self.value)
+        p = Particle(newid, self.pos, self.vel, self.value)
         p.pbestpos = self.pbestpos
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
@@ -114,6 +114,19 @@ class Particle(object):
         if self.isbetter(newval, self.pbestval, comparator):
             self.pbestval = newval
             self.pbestpos = newpos
+
+    def update_value(self, newval, comparator):
+        """Updates the value of the particle, considers a new pbest"""
+        self.value = newval
+        if self.isbetter(newval, self.pbestval, comparator):
+            self.pbestval = newval
+            self.pbestpos = p.pos
+
+    def update_pos(self, newpos, newvel, comparator):
+        """Updates the position and velocity and iterations."""
+        self.pos = newpos
+        self.vel = newvel
+        self.iters += 1
 
     def nbest_cand(self, potential_pos, potential_val, comparator):
         """Update nbest if the given value is better than the current nbest.
@@ -198,16 +211,16 @@ class Particle(object):
         prefix = cls.CLASS_ID + ':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (pid, batches, iters, pos, vel, value, pbestpos, pbestval,
+        (id, batches, iters, pos, vel, value, pbestpos, pbestval,
                 nbestpos, nbestval) = state.split(';')
-        pid = int(pid)
+        id = int(id)
         pos = Vector.unpack(pos)
         vel = Vector.unpack(vel)
         if value:
             value = float(value)
         else:
             value = None
-        p = cls(pid, pos, vel, value)
+        p = cls(id, pos, vel, value)
         p.batches = int(batches)
         p.iters = int(iters)
         p.pbestpos = Vector.unpack(pbestpos)
@@ -394,24 +407,21 @@ class SEParticle(Particle):
         was the new nbest.  -1 means there was no new nbest.
     """
     CLASS_ID = 'sep'
-    def __init__(self, pid, pos, vel, value=None, specpbest=False, 
-            specnbestid=-1):
-        super(SEParticle, self).__init__(pid, pos, vel, value)
+    def __init__(self, p, specpbest=False, specnbestid=-1):
+        self.id = p.id
+        self.pos = p.pos
+        self.vel = p.vel
+        self.value = p.value
+        self.pbestpos = p.pbestpos
+        self.pbestval = p.pbestval
+        self.nbestpos = p.nbestpos
+        self.nbestval = p.nbestval
+        self.batches = p.batches
+        self.iters = p.iters
+
         self.specpbest = specpbest
         self.specnbestid = specnbestid
 
-    def update_value(self, newval, comparator):
-        """Updates the value of the particle, considers a new pbest"""
-        self.value = newval
-        if self.isbetter(newval, self.pbestval, comparator):
-            self.pbestval = newval
-            self.pbestpos = p.pos
-
-    def update_pos(self, newpos, newvel, comparator):
-        """Updates the position and velocity and iterations."""
-        self.pos = newpos
-        self.vel = newvel
-        self.iters += 1
 
 class SEMessage(Message):
     """
