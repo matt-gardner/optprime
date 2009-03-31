@@ -6,7 +6,7 @@ import sys, optparse, operator
 import mrs
 import standardpso
 from mrs import param
-from particle import Particle, Message, unpack
+from particle import Particle, Message, unpack, SEParticle, SEMessage
 
 
 # TODO: allow the initial set of particles to be given
@@ -27,14 +27,19 @@ class SpecExPSO(standardpso.StandardPSO):
         self.setup()
         rand = self.initialization_rand(batch)
 
-        first_iter_particles = list(self.topology.newparticles(batch, rand))
-        self.move_all(first_iter_particles)
-        first_iter_children = []
-        for p in first_iter_particles:
-            for child in self.get_descendants(p):
-                first_iter_children.append(child)
+        particles = list(self.topology.newparticles(batch, rand))
+        self.move_all(particles)
+        first_iter_all = []
+        for p in particles:
+            first_iter_all.append(p)
+            print p.id
+            neighbors = list(particles[x] for x in 
+                    self.topology.iterneighbors(p))
+            for child in self.get_descendants(p, neighbors):
+                print '  ',child.id
+                first_iter_all.append(child)
         init_particles = [(str(p.id), repr(p)) for p in
-                self.topology.newparticles(batch, rand)]
+                first_iter_all]
 
         numtasks = self.opts.numtasks
         if not numtasks:
@@ -181,7 +186,7 @@ class SpecExPSO(standardpso.StandardPSO):
             newpos, newvel = self.motion(p)
         else:
             newpos, newvel = p.pos, p.vel
-        p.update_pos(newpos, newvel)
+        p.update_pos(newpos, newvel, self.function.comparator)
 
     def move_all(self, particles):
         for p in particles:
@@ -190,7 +195,29 @@ class SpecExPSO(standardpso.StandardPSO):
     def get_descendants(self, p, neighbors):
         """Gets the speculative descendants of a particle.  Assumes the particle
         and its neighbors have already moved."""
-        self.set_particle_rand(p)
+        # Create children guessing that pbest was not updated
+        child = SEParticle(p, specpbest=False, specnbestid=-1)
+        self.just_move(child)
+        yield child
+        for n in neighbors:
+            if n.id != p.id:
+                child = SEParticle(p, specpbest=False, specnbestid=n.id)
+                child.nbestpos = n.pos
+                self.just_move(child)
+                yield child
+
+        # Create children guessing that pbest was updated
+        child = SEParticle(p, specpbest=True, specnbestid=-1)
+        child.pbestpos = p.pos
+        self.just_move(child)
+        yield child
+        for n in neighbors:
+            child = SEParticle(p, specpbest=True, specnbestid=n.id)
+            child.nbestpos = n.pos
+            child.pbestpos = p.pos
+            self.just_move(child)
+            yield child
+
 
 
 
@@ -201,6 +228,8 @@ def update_parser(parser):
     """Adds PSO options to an OptionParser instance."""
 
     parser = standardpso.update_parser(parser)
+    parser.set_default('mrs', 'Serial')
+    parser.usage = parser.usage.replace('Bypass', 'Serial')
 
     return parser
 
