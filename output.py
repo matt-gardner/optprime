@@ -143,7 +143,7 @@ class Swarm(Output):
         particles = kwds['particles']
         print iteration, len(particles)
         for part in particles:
-            print part.val, ','.join(str(x) for x in part.pos), \
+            print part.value, ','.join(str(x) for x in part.pos), \
                     part.pbestval, ','.join(str(x) for x in part.pbestpos)
         print
 
