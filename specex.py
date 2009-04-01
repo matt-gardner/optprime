@@ -9,10 +9,17 @@ from mrs import param
 from particle import Particle, Message, unpack, SEParticle, SEMessage
 
 
-# TODO: allow the initial set of particles to be given
-
-
 class SpecExPSO(standardpso.StandardPSO):
+
+    def __init__(self, opts, args):
+        """Mrs Setup (run on both master and slave)"""
+
+        super(SpecExPSO, self).__init__(opts, args)
+
+        if self.opts.reproduce_pso:
+            self.specmethod = ReproducePSO
+        else:
+            self.specmethod = TakeBestChild
 
     ##########################################################################
     # MapReduce Implementation
@@ -30,7 +37,7 @@ class SpecExPSO(standardpso.StandardPSO):
             first_iter_all.append(p)
             neighbors = list(particles[x] for x in 
                     self.topology.iterneighbors(p))
-            for child in self.get_descendants(p, neighbors):
+            for child in self.specmethod.generate_children(p, neighbors):
                 first_iter_all.append(child)
         init_particles = [(str(p.id), repr(p)) for p in
                 first_iter_all]
@@ -52,22 +59,13 @@ class SpecExPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
-            if self.opts.reproduce_pso:
-                interm_data = job.map_data(last_swarm, 
-                        self.sepso_reproduction_map, splits=numtasks, 
-                        parter=self.mod_partition)
-                tmp_swarm = job.reduce_data(interm_data, 
-                        self.sepso_reproduction_reduce, splits=numtasks, 
-                        parter=self.mod_partition)
-                interm_data = job.map_data(tmp_swarm,
-                        self.sepso_reproduction_map2, splits=numtasks,
-                        parter=self.mod_partition)
-                next_swarm = job.reduce_data(interm_data,
-                        self.sepso_reproduction_reduce2, splits=numtasks,
-                        parter=self.mod_partition)
-                return
-            else:
-                raise RunTimeError("I haven't gotten this far yet!")
+            interm_data = job.map_data(last_swarm, self.sepso_map, 
+                    splits=numtasks, parter=self.mod_partition)
+            tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
+                    splits=numtasks, parter=self.mod_partition)
+            next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
+                    splits=numtasks, parter=self.mod_partition)
+            return
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
@@ -140,76 +138,52 @@ class SpecExPSO(standardpso.StandardPSO):
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best)
-        for dep_id in self.topology.iterneighbors(particle):
+        for dep_id in self.specmethod.itermessages(particle):
             yield (str(dep_id), repr(message))
 
-    def sepso_reproduction_map(self, key, value):
-        print 'Map task for key',key,', value is',value
-        particle = unpack(value)
-        assert particle.id == int(key)
-        self.just_evaluate(particle)
-
-        # Emit the particle without changing its id:
-        yield (key, repr(particle))
-
-        # Emit a message for each dependent particle, but not if you're
-        # speculative, because that information doesn't do any good in the
-        # reproduction case.
-        if not isinstance(particle, SEParticle):
-            message = particle.make_message(self.opts.transitive_best)
-            for dep_id in self.topology.iterneighbors(particle):
-                yield (str(dep_id), repr(message))
-
-    def sepso_reproduction_reduce(self, key, value_iter):
+    def sepso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
-        messages = []
+        neighbors = []
         children = []
-        children_messages = []
+        children_neighbors = []
         for value in value_iter:
             record = unpack(value)
-            print key,'received message:',value
             if type(record) == Particle:
                 particle = record
             elif type(record) == Message:
-                messages.append(record)
+                neighbors.append(record)
             elif type(record) == SEParticle:
                 children.append(record)
             elif type(record) == SEMessage:
-                children_messages.append(record)
+                children_neighbors.append(record)
             else:
                 raise ValueError
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
-        # Look at the messages to see which branch you actually took
-        best = self.findbest(messages, comparator)
-        if best:
-            particle.nbest_cand(best.position, best.value, comparator)
-        print 'Particle is now:',repr(particle)
-
-        # If you updated your pbest, then your current value will be your
-        # pbestval
-        updatedpbest = particle.pbestval == particle.value
-        if particle.nbestval == best.value:
-            bestid = best.sender
-        else:
-            bestid = -1
-
-        # Look through the children and pick the child that corresponds to the
-        # branch you took
-        newparticle = None
-        for child in children:
-            if child.specpbest == updatedpbest and \
-                child.specnbestid == bestid:
-                    newparticle = child.make_real_particle()
-                    print 'Found child for particle',key,updatedpbest,bestid
-                    break
+        newparticle = self.specmethod.pick_child(particle, neighbors, children)
+        
+        # Update the new particle's pbest.  The way we do updates, pbest gets
+        # overwritten in the child if it's better than its previous pbest. But
+        # what if the parent found the best position when it did its evaluation?
+        # That's why we need this line.
         if Particle.isbetter(particle.pbestval, newparticle.pbestval,
                 comparator):
             newparticle.pbestpos = particle.pbestpos
             newparticle.pbestval = particle.pbestval
+
+        self.just_move(newneighbor)
+        newneighbors = []
+        for neighbor in neighbors:
+            newneighbor = pick_neighbor_child(neighbor, children_neighbors)
+            self.just_move(newneighbor)
+            newneighbors.append(newneighbor)
+
         yield repr(newparticle)
+        for child in self.specmethod.generate_children(self, newparticle, 
+                newneighbors):
+            yield repr(child)
 
     def sepso_reproduction_map2(self, key, value):
         particle = unpack(value)
@@ -246,8 +220,10 @@ class SpecExPSO(standardpso.StandardPSO):
         print 'Final particle after two iterations:',repr(particle)
         yield repr(particle)
 
+
     ##########################################################################
     # MapReduce to Find the Best Particle
+    # TODO: make this work
 
     def collapse_map(self, key, value):
         yield '0', value
@@ -280,34 +256,6 @@ class SpecExPSO(standardpso.StandardPSO):
     def move_all(self, particles):
         for p in particles:
             self.just_move(p)
-
-    def get_descendants(self, p, neighbors):
-        """Gets the speculative descendants of a particle.  Assumes the particle
-        and its neighbors have already moved."""
-        # Create children guessing that pbest was not updated
-        child = SEParticle(p, specpbest=False, specnbestid=-1)
-        self.just_move(child)
-        yield child
-        for n in neighbors:
-            if n.id != p.id:
-                child = SEParticle(p, specpbest=False, specnbestid=n.id)
-                child.nbestpos = n.pos
-                self.just_move(child)
-                yield child
-
-        # Create children guessing that pbest was updated
-        child = SEParticle(p, specpbest=True, specnbestid=-1)
-        child.pbestpos = p.pos
-        self.just_move(child)
-        yield child
-        for n in neighbors:
-            child = SEParticle(p, specpbest=True, specnbestid=n.id)
-            child.nbestpos = n.pos
-            child.pbestpos = p.pos
-            self.just_move(child)
-            yield child
-
-
 
 
 ##############################################################################
