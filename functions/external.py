@@ -1,5 +1,7 @@
 from __future__ import division
 import _general
+from mrs.param import Param
+
 
 class CommandLine(_general._Base):
     """A function that takes an executable file and uses that as the function
@@ -13,9 +15,8 @@ class CommandLine(_general._Base):
     evaluation at that point.  Nothing else should go to stdout.  
     """
 
-    from mrs.param import Param
-
     _params = dict(
+            dims=Param(default='')
             exe=Param(default='',
                 doc='External function (must be an executable file)'),
             constraintsfile=Param(default='',
@@ -26,20 +27,26 @@ class CommandLine(_general._Base):
             )
 
     def setup(self):
-        from subprocess import Popen, PIPE
-        super(CommandLine, self).setup()
         if not self.exe:
             raise RuntimeError('Must supply an external function!')
         if not self.constraintsfile:
-            self._set_constraints(((-50,50),) * self.dims)
-        else:
-            f = open(self.constraintsfile)
-            constraints = []
-            for line in f:
-                fields = line.split(',')
-                constraint = tuple(float(x) for x in fields)
-                constraints.append(constraint)
-            self._set_constraints(tuple(constraints))
+            raise RuntimeError('Must specify a constraints file!')
+        if self.dims:
+            raise RuntimeError('Do not specify dims (use a constraints file)!')
+
+        f = open(self.constraintsfile)
+        constraints = []
+        for line in f:
+            fields = line.split(',')
+            constraint = tuple(float(x) for x in fields)
+            constraints.append(constraint)
+        self.dims = len(constraints)
+
+        # We call the superclass's setup() after dims is set so it doesn't
+        # die.
+        super(CommandLine, self).setup()
+
+        self._set_constraints(tuple(constraints))
 
     def __call__(self, vec):
         import sys
