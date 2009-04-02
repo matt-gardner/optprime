@@ -3,12 +3,12 @@
 
 from __future__ import division
 import sys
-from mrs.param import Param
+from mrs.param import Param, ParamObj
 
 VALID_ARGS = frozenset(('iteration', 'particles', 'best'))
 
 
-class Output(object):
+class Output(ParamObj):
     """Output the results of an iteration in some form.
 
     This class should be extended to be useful.  The `args` attribute defines
