@@ -16,7 +16,7 @@ class CommandLine(_general._Base):
     """
 
     _params = dict(
-            dims=Param(default='')
+            dims=Param(default=''),
             exe=Param(default='',
                 doc='External function (must be an executable file)'),
             constraintsfile=Param(default='',
