@@ -198,7 +198,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         # TODO: try "best in swarm" as an alternative approach.
         particle = swarm[0]
         message = particle.make_message(self.opts.transitive_best)
-        for dep_id in self.topology.iterneighbors(swarm):
+        for dep_id in self.link.iterneighbors(swarm):
             yield (str(dep_id), repr(message))
 
     def pso_reduce(self, key, value_iter):
