@@ -83,10 +83,15 @@ class StandardPSO(mrs.MapReduce):
 
         self.cleanup()
 
-    def bypass_iteration(self, particles):
+    def bypass_iteration(self, particles, swarmid=0):
+        """Runs one iteration of PSO.
+
+        The swarmid is used for seed initialization when this is used in
+        subswarms.
+        """
         # Update position and value.
         for p in particles:
-            self.move_and_evaluate(p)
+            self.move_and_evaluate(p, swarmid)
 
         # Communication phase.
         comp = self.function.comparator
@@ -269,9 +274,9 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
 
-    def move_and_evaluate(self, p):
+    def move_and_evaluate(self, p, swarmid=0):
         """Moves, evaluates, and updates the given particle."""
-        self.set_particle_rand(p)
+        self.set_particle_rand(p, swarmid)
         if p.iters > 0:
             newpos, newvel = self.motion(p)
         else:
@@ -280,14 +285,18 @@ class StandardPSO(mrs.MapReduce):
         value = self.function(newpos)
         p.update(newpos, newvel, value, self.function.comparator)
 
-    def set_particle_rand(self, p):
+    def set_particle_rand(self, p, swarmid):
         """Makes a Random for the given particle and saves it to `p.rand`.
 
-        Note that the Random depends on the particle id, iteration, and batch.
+        Note that the Random depends on the particle id, iteration, batch, and
+        swarmid.  The swarmid is only needed in the subswarms case (to make
+        sure that the particles in different subswarms have unique seeds), but
+        it doesn't hurt the standardpso case to include it.
         """
         from mrs.impl import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = 1 + base * (p.id + base * (p.iters + base * p.batches))
+        offset = 1 + base * (p.id + base * (p.iters + base * (p.batches
+                + base * swarmid)))
         p.rand = self.random(offset)
 
     def initialization_rand(self, batch):

@@ -37,7 +37,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         # Create the Population.
         rand = self.initialization_rand(batch)
         top = self.topology
-        subswarms = [Swarm(i, top.newparticles(batch, rand, i * top.num))
+        subswarms = [Swarm(i, top.newparticles(batch, rand))
                 for i in xrange(self.link.num)]
 
         # Perform PSO Iterations.  The iteration number represents the total
@@ -50,7 +50,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             iteration = i * self.opts.subiters
             for swarm in subswarms:
                 for j in xrange(self.opts.subiters):
-                    self.bypass_iteration(swarm)
+                    self.bypass_iteration(swarm, swarm.id)
 
             # Communication phase.
             for swarm in subswarms:
@@ -60,7 +60,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                 for s_dep_id in self.link.iterneighbors(swarm):
                     neighbor_swarm = subswarms[s_dep_id]
                     swarm_head = neighbor_swarm[0]
-                    self.set_particle_rand(swarm_head)
+                    self.set_particle_rand(swarm_head, swarm.id)
                     for p_dep_id in self.topology.iterneighbors(swarm_head):
                         neighbor = neighbor_swarm[p_dep_id]
                         neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
@@ -96,7 +96,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         # Create the Population.
         rand = self.initialization_rand(batch)
         top = self.topology
-        subswarms = [Swarm(i, top.newparticles(batch, rand, i * top.num))
+        subswarms = [Swarm(i, top.newparticles(batch, rand))
                 for i in xrange(self.link.num)]
         kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
 
@@ -188,7 +188,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         swarm = unpack(value)
         assert swarm.id == int(key)
         for i in xrange(self.opts.subiters):
-            self.bypass_iteration(swarm)
+            self.bypass_iteration(swarm, swarm.id)
 
         # Emit the swarm.
         yield (key, repr(swarm))
@@ -219,7 +219,10 @@ class SubswarmPSO(standardpso.StandardPSO):
         best = self.findbest(messages, comparator)
         if best:
             swarm_head = swarm[0]
-            self.set_particle_rand(swarm_head)
+            # TODO: Think about whether we're setting the particle's random
+            # seed correctly.  Note that we normally take some random values
+            # doing motion before we take random values for neighbors.
+            self.set_particle_rand(swarm_head, swarm.id)
             for dep_id in self.topology.iterneighbors(swarm_head):
                 neighbor = swarm[dep_id]
                 neighbor.nbest_cand(best.position, best.value, comparator)
