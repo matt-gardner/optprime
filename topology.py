@@ -107,9 +107,8 @@ class Complete(_Topology):
 class Rand(_Topology):
     """Random topology (pick n particles and send a message to them)"""
     _params = dict(
-        neighbors=Param(default=-1, type='int',
-            doc='Number of neighbors to send to.  Default of -1 means all '+
-            'particles'),
+        neighbors=Param(default=2, type='int',
+            doc='Number of neighbors to send to.'),
         )
 
     def iterneighbors(self, particle):
