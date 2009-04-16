@@ -34,8 +34,11 @@ class SpecExPSO(standardpso.StandardPSO):
         init_particles = []
         for p in particles:
             init_particles.append((str(p.id),repr(p)))
-            neighbors = list(particles[x] for x in 
-                    self.topology.iterneighbors(p))
+            neighbors = []
+            for n in particles:
+                self.set_neighborhood_rand(n, swarmid=0)
+                if p.id in self.topology.iterneighbors(n):
+                    neighbors.append(particles[n.id])
             i = 1
             for child in self.specmethod.generate_children(p, neighbors):
                 init_particles.append((str(i*self.topology.num+p.id),
@@ -59,13 +62,10 @@ class SpecExPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
-            print 'Starting map task',len(last_swarm)
             interm_data = job.map_data(last_swarm, self.sepso_map, 
                     splits=numtasks, parter=self.mod_partition)
-            print 'Starting reduce task'
             tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
                     splits=numtasks, parter=self.mod_partition)
-            print 'Done with reduce task, should crash'
             next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
                     splits=numtasks, parter=self.mod_partition)
             return
@@ -175,6 +175,10 @@ class SpecExPSO(standardpso.StandardPSO):
                 comparator):
             newparticle.pbestpos = particle.pbestpos
             newparticle.pbestval = particle.pbestval
+        if Particle.isbetter(particle.nbestval, newparticle.nbestval,
+                comparator):
+            newparticle.nbestpos = particle.nbestpos
+            newparticle.nbestval = particle.nbestval
         # To update nbest, you need a set of actual neighbors at the second
         # iteration.  These neighbors will be moved to the third iteration to
         # create the speculative fourth iteration, so if their nbest needs to
@@ -186,10 +190,16 @@ class SpecExPSO(standardpso.StandardPSO):
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # Move all of the particles to the third iteration
-        self.just_move(newparticle)
-        #print repr(newparticle)[:70]
+        #print repr(particle)
         #print
+        #print repr(newparticle)
+        #print
+        self.just_move(newparticle)
+        print repr(newparticle)[:70]
+        print
         for neighbor in newneighbors:
+            #print '  ',repr(neighbor)
+            #print
             self.just_move(neighbor)
 
         # Generate and yield children.  Because we don't have a ReduceMap yet,
@@ -198,37 +208,15 @@ class SpecExPSO(standardpso.StandardPSO):
         i = 1
         for child in self.specmethod.generate_children(newparticle, 
                 newneighbors):
-            #print '  ',repr(child)[:70]
-            #print
+            print '  ',repr(child)[:70]
+            print
             yield str(i*self.topology.num+int(key))+'^'+repr(child)
             i += 1
-        #print
+        print
 
     def sepso_tmp_map(self, key, value):
         newkey, newvalue = value.split('^')
         yield newkey, newvalue
-
-    def sepso_reproduction_reduce2(self, key, value_iter):
-        comparator = self.function.comparator
-        particle = None
-        messages = []
-        for value in value_iter:
-            record = unpack(value)
-            if isinstance(record, Particle):
-                particle = record
-            elif isinstance(record, Message):
-                messages.append(record)
-            else:
-                raise ValueError
-
-        assert particle, 'Missing particle %s in the reduce step' % key
-
-        best = self.findbest(messages, comparator)
-        if best:
-            particle.nbest_cand(best.position, best.value, comparator)
-        print 'Final particle after two iterations:',repr(particle)
-        yield repr(particle)
-
 
     ##########################################################################
     # MapReduce to Find the Best Particle
@@ -255,7 +243,7 @@ class SpecExPSO(standardpso.StandardPSO):
     def just_move(self, p):
         """Moves the particle without evaluating the function at the new
         position.  Updates the iteration count for the particle."""
-        self.set_particle_rand(p, swarmid=0)
+        self.set_motion_rand(p, swarmid=0)
         if p.iters > 0:
             newpos, newvel = self.motion(p)
         else:

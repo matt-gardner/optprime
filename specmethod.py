@@ -60,7 +60,6 @@ class ReproducePSO(_SpecMethod):
         # Look at the messages to see which branch you actually took
         best = self.specex.findbest(realneighbors, comparator)
         particle.nbest_cand(best.pbestpos, best.pbestval, comparator)
-        #print 'Particle is now:',repr(particle)
 
         # If you updated your pbest, then your current value will be your
         # pbestval
@@ -81,21 +80,32 @@ class ReproducePSO(_SpecMethod):
 
     def itermessages(self, particle):
         neighbors = set()
-        self.specex.set_particle_rand(particle, swarmid=0)
-        first = []
+        self.specex.set_neighborhood_rand(particle, swarmid=0)
         for n in self.specex.topology.iterneighbors(particle):
-            first.append(n)
             neighbors.add(n)
             ndummy = Dummy(n, particle.iters, particle.batches)
-            self.specex.set_particle_rand(ndummy, swarmid=0)
+            self.specex.set_neighborhood_rand(ndummy, swarmid=0)
             for n2 in self.specex.topology.iterneighbors(ndummy):
                 neighbors.add(n2)
                 if type(particle) == Particle:
                     n2dummy = Dummy(n2, particle.iters, particle.batches)
-                    self.specex.set_particle_rand(n2dummy, swarmid=0)
+                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
                     for n3 in self.specex.topology.iterneighbors(n2dummy):
                         neighbors.add(n3)
-        print 'itermessages',particle.id, particle.iters, first
+        if type(particle) == Particle:
+            particle.iters += 1
+            for n in self.specex.topology.iterneighbors(particle):
+                neighbors.add(n)
+                ndummy = Dummy(n, particle.iters, particle.batches)
+                self.specex.set_neighborhood_rand(ndummy, swarmid=0)
+                for n2 in self.specex.topology.iterneighbors(ndummy):
+                    neighbors.add(n2)
+                    n2dummy = Dummy(n2, particle.iters, particle.batches)
+                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
+                    for n3 in self.specex.topology.iterneighbors(n2dummy):
+                        neighbors.add(n3)
+
+            particle.iters -= 1
         return neighbors
 
     def pick_neighbor_children(self, particle, neighbors, all_children):
@@ -125,14 +135,13 @@ class ReproducePSO(_SpecMethod):
         return children
 
     def get_actual_neighbors(self, particle, neighbors):
-        self.specex.set_particle_rand(particle, swarmid=0)
-        n = [x for x in self.specex.topology.iterneighbors(particle)]
-        print particle.id, particle.iters, n
         realneighbors = []
         for cand in neighbors:
-            print cand.id
-            if cand.id in n:
+            #print cand.id
+            self.specex.set_neighborhood_rand(cand, swarmid=0)
+            if particle.id in self.specex.topology.iterneighbors(cand):
                 realneighbors.append(cand)
+        #print particle.id, particle.iters, [x.id for x in realneighbors]
         return realneighbors
 
     def update_children_pbest(self, particles, children):
