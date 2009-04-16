@@ -60,7 +60,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                 for s_dep_id in self.link.iterneighbors(swarm):
                     neighbor_swarm = subswarms[s_dep_id]
                     swarm_head = neighbor_swarm[0]
-                    self.set_particle_rand(swarm_head, swarm.id)
+                    self.set_neighborhood_rand(swarm_head, swarm.id)
                     for p_dep_id in self.topology.iterneighbors(swarm_head):
                         neighbor = neighbor_swarm[p_dep_id]
                         neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
@@ -222,7 +222,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             # TODO: Think about whether we're setting the particle's random
             # seed correctly.  Note that we normally take some random values
             # doing motion before we take random values for neighbors.
-            self.set_particle_rand(swarm_head, swarm.id)
+            self.set_neighborhood_rand(swarm_head, swarm.id)
             for dep_id in self.topology.iterneighbors(swarm_head):
                 neighbor = swarm[dep_id]
                 neighbor.nbest_cand(best.position, best.value, comparator)
@@ -248,7 +248,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         """
         from mrs.impl import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = 3 + base * (s.id + base * (s.iters() + base * s.batches()))
+        offset = self.SUBSWARM_OFFSET + base * (s.id + base * (s.iters() +
+            base * s.batches()))
         s.rand = self.random(offset)
 
 

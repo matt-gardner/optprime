@@ -96,6 +96,7 @@ class StandardPSO(mrs.MapReduce):
         # Communication phase.
         comp = self.function.comparator
         for p in particles:
+            self.set_neighborhood_rand(p, swarmid)
             for i in self.topology.iterneighbors(p):
                 # Send p's information to neighbor i.
                 neighbor = particles[i]
@@ -236,6 +237,7 @@ class StandardPSO(mrs.MapReduce):
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best)
+        self.set_neighborhood_rand(particle, 0)
         for dep_id in self.topology.iterneighbors(particle):
             yield (str(dep_id), repr(message))
 
@@ -276,7 +278,7 @@ class StandardPSO(mrs.MapReduce):
 
     def move_and_evaluate(self, p, swarmid=0):
         """Moves, evaluates, and updates the given particle."""
-        self.set_particle_rand(p, swarmid)
+        self.set_motion_rand(p, swarmid)
         if p.iters > 0:
             newpos, newvel = self.motion(p)
         else:
@@ -284,30 +286,6 @@ class StandardPSO(mrs.MapReduce):
         # TODO(?): value = self.function(newpos, p.rand)
         value = self.function(newpos)
         p.update(newpos, newvel, value, self.function.comparator)
-
-    def set_particle_rand(self, p, swarmid):
-        """Makes a Random for the given particle and saves it to `p.rand`.
-
-        Note that the Random depends on the particle id, iteration, batch, and
-        swarmid.  The swarmid is only needed in the subswarms case (to make
-        sure that the particles in different subswarms have unique seeds), but
-        it doesn't hurt the standardpso case to include it.
-        """
-        from mrs.impl import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = 1 + base * (p.id + base * (p.iters + base * (p.batches
-                + base * swarmid)))
-        p.rand = self.random(offset)
-
-    def initialization_rand(self, batch):
-        """Returns a new Random for the given batch number.
-
-        This ensures that each batch will have a unique initial swarm state.
-        """
-        from mrs.impl import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = 2 + base * batch
-        return self.random(offset)
 
     def findbest(self, candidates, comparator):
         """Returns the best particle or message from the given candidates."""
@@ -366,6 +344,61 @@ class StandardPSO(mrs.MapReduce):
     def cleanup(self):
         for f in self.tmpfiles:
             os.unlink(f)
+
+    ##########################################################################
+    # Rand Setters
+
+    # We define the rand offsets here, both for these rand setters, and for
+    # those of all subclasses.  These really need to be unique, so let's put
+    # them all in one place.
+    MOTION_OFFSET = 1
+    INITIALIZATION_OFFSET = 2
+    SUBSWARM_OFFSET = 3
+    NEIGHBORHOOD_OFFSET = 4
+
+    def set_motion_rand(self, p, swarmid):
+        """Makes a Random for the given particle and saves it to `p.rand`.
+
+        This should be used just before performing motion on the particle.
+
+        Note that the Random depends on the particle id, iteration, batch, and
+        swarmid.  The swarmid is only needed in the subswarms case (to make
+        sure that the particles in different subswarms have unique seeds), but
+        it doesn't hurt the standardpso case to include it.
+        """
+        from mrs.impl import SEED_BITS
+        base = 2 ** SEED_BITS
+        offset = self.MOTION_OFFSET + base * (p.id + base * (p.iters + base *
+            (p.batches + base * swarmid)))
+        p.rand = self.random(offset)
+
+    def set_neighborhood_rand(self, n, swarmid):
+        """Makes a Random for the given node and saves it to `n.rand`.
+
+        This should be used just before passing p to iterneighbors.  Note that
+        depending on the PSO variant, node might be a particle, subswarm, or
+        other object.
+
+        Note that the Random depends on the particle id, iteration, batch, and
+        swarmid.  The swarmid is only needed in the subswarms case (to make
+        sure that the particles in different subswarms have unique seeds), but
+        it doesn't hurt the standardpso case to include it.
+        """
+        from mrs.impl import SEED_BITS
+        base = 2 ** SEED_BITS
+        offset = self.NEIGHBORHOOD_OFFSET + base * (n.id + base * (n.iters +
+            base * (n.batches + base * swarmid)))
+        n.rand = self.random(offset)
+
+    def initialization_rand(self, batch):
+        """Returns a new Random for the given batch number.
+
+        This ensures that each batch will have a unique initial swarm state.
+        """
+        from mrs.impl import SEED_BITS
+        base = 2 ** SEED_BITS
+        offset = self.INITIALIZATION_OFFSET + base * batch
+        return self.random(offset)
 
 
 ##############################################################################
