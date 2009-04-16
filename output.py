@@ -148,6 +148,21 @@ class Swarm(Output):
         print
 
 
+class SwarmRepr(Output):
+    """Outputs the value, pos., best value, and best pos. for each particle."""
+
+    args = frozenset(('iteration', 'particles'))
+
+    def __call__(self, **kwds):
+        iteration = kwds['iteration']
+        particles = kwds['particles']
+        print iteration, len(particles)
+        for part in particles:
+            print repr(part)
+            print
+        print
+
+
 class Stats(Output):
     """Outputs stats about how many particles have been updated."""
 
