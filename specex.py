@@ -187,32 +187,26 @@ class SpecExPSO(standardpso.StandardPSO):
 
         # Move all of the particles to the third iteration
         self.just_move(newparticle)
-        print repr(newparticle)[:70]
-        print
+        #print repr(newparticle)[:70]
+        #print
         for neighbor in newneighbors:
             self.just_move(neighbor)
 
-        yield repr(newparticle)
+        # Generate and yield children.  Because we don't have a ReduceMap yet,
+        # we tack on a key that will get separated in the sepso_tmp_map
+        yield key+'^'+repr(newparticle)
+        i = 1
         for child in self.specmethod.generate_children(newparticle, 
                 newneighbors):
-            print '  ',repr(child)[:70]
-            print
-            yield repr(child)
-        print
+            #print '  ',repr(child)[:70]
+            #print
+            yield str(i*self.topology.num+int(key))+'^'+repr(child)
+            i += 1
+        #print
 
-    def sepso_reproduction_map2(self, key, value):
-        particle = unpack(value)
-        assert particle.id == int(key)
-
-        # Emit the particle without changing its id:
-        yield (key, repr(particle))
-
-        # Emit a message for each dependent particle, but not if you're
-        # speculative, because that information doesn't do any good in the
-        # reproduction case.
-        message = particle.make_message(self.opts.transitive_best)
-        for dep_id in self.topology.iterneighbors(particle):
-            yield (str(dep_id), repr(message))
+    def sepso_tmp_map(self, key, value):
+        newkey, newvalue = value.split('^')
+        yield newkey, newvalue
 
     def sepso_reproduction_reduce2(self, key, value_iter):
         comparator = self.function.comparator
