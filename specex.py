@@ -6,7 +6,7 @@ import sys, optparse, operator
 import mrs
 import standardpso
 from mrs import param
-from particle import Particle, Message, unpack, SEParticle, SEMessage
+from particle import *
 
 
 class SpecExPSO(standardpso.StandardPSO):
@@ -16,10 +16,9 @@ class SpecExPSO(standardpso.StandardPSO):
 
         super(SpecExPSO, self).__init__(opts, args)
 
-        if self.opts.reproduce_pso:
-            self.specmethod = ReproducePSO
-        else:
-            self.specmethod = TakeBestChild
+        self.specmethod = param.instantiate(opts, 'spec')
+
+        self.specmethod.setup(self, param.instantiate(opts, 'pruner'))
 
     ##########################################################################
     # MapReduce Implementation
@@ -32,15 +31,16 @@ class SpecExPSO(standardpso.StandardPSO):
 
         particles = list(self.topology.newparticles(batch, rand))
         self.move_all(particles)
-        first_iter_all = []
+        init_particles = []
         for p in particles:
-            first_iter_all.append(p)
+            init_particles.append((str(p.id),repr(p)))
             neighbors = list(particles[x] for x in 
                     self.topology.iterneighbors(p))
+            i = 1
             for child in self.specmethod.generate_children(p, neighbors):
-                first_iter_all.append(child)
-        init_particles = [(str(p.id), repr(p)) for p in
-                first_iter_all]
+                init_particles.append((str(i*self.topology.num+p.id),
+                    repr(child)))
+                i += 1
 
         numtasks = self.opts.numtasks
         if not numtasks:
@@ -59,10 +59,13 @@ class SpecExPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
+            print 'Starting map task',len(last_swarm)
             interm_data = job.map_data(last_swarm, self.sepso_map, 
                     splits=numtasks, parter=self.mod_partition)
+            print 'Starting reduce task'
             tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
                     splits=numtasks, parter=self.mod_partition)
+            print 'Done with reduce task, should crash'
             next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
                     splits=numtasks, parter=self.mod_partition)
             return
@@ -130,14 +133,16 @@ class SpecExPSO(standardpso.StandardPSO):
 
     def sepso_map(self, key, value):
         particle = unpack(value)
-        assert particle.id == int(key)
+        assert particle.id == int(key)%self.topology.num
         self.just_evaluate(particle)
 
         # Emit the particle without changing its id:
-        yield (key, repr(particle))
+        yield (str(int(key)%self.topology.num), repr(particle))
 
-        # Emit a message for each dependent particle:
-        message = particle.make_message(self.opts.transitive_best)
+        # Emit a message for each dependent particle.  In this case we're just
+        # sending around the whole particle, because the speculative stuff 
+        # needs it.
+        message = particle.make_message_particle()
         for dep_id in self.specmethod.itermessages(particle):
             yield (str(dep_id), repr(message))
 
@@ -151,11 +156,11 @@ class SpecExPSO(standardpso.StandardPSO):
             record = unpack(value)
             if type(record) == Particle:
                 particle = record
-            elif type(record) == Message:
-                neighbors.append(record)
             elif type(record) == SEParticle:
                 children.append(record)
-            elif type(record) == SEMessage:
+            elif type(record) == MessageParticle:
+                neighbors.append(record)
+            elif type(record) == SEMessageParticle:
                 children_neighbors.append(record)
             else:
                 raise ValueError
@@ -164,26 +169,36 @@ class SpecExPSO(standardpso.StandardPSO):
 
         newparticle = self.specmethod.pick_child(particle, neighbors, children)
         
-        # Update the new particle's pbest.  The way we do updates, pbest gets
-        # overwritten in the child if it's better than its previous pbest. But
-        # what if the parent found the best position when it did its evaluation?
-        # That's why we need this line.
+        # Update the new particle's pbest and nbest. This finishes the second
+        # iteration.
         if Particle.isbetter(particle.pbestval, newparticle.pbestval,
                 comparator):
             newparticle.pbestpos = particle.pbestpos
             newparticle.pbestval = particle.pbestval
+        # To update nbest, you need a set of actual neighbors at the second
+        # iteration.  These neighbors will be moved to the third iteration to
+        # create the speculative fourth iteration, so if their nbest needs to
+        # be updates, specmethod.pick_neighbor_children has to take care of
+        # that.
+        newneighbors = self.specmethod.pick_neighbor_children(particle, 
+                neighbors, children_neighbors)
+        best = self.findbest(newneighbors, comparator)
+        newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
-        self.just_move(newneighbor)
-        newneighbors = []
-        for neighbor in neighbors:
-            newneighbor = pick_neighbor_child(neighbor, children_neighbors)
-            self.just_move(newneighbor)
-            newneighbors.append(newneighbor)
+        # Move all of the particles to the third iteration
+        self.just_move(newparticle)
+        print repr(newparticle)[:70]
+        print
+        for neighbor in newneighbors:
+            self.just_move(neighbor)
 
         yield repr(newparticle)
-        for child in self.specmethod.generate_children(self, newparticle, 
+        for child in self.specmethod.generate_children(newparticle, 
                 newneighbors):
+            print '  ',repr(child)[:70]
+            print
             yield repr(child)
+        print
 
     def sepso_reproduction_map2(self, key, value):
         particle = unpack(value)
@@ -246,7 +261,7 @@ class SpecExPSO(standardpso.StandardPSO):
     def just_move(self, p):
         """Moves the particle without evaluating the function at the new
         position.  Updates the iteration count for the particle."""
-        self.set_particle_rand(p)
+        self.set_particle_rand(p, swarmid=0)
         if p.iters > 0:
             newpos, newvel = self.motion(p)
         else:
@@ -268,12 +283,23 @@ def update_parser(parser):
     parser.set_default('mrs', 'Serial')
     parser.usage = parser.usage.replace('Bypass', 'Serial')
 
-    parser.add_option('','--reproduce-pso',
-            dest='reproduce_pso', action='store_true',
-            help="Exactly reproduce PSO - don't use extra speculative "
-                "information",
-            default=False,
+    parser.add_option('-s','--specmethod', metavar='SPECMETHOD',
+            dest='spec', action='extend', search=['specmethod'],
+            help="Speculative execution method, such as reproduce PSO exactly "
+                "or make some simplifying assumptions",
+            default='ReproducePSO',
             )
+    parser.add_option('-p','--pruner',metavar='PRUNER',
+            dest='pruner', action='extend', search=['specmethod'],
+            help='Pruning method for generating speculative children',
+            default='OneCompleteIteration',
+            )
+
+    # There are some sticky issues involved with doing this speculatively
+    # that I haven't worried about.  If we ever feel like we should do this,
+    # we need make some changes to the code.  Until then, disabling it is 
+    # better than leaving it in and having it not work.
+    parser.remove_option('--transitive-best')
 
     return parser
 
