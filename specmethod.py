@@ -15,18 +15,20 @@ class _SpecMethod(ParamObj):
         self.specex = specex
         self.pruner = pruner
     
-    def pick_child(self, particle, neighbors, children):
+    def pick_child(self, particle, it1messages, children):
         """Given a particle, its neighbors, and its children, decide which 
         child to return."""
         raise NotImplementedError
 
-    def pick_neighbor_children(self, particle, neighbors, neighbor_children):
+    def pick_neighbor_children(self, particle, it1messages, it2messages):
         """Given a set of neighbors and their children and neighbors, return a
         set of children, one for each neighbor.  In some cases having the
         particle is also necessary to determine which neighbors are actually
         neighbors."""
         raise NotImplementedError
-        
+
+    def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
+        raise NotImplementedError
 
     def itermessages(self, particle):
         """Given a particle, return the set of particles to whom it must
@@ -36,8 +38,7 @@ class _SpecMethod(ParamObj):
     def generate_children(self, particle, neighbors):
         """Yield the speculative children of a particle given it and its
         neighbors.  Often uses an external pruning class."""
-        return self.pruner.generate_children(particle, neighbors, 
-                self.specex.just_move)
+        return self.pruner.generate_children(particle, neighbors)
 
 class ReproducePSO(_SpecMethod):
     """Perform speculative execution in such a way that the original PSO is
@@ -54,11 +55,53 @@ class ReproducePSO(_SpecMethod):
         self.pruner = pruner
         self.specex = specex
 
-    def pick_child(self, particle, neighbors, children):
+    def itermessages(self, particle):
+        # TODO: This might be more than we actually need to send.
+        neighbors = set()
+        self.specex.set_neighborhood_rand(particle, swarmid=0)
+        for n in self.specex.topology.iterneighbors(particle):
+            neighbors.add(n)
+            ndummy = Dummy(n, particle.iters, particle.batches)
+            self.specex.set_neighborhood_rand(ndummy, swarmid=0)
+            for n2 in self.specex.topology.iterneighbors(ndummy):
+                neighbors.add(n2)
+                if type(particle) == Particle:
+                    n2dummy = Dummy(n2, particle.iters, particle.batches)
+                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
+                    for n3 in self.specex.topology.iterneighbors(n2dummy):
+                        neighbors.add(n3)
+        particle.iters += 1
+        for n in self.specex.topology.iterneighbors(particle):
+            neighbors.add(n)
+            ndummy = Dummy(n, particle.iters, particle.batches)
+            self.specex.set_neighborhood_rand(ndummy, swarmid=0)
+            for n2 in self.specex.topology.iterneighbors(ndummy):
+                neighbors.add(n2)
+                if type(particle == Particle):
+                    n2dummy = Dummy(n2, particle.iters, particle.batches)
+                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
+                    for n3 in self.specex.topology.iterneighbors(n2dummy):
+                        neighbors.add(n3)
+        particle.iters += 1
+        for n in self.specex.topology.iterneighbors(particle):
+            neighbors.add(n)
+            ndummy = Dummy(n, particle.iters, particle.batches)
+            self.specex.set_neighborhood_rand(ndummy, swarmid=0)
+            for n2 in self.specex.topology.iterneighbors(ndummy):
+                neighbors.add(n2)
+                if type(particle == Particle):
+                    n2dummy = Dummy(n2, particle.iters, particle.batches)
+                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
+                    for n3 in self.specex.topology.iterneighbors(n2dummy):
+                        neighbors.add(n3)
+        particle.iters -= 2
+        return neighbors
+
+    def pick_child(self, particle, it1messages, children):
         comparator = self.specex.function.comparator
-        realneighbors = self.get_actual_neighbors(particle, neighbors)
+        neighbors = self.get_real_neighbors(particle, it1messages)
         # Look at the messages to see which branch you actually took
-        best = self.specex.findbest(realneighbors, comparator)
+        best = self.specex.findbest(neighbors, comparator)
         particle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # If you updated your pbest, then your current value will be your
@@ -75,83 +118,65 @@ class ReproducePSO(_SpecMethod):
         for child in children:
             if child.specpbest == updatedpbest and \
                 child.specnbestid == bestid:
+                    self.update_child_bests(particle, child)
+                    # TODO: Maybe separate child_bests to make sure nbest 
+                    # matches parent?
                     return child.make_real_particle()
         raise RuntimeError("Didn't find a child that matched the right branch!")
 
-    def itermessages(self, particle):
-        neighbors = set()
-        self.specex.set_neighborhood_rand(particle, swarmid=0)
-        for n in self.specex.topology.iterneighbors(particle):
-            neighbors.add(n)
-            ndummy = Dummy(n, particle.iters, particle.batches)
-            self.specex.set_neighborhood_rand(ndummy, swarmid=0)
-            for n2 in self.specex.topology.iterneighbors(ndummy):
-                neighbors.add(n2)
-                if type(particle) == Particle:
-                    n2dummy = Dummy(n2, particle.iters, particle.batches)
-                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
-                    for n3 in self.specex.topology.iterneighbors(n2dummy):
-                        neighbors.add(n3)
-        if type(particle) == Particle:
-            particle.iters += 1
-            for n in self.specex.topology.iterneighbors(particle):
-                neighbors.add(n)
-                ndummy = Dummy(n, particle.iters, particle.batches)
-                self.specex.set_neighborhood_rand(ndummy, swarmid=0)
-                for n2 in self.specex.topology.iterneighbors(ndummy):
-                    neighbors.add(n2)
-                    n2dummy = Dummy(n2, particle.iters, particle.batches)
-                    self.specex.set_neighborhood_rand(n2dummy, swarmid=0)
-                    for n3 in self.specex.topology.iterneighbors(n2dummy):
-                        neighbors.add(n3)
-
-            particle.iters -= 1
-        return neighbors
-
-    def pick_neighbor_children(self, particle, neighbors, all_children):
-        self.update_children_pbest(neighbors, all_children)
-        # Find the actual children for all particles in neighbors
-        n2_all = []
+    def pick_neighbor_children(self, particle, it1messages, it2messages):
+        #print 'in neighbor children for particle',particle.id, particle.iters
+        neighbors = self.get_real_neighbors(particle, it1messages)
+        neighbor_children = []
         for neighbor in neighbors:
-            neighborsneighbors = self.get_actual_neighbors(neighbor, neighbors)
-            neighborchildren = []
-            for child in all_children:
+            neighborsneighbors = self.get_real_neighbors(neighbor, it1messages)
+            children = []
+            for child in it2messages:
                 if child.id == neighbor.id:
-                    neighborchildren.append(child)
-            if (len(neighborchildren) > 0):
-                realchild = self.pick_child(neighbor, neighborsneighbors, 
-                    neighborchildren)
-                n2_all.append(realchild)
+                    children.append(child)
+            realchild = self.pick_child(neighbor, neighborsneighbors, children)
+            neighbor_children.append(realchild)
+        return neighbor_children
 
-        # Get the particle's actual neighbors, update their nbest, return them
-        n2_actual = self.get_actual_neighbors(particle, n2_all)
-        children = []
-        for n2 in n2_actual:
-            neighborsneighbors = self.get_actual_neighbors(n2, n2_all)
-            comparator = self.specex.function.comparator
-            best = self.specex.findbest(neighborsneighbors, comparator)
-            n2.nbest_cand(best.pbestpos, best.pbestval, comparator)
-            children.append(n2)
-        return children
+    def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
+        comparator = self.specex.function.comparator
+        for neighbor in neighbors:
+            n = self.pick_neighbor_children(neighbor, it1messages, it2messages)
+            best = self.specex.findbest(n, comparator)
+            neighbor.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
-    def get_actual_neighbors(self, particle, neighbors):
+    def get_real_neighbors(self, particle, messages):
+        """This assumes a non-symmetric topology.  It is a bit less work if the
+        topology is symmetric, but this works in general.  Also, messing with
+        the neighbors' iteration is because of dynamic topologies - if the
+        particle wants its neighbors at a certain iteration, make sure the
+        neighbors are also on that iteration."""
         realneighbors = []
-        for cand in neighbors:
-            #print cand.id
+        for cand in messages:
+            olditer = cand.iters
+            if cand.iters != particle.iters:
+                cand.iters = particle.iters
             self.specex.set_neighborhood_rand(cand, swarmid=0)
             if particle.id in self.specex.topology.iterneighbors(cand):
                 realneighbors.append(cand)
-        #print particle.id, particle.iters, [x.id for x in realneighbors]
+            cand.iters = olditer
         return realneighbors
 
-    def update_children_pbest(self, particles, children):
-        for particle in particles:
-            for child in children:
-                if particle.id == child.id:
-                    if Particle.isbetter(particle.pbestval, child.pbestval,
-                            self.specex.function.comparator):
-                        child.pbestpos = particle.pbestpos
-                        child.pbestval = particle.pbestval
+    def update_child_bests(self, particle, child):
+        """In speculative execution this is necessary because the child 
+        particle doesn't know if the value that it found is better than the 
+        value the parent found at its position, it only updated its pbest in 
+        relation to its previous pbestval.
+        Also, it doesn't know the value of the function at the nbest position
+        that it guessed.  It has to get that from its parent.
+        """
+        comparator = self.specex.function.comparator
+        if Particle.isbetter(particle.pbestval, child.pbestval, comparator):
+            child.pbestpos = particle.pbestpos
+            child.pbestval = particle.pbestval
+        if Particle.isbetter(particle.nbestval, child.nbestval, comparator):
+            child.nbestpos = particle.nbestpos
+            child.nbestval = particle.nbestval
 
 
 class _Pruning(ParamObj):
@@ -162,37 +187,45 @@ class _Pruning(ParamObj):
     tree, and in what way.
     """
 
-    def generate_children(self, particle, neighbors, just_move):
+    def setup(self, specex):
+        self.specex = specex
+
+    def generate_children(self, particle, neighbors):
         """Given a particle and its neighbors, generate the particle's
         speculative children."""
         raise NotImplementedError
 
+
 class OneCompleteIteration(_Pruning):
 
-    def generate_children(self, particle, neighbors, just_move):
+    def generate_children(self, particle, neighbors):
         """Given the particle and neighbors at iteration i, yield all possible
         speculative children for iteration i+1."""
         # Create children guessing that pbest was not updated
         child = SEParticle(particle, specpbest=False, specnbestid=-1)
-        just_move(child)
+        self.specex.set_motion_rand(child, swarmid=0)
+        self.specex.just_move(child)
         yield child
         for n in neighbors:
             if n.id != particle.id:
                 child = SEParticle(particle, specpbest=False, specnbestid=n.id)
                 child.nbestpos = n.pos
-                just_move(child)
+                self.specex.set_motion_rand(child, swarmid=0)
+                self.specex.just_move(child)
                 yield child
 
         # Create children guessing that pbest was updated
         child = SEParticle(particle, specpbest=True, specnbestid=-1)
         child.pbestpos = particle.pos
-        just_move(child)
+        self.specex.set_motion_rand(child, swarmid=0)
+        self.specex.just_move(child)
         yield child
         for n in neighbors:
             child = SEParticle(particle, specpbest=True, specnbestid=n.id)
             child.nbestpos = n.pos
             child.pbestpos = particle.pos
-            just_move(child)
+            self.specex.set_motion_rand(child, swarmid=0)
+            self.specex.just_move(child)
             yield child
 
 # vim: et sw=4 sts=4

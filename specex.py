@@ -17,8 +17,10 @@ class SpecExPSO(standardpso.StandardPSO):
         super(SpecExPSO, self).__init__(opts, args)
 
         self.specmethod = param.instantiate(opts, 'spec')
+        pruner = param.instantiate(opts, 'pruner')
 
-        self.specmethod.setup(self, param.instantiate(opts, 'pruner'))
+        pruner.setup(self)
+        self.specmethod.setup(self, pruner)
 
     ##########################################################################
     # MapReduce Implementation
@@ -169,38 +171,51 @@ class SpecExPSO(standardpso.StandardPSO):
 
         newparticle = self.specmethod.pick_child(particle, neighbors, children)
         
-        # Update the new particle's pbest and nbest. This finishes the second
-        # iteration.
-        if Particle.isbetter(particle.pbestval, newparticle.pbestval,
-                comparator):
-            newparticle.pbestpos = particle.pbestpos
-            newparticle.pbestval = particle.pbestval
-        if Particle.isbetter(particle.nbestval, newparticle.nbestval,
-                comparator):
-            newparticle.nbestpos = particle.nbestpos
-            newparticle.nbestval = particle.nbestval
+        # Specmethod.pick_child updates the child's pbest, so all you need to 
+        # finish the second iteration is to update the nbest.
         # To update nbest, you need a set of actual neighbors at the second
-        # iteration.  These neighbors will be moved to the third iteration to
-        # create the speculative fourth iteration, so if their nbest needs to
-        # be updates, specmethod.pick_neighbor_children has to take care of
-        # that.
-        newneighbors = self.specmethod.pick_neighbor_children(particle, 
+        # iteration - that's why we use newparticle instead of particle here.
+        newneighbors = self.specmethod.pick_neighbor_children(newparticle, 
                 neighbors, children_neighbors)
         best = self.findbest(newneighbors, comparator)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
-        # Move all of the particles to the third iteration
-        #print repr(particle)
+        # We now have a finished particle at the second iteration.  We move it
+        # to the third iteration, then get its neighbors at the third iteration
+
+        #print repr(particle)  # Iteration 1
         #print
-        #print repr(newparticle)
+        #print repr(newparticle)  # Iteration 2
         #print
+
+        self.set_motion_rand(newparticle, swarmid=0)
         self.just_move(newparticle)
-        print repr(newparticle)[:70]
+
+        print repr(newparticle)[:70]  # Iteration 3 (-e)
         print
+
+        # In a dynamic topology, the neighbors at iteration three could be 
+        # different than the neighbors at iteration two, so find the neighbors
+        # again (newparticle is now at iteration 3, so this will pick the right
+        # neighbors), then move them.
+        newneighbors = self.specmethod.pick_neighbor_children(newparticle,
+                neighbors, children_neighbors)
+        self.specmethod.update_neighbor_nbest(newneighbors, neighbors, 
+                children_neighbors)
         for neighbor in newneighbors:
-            #print '  ',repr(neighbor)
+            #print '  ',repr(neighbor) # Iteration 3 neighbors at iteration 2
             #print
+            self.set_motion_rand(neighbor, swarmid=0)
             self.just_move(neighbor)
+            #print '    ',repr(neighbor)[:70] # Iteration 3 neighbors (-e)
+            #print
+
+        # In a dynamic topology, you might not already know your iteration 3
+        # neighbors' iteration 2 pbest.  In order to speculate correctly, you 
+        # need that information.  Turns out we already have it, so update nbest
+        # for your iteration 3 particle with your neighbors' pbest.
+        best = self.findbest(newneighbors, comparator)
+        newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # Generate and yield children.  Because we don't have a ReduceMap yet,
         # we tack on a key that will get separated in the sepso_tmp_map
@@ -208,11 +223,11 @@ class SpecExPSO(standardpso.StandardPSO):
         i = 1
         for child in self.specmethod.generate_children(newparticle, 
                 newneighbors):
-            print '  ',repr(child)[:70]
+            print '  ',repr(child)[:70] # Iteration 4 (-e)
             print
             yield str(i*self.topology.num+int(key))+'^'+repr(child)
             i += 1
-        print
+        #print
 
     def sepso_tmp_map(self, key, value):
         newkey, newvalue = value.split('^')
