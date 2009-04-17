@@ -217,7 +217,7 @@ class SpecExPSO(standardpso.StandardPSO):
 
     def sepso_tmp_map(self, key, value):
         newkey, newvalue = value.split('^')
-        yield newkey, newvalue
+        yield (newkey, newvalue)
 
     ##########################################################################
     # MapReduce to Find the Best Particle
