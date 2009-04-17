@@ -139,7 +139,7 @@ class SpecExPSO(standardpso.StandardPSO):
         self.just_evaluate(particle)
 
         # Emit the particle without changing its id:
-        yield (str(int(key)%self.topology.num), repr(particle))
+        yield (str(particle.id, repr(particle))
 
         # Emit a message for each dependent particle.  In this case we're just
         # sending around the whole particle, because the speculative stuff 
@@ -151,9 +151,9 @@ class SpecExPSO(standardpso.StandardPSO):
     def sepso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
-        neighbors = []
+        it1messages = []
         children = []
-        children_neighbors = []
+        it2messages = []
         for value in value_iter:
             record = unpack(value)
             if type(record) == Particle:
@@ -161,60 +161,49 @@ class SpecExPSO(standardpso.StandardPSO):
             elif type(record) == SEParticle:
                 children.append(record)
             elif type(record) == MessageParticle:
-                neighbors.append(record)
+                it1messages.append(record)
             elif type(record) == SEMessageParticle:
-                children_neighbors.append(record)
+                it2messages.append(record)
             else:
                 raise ValueError
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
-        newparticle = self.specmethod.pick_child(particle, neighbors, children)
+        newparticle = self.specmethod.pick_child(particle, it1messages, 
+            children)
         
         # Specmethod.pick_child updates the child's pbest, so all you need to 
         # finish the second iteration is to update the nbest.
         # To update nbest, you need a set of actual neighbors at the second
         # iteration - that's why we use newparticle instead of particle here.
-        newneighbors = self.specmethod.pick_neighbor_children(newparticle, 
-                neighbors, children_neighbors)
-        best = self.findbest(newneighbors, comparator)
+        it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
+                it1messages, it2messages)
+        best = self.findbest(it2neighbors, comparator)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # We now have a finished particle at the second iteration.  We move it
         # to the third iteration, then get its neighbors at the third iteration
-
-        #print repr(particle)  # Iteration 1
-        #print
-        #print repr(newparticle)  # Iteration 2
-        #print
-
         self.set_motion_rand(newparticle, swarmid=0)
         self.just_move(newparticle)
-
-        print repr(newparticle)[:70]  # Iteration 3 (-e)
-        print
 
         # In a dynamic topology, the neighbors at iteration three could be 
         # different than the neighbors at iteration two, so find the neighbors
         # again (newparticle is now at iteration 3, so this will pick the right
-        # neighbors), then move them.
-        newneighbors = self.specmethod.pick_neighbor_children(newparticle,
-                neighbors, children_neighbors)
-        self.specmethod.update_neighbor_nbest(newneighbors, neighbors, 
-                children_neighbors)
-        for neighbor in newneighbors:
-            #print '  ',repr(neighbor) # Iteration 3 neighbors at iteration 2
-            #print
+        # neighbors), then move them.  In order to move correctly, they need to
+        # update their nbest
+        it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
+                it1messages, it2messages)
+        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
+                it2messages)
+        for neighbor in it3neighbors:
             self.set_motion_rand(neighbor, swarmid=0)
             self.just_move(neighbor)
-            #print '    ',repr(neighbor)[:70] # Iteration 3 neighbors (-e)
-            #print
 
         # In a dynamic topology, you might not already know your iteration 3
         # neighbors' iteration 2 pbest.  In order to speculate correctly, you 
         # need that information.  Turns out we already have it, so update nbest
         # for your iteration 3 particle with your neighbors' pbest.
-        best = self.findbest(newneighbors, comparator)
+        best = self.findbest(it3neighbors, comparator)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # Generate and yield children.  Because we don't have a ReduceMap yet,
@@ -222,12 +211,9 @@ class SpecExPSO(standardpso.StandardPSO):
         yield key+'^'+repr(newparticle)
         i = 1
         for child in self.specmethod.generate_children(newparticle, 
-                newneighbors):
-            print '  ',repr(child)[:70] # Iteration 4 (-e)
-            print
+                it3neighbors):
             yield str(i*self.topology.num+int(key))+'^'+repr(child)
             i += 1
-        #print
 
     def sepso_tmp_map(self, key, value):
         newkey, newvalue = value.split('^')
