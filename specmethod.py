@@ -101,62 +101,27 @@ class ReproducePSO(_SpecMethod):
         super(ReproducePSO, self).setup(specex, pruner)
 
     def message_ids(self, particle):
+        """Decide which particles need messages from this particle.
+
+        Only Particles ever have to send messages three neighbors down.
+        When you send to a neighbor's neighbor you need to increment the 
+        iteration to make sure you're sending it to the right neighbor in the
+        end.
+        """
         messages = set()
-        self.add_iter1_messages(messages, particle)
-        self.add_iter2_messages(messages, particle)
-        self.add_iter3_messages(messages, particle)
-        return messages
-
-    def add_iter1_messages(self, messages, particle):
-        if type(particle) == Particle:
-            self.specex.set_neighborhood_rand(particle)
-            for n in self.specex.topology.iterneighbors(particle):
-                messages.add(n)
-
-    def add_iter2_messages(self, messages, particle):
-        if type(particle) == Particle:
-            particle.iters += 1
-            self.specex.set_neighborhood_rand(particle)
-            for n in self.specex.topology.iterneighbors(particle):
-                messages.add(n)
-                ndummy = Dummy(n, particle.iters-1, particle.batches)
-                self.specex.set_neighborhood_rand(ndummy)
-                for n2 in self.specex.topology.iterneighbors(ndummy):
-                    messages.add(n2)
-            particle.iters -= 1
-        else:
-            self.specex.set_neighborhood_rand(particle)
-            for n in self.specex.topology.iterneighbors(particle):
-                messages.add(n)
-
-    def add_iter3_messages(self, messages, particle):
-        if type(particle) == Particle:
-            particle.iters += 2
-            self.specex.set_neighborhood_rand(particle)
-            for n in self.specex.topology.iterneighbors(particle):
-                messages.add(n)
-                ndummy = Dummy(n, particle.iters-2, particle.batches)
-                self.specex.set_neighborhood_rand(ndummy)
-                for n2 in self.specex.topology.iterneighbors(ndummy):
-                    messages.add(n2)
-                ndummy = Dummy(n, particle.iters-1, particle.batches)
-                self.specex.set_neighborhood_rand(ndummy)
-                for n2 in self.specex.topology.iterneighbors(ndummy):
-                    messages.add(n2)
-                    n2dummy = Dummy(n2, particle.iters-2, particle.batches)
+        self.specex.set_neighborhood_rand(particle)
+        for n in self.specex.topology.iterneighbors(particle):
+            messages.add(n)
+            ndummy = Dummy(n, particle.iters+1, particle.batches)
+            self.specex.set_neighborhood_rand(ndummy)
+            for n2 in self.specex.topology.iterneighbors(ndummy):
+                messages.add(n2)
+                if type(particle) == Particle:
+                    n2dummy = Dummy(n2, particle.iters+2, particle.batches)
                     self.specex.set_neighborhood_rand(n2dummy)
                     for n3 in self.specex.topology.iterneighbors(n2dummy):
                         messages.add(n3)
-            particle.iters -= 2
-        else:
-            # SEParticles need to send a message to their iteration 2 neighbors'
-            # iteration 3 neighbors
-            self.specex.set_neighborhood_rand(particle)
-            for n in self.specex.topology.iterneighbors(particle):
-                ndummy = Dummy(n, particle.iters+1, particle.batches)
-                self.specex.set_neighborhood_rand(ndummy)
-                for n2 in self.specex.topology.iterneighbors(ndummy):
-                    messages.add(n2)
+        return messages
 
     def pick_child(self, particle, it1messages, children):
         """To find the correct branch the PSO would have taken, you need to 
