@@ -154,6 +154,8 @@ class Particle(object):
         if self.isbetter(potential_val, self.nbestval, comparator):
             self.nbestpos = potential_pos
             self.nbestval = potential_val
+            return True
+        return False
 
     @staticmethod
     def isbetter(potential, old, comparator):
