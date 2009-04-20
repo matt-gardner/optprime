@@ -55,7 +55,6 @@ class StandardPSO(mrs.MapReduce):
         thing.
         """
         self.setup()
-        comp = self.function.comparator
 
         # Create the Population.
         rand = self.initialization_rand(batch)
@@ -77,7 +76,7 @@ class StandardPSO(mrs.MapReduce):
                 if 'particles' in output.args:
                     kwds['particles'] = particles
                 if 'best' in output.args:
-                    kwds['best'] = self.findbest(particles, comp)
+                    kwds['best'] = self.findbest(particles)
                 output(**kwds)
         output.finish()
 
@@ -213,7 +212,7 @@ class StandardPSO(mrs.MapReduce):
                     if len(particles) == 1:
                         best = particles[0]
                     else:
-                        best = self.findbest(particles, comp)
+                        best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
 
@@ -256,7 +255,7 @@ class StandardPSO(mrs.MapReduce):
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
-        best = self.findbest(messages, comparator)
+        best = self.findbest(messages)
         if best:
             particle.nbest_cand(best.position, best.value, comparator)
         yield repr(particle)
@@ -268,9 +267,8 @@ class StandardPSO(mrs.MapReduce):
         yield '0', value
 
     def findbest_reduce(self, key, value_iter):
-        comparator = self.function.comparator
         particles = (Particle.unpack(value) for value in value_iter)
-        best = self.findbest(particles, comparator)
+        best = self.findbest(particles)
         yield repr(best)
 
     ##########################################################################
@@ -287,8 +285,9 @@ class StandardPSO(mrs.MapReduce):
         value = self.function(newpos)
         p.update(newpos, newvel, value, self.function.comparator)
 
-    def findbest(self, candidates, comparator):
+    def findbest(self, candidates):
         """Returns the best particle or message from the given candidates."""
+        comparator = self.function.comparator
         best = None
         for cand in candidates:
             if (best is None) or comparator(cand, best):
@@ -356,7 +355,7 @@ class StandardPSO(mrs.MapReduce):
     SUBSWARM_OFFSET = 3
     NEIGHBORHOOD_OFFSET = 4
 
-    def set_motion_rand(self, p, swarmid):
+    def set_motion_rand(self, p, swarmid=0):
         """Makes a Random for the given particle and saves it to `p.rand`.
 
         This should be used just before performing motion on the particle.
@@ -372,7 +371,7 @@ class StandardPSO(mrs.MapReduce):
             (p.batches + base * swarmid)))
         p.rand = self.random(offset)
 
-    def set_neighborhood_rand(self, n, swarmid):
+    def set_neighborhood_rand(self, n, swarmid=0):
         """Makes a Random for the given node and saves it to `n.rand`.
 
         This should be used just before passing p to iterneighbors.  Note that
