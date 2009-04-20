@@ -55,12 +55,11 @@ class Basic(Output):
 class Pair(Output):
     """Outputs the iteration and best value."""
 
-    args = frozenset(('best','iteration',))
+    args = frozenset(('best',))
 
     def __call__(self, **kwds):
         best = kwds['best']
-        iteration = kwds['iteration']
-        print iteration, best.pbestval
+        print best.iters, best.pbestval
         sys.stdout.flush()
 
 
@@ -106,7 +105,7 @@ class Extended(Output):
 class Everything(Output):
     """Outputs the iteration, best value, best position, and elapsed time."""
 
-    args = frozenset(('best', 'iteration'))
+    args = frozenset(('best',))
 
     def start(self):
         from datetime import datetime
@@ -115,7 +114,7 @@ class Everything(Output):
 
     def __call__(self, **kwds):
         best = kwds['best']
-        iteration = kwds['iteration']
+        iteration = best.iters
         if iteration <= 0: return
         from datetime import datetime
         now = datetime.now()
@@ -136,12 +135,11 @@ class Everything(Output):
 class Swarm(Output):
     """Outputs the value, pos., best value, and best pos. for each particle."""
 
-    args = frozenset(('iteration', 'particles'))
+    args = frozenset(('particles',))
 
     def __call__(self, **kwds):
-        iteration = kwds['iteration']
         particles = kwds['particles']
-        print iteration, len(particles)
+        print particles[0].iters, len(particles)
         for part in particles:
             print part.value, ','.join(str(x) for x in part.pos), \
                     part.pbestval, ','.join(str(x) for x in part.pbestpos)
@@ -151,12 +149,11 @@ class Swarm(Output):
 class SwarmRepr(Output):
     """Outputs the value, pos., best value, and best pos. for each particle."""
 
-    args = frozenset(('iteration', 'particles'))
+    args = frozenset(('particles',))
 
     def __call__(self, **kwds):
-        iteration = kwds['iteration']
         particles = kwds['particles']
-        print iteration, len(particles)
+        print particles[0].iters, len(particles)
         for part in particles:
             print repr(part)
             print
