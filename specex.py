@@ -38,7 +38,7 @@ class SpecExPSO(standardpso.StandardPSO):
             init_particles.append((str(p.id),repr(p)))
             neighbors = []
             for n in particles:
-                self.set_neighborhood_rand(n, swarmid=0)
+                self.set_neighborhood_rand(n)
                 if p.id in self.topology.iterneighbors(n):
                     neighbors.append(particles[n.id])
             i = 1
@@ -119,7 +119,7 @@ class SpecExPSO(standardpso.StandardPSO):
                     if len(particles) == 1:
                         best = particles[0]
                     else:
-                        best = self.findbest(particles, comp)
+                        best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
 
@@ -145,7 +145,7 @@ class SpecExPSO(standardpso.StandardPSO):
         # sending around the whole particle, because the speculative stuff 
         # needs it.
         message = particle.make_message_particle()
-        for dep_id in self.specmethod.itermessages(particle):
+        for dep_id in self.specmethod.message_ids(particle):
             yield (str(dep_id), repr(message))
 
     def sepso_reduce(self, key, value_iter):
@@ -178,12 +178,12 @@ class SpecExPSO(standardpso.StandardPSO):
         # iteration - that's why we use newparticle instead of particle here.
         it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
                 it1messages, it2messages)
-        best = self.findbest(it2neighbors, comparator)
+        best = self.findbest(it2neighbors)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # We now have a finished particle at the second iteration.  We move it
         # to the third iteration, then get its neighbors at the third iteration
-        self.set_motion_rand(newparticle, swarmid=0)
+        self.set_motion_rand(newparticle)
         self.just_move(newparticle)
 
         # In a dynamic topology, the neighbors at iteration three could be 
@@ -196,14 +196,14 @@ class SpecExPSO(standardpso.StandardPSO):
         self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
                 it2messages)
         for neighbor in it3neighbors:
-            self.set_motion_rand(neighbor, swarmid=0)
+            self.set_motion_rand(neighbor)
             self.just_move(neighbor)
 
         # In a dynamic topology, you might not already know your iteration 3
         # neighbors' iteration 2 pbest.  In order to speculate correctly, you 
         # need that information.  Turns out we already have it, so update nbest
         # for your iteration 3 particle with your neighbors' pbest.
-        best = self.findbest(it3neighbors, comparator)
+        best = self.findbest(it3neighbors)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # Generate and yield children.  Because we don't have a ReduceMap yet,
@@ -227,9 +227,8 @@ class SpecExPSO(standardpso.StandardPSO):
         yield '0', value
 
     def findbest_reduce(self, key, value_iter):
-        comparator = self.function.comparator
         particles = (Particle.unpack(value) for value in value_iter)
-        best = self.findbest(particles, comparator)
+        best = self.findbest(particles)
         yield repr(best)
 
     ##########################################################################
@@ -244,7 +243,7 @@ class SpecExPSO(standardpso.StandardPSO):
     def just_move(self, p):
         """Moves the particle without evaluating the function at the new
         position.  Updates the iteration count for the particle."""
-        self.set_motion_rand(p, swarmid=0)
+        self.set_motion_rand(p)
         if p.iters > 0:
             newpos, newvel = self.motion(p)
         else:
