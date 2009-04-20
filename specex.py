@@ -41,11 +41,10 @@ class SpecExPSO(standardpso.StandardPSO):
                 self.set_neighborhood_rand(n)
                 if p.id in self.topology.iterneighbors(n):
                     neighbors.append(particles[n.id])
-            i = 1
-            for child in self.specmethod.generate_children(p, neighbors):
-                init_particles.append((str(i*self.topology.num+p.id),
-                    repr(child)))
-                i += 1
+            children = self.specmethod.generate_children(p, neighbors)
+            for i, child in enumerate(children):
+                key = (i+1)*self.topology.num+p.id
+                init_particles.append((str(key), repr(child)))
 
         numtasks = self.opts.numtasks
         if not numtasks:
@@ -209,11 +208,10 @@ class SpecExPSO(standardpso.StandardPSO):
         # Generate and yield children.  Because we don't have a ReduceMap yet,
         # we tack on a key that will get separated in the sepso_tmp_map
         yield key+'^'+repr(newparticle)
-        i = 1
-        for child in self.specmethod.generate_children(newparticle, 
-                it3neighbors):
-            yield str(i*self.topology.num+int(key))+'^'+repr(child)
-            i += 1
+        children = self.specmethod.generate_children(newparticle, it3neighbors)
+        for i, child in enumerate(children):
+            newkey = (i+1)*self.topology.num+int(key)
+            yield str(newkey)+'^'+repr(child)
 
     def sepso_tmp_map(self, key, value):
         newkey, newvalue = value.split('^')

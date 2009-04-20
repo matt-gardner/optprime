@@ -19,28 +19,39 @@ class _SpecMethod(ParamObj):
     # Methods that must be overridden
     
     def pick_child(self, particle, it1messages, children):
-        """Given a particle, its neighbors, and its children, decide which 
-        child to return."""
+        """Returns particle at iteration 2 (minus nbest).
+
+        particle is at iteration 1, children are all speculative children of
+        particle (at iteration 2).  it1messages contain all messages that 
+        particle received in the Reduce phase.
+        """
         raise NotImplementedError
 
     def pick_neighbor_children(self, particle, it1messages, it2messages):
-        """Given a set of neighbors and their children and neighbors, return a
-        set of children, one for each neighbor.  In some cases having the
-        particle is also necessary to determine which neighbors are actually
-        neighbors."""
+        """Returns particle's neighbors at iteration 2 (minus nbest).
+
+        it1messages contains all iteration 1 messages particle received, not 
+        all of which are actual neighbors of particle.  it2messages contains
+        all iteration 2 (speculative) messages particle received.  Pick the
+        actual neighbors from it1messages, and pick their children from 
+        it2messages.  Update the children's pbest and return them.
+        """
         raise NotImplementedError
 
     def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
-        """Given a set of neighbors with everything but their nbest and
-        messages for those neighbors, update the neighbors' nbest.
+        """Make finished it2 particles out of neighbors by updating their nbest.
+
+        Neighbors is the set of neighbors at iteration 2 minus their nbest.
+        Get whatever info is needed from it1messages and it2messages to update
+        the nbest of all particles in neighbors.
+        
         Some speculative methods skip this step to save on messages that
         need to be passed, so the function would be empty.
         """
         raise NotImplementedError
 
     def message_ids(self, particle):
-        """Given a particle, return the set of particles to whom it must
-        send messages."""
+        """Return the set of particles to whom a particle must send messages."""
         raise NotImplementedError
 
     ##########################################################################
@@ -52,7 +63,9 @@ class _SpecMethod(ParamObj):
         return self.pruner.generate_children(particle, neighbors)
 
     def get_neighbors(self, particle, messages):
-        """It is a bit less work if the topology is symmetric, but this works 
+        """Get the neighbors of particle from the set of messages.
+
+        It is a bit less work if the topology is symmetric, but this works 
         in general.  
         
         Also, messing with the neighbors' iteration is because of dynamic 
@@ -70,9 +83,11 @@ class _SpecMethod(ParamObj):
         return realneighbors
 
     def update_child_bests(self, particle, child):
-        """In speculative execution this is necessary because the child 
+        """Update the pbest and nbest of a child particle from its parent.
+        
+        In speculative execution this is necessary because the child 
         particle doesn't know if the value that it found is better than the 
-        value the parent found at its position, it only updated its pbest in 
+        value the parent found at its position; it only updated its pbest in 
         relation to its previous pbestval.
         Also, it doesn't know the value of the function at the nbest position
         that it guessed.  It has to get that from its parent.
@@ -87,7 +102,9 @@ class _SpecMethod(ParamObj):
 
 
 class ReproducePSO(_SpecMethod):
-    """Perform speculative execution in such a way that the original PSO is
+    """Reproduce standard PSO, in case you couldn't tell from the class name...
+    
+    Perform speculative execution in such a way that the original PSO is
     reproduced exactly, just two iterations at a time.  A lot of communication
     is required to make sure the behavior is exactly the same as the original
     PSO, and any good information from speculative particles is ignored except
@@ -124,7 +141,7 @@ class ReproducePSO(_SpecMethod):
         return messages
 
     def pick_child(self, particle, it1messages, children):
-        """To find the correct branch the PSO would have taken, you need to 
+        """To find the correct branch that PSO would have taken, you need to 
         see whether or not the particle updated its pbest and find out which
         of the particle's neighbors was the new nbest.  Then update the child
         that matches that branch and return it.
@@ -133,22 +150,19 @@ class ReproducePSO(_SpecMethod):
         neighbors = self.get_neighbors(particle, it1messages)
         # Look at the messages to see which branch you actually took
         best = self.specex.findbest(neighbors)
-        particle.nbest_cand(best.pbestpos, best.pbestval, comparator)
-
+        if (particle.nbest_cand(best.pbestpos, best.pbestval, comparator)):
+            nbestid = best.id
+        else:
+            nbestid = -1
         # If you updated your pbest, then your current value will be your
         # pbestval
-        updatedpbest = particle.pbestval == particle.value
-
-        if particle.nbestval == best.pbestval:
-            bestid = best.id
-        else:
-            bestid = -1
+        updatedpbest = (particle.pbestval == particle.value)
 
         # Look through the children and pick the child that corresponds to the
         # branch you took
         for child in children:
             if child.specpbest == updatedpbest and \
-                child.specnbestid == bestid:
+                child.specnbestid == nbestid:
                     self.update_child_bests(particle, child)
                     return child.make_real_particle()
         raise RuntimeError("Didn't find a child that matched the right branch!")
