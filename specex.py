@@ -139,7 +139,7 @@ class SpecExPSO(standardpso.StandardPSO):
         self.just_evaluate(particle)
 
         # Emit the particle without changing its id:
-        yield (str(particle.id, repr(particle))
+        yield (str(particle.id), repr(particle))
 
         # Emit a message for each dependent particle.  In this case we're just
         # sending around the whole particle, because the speculative stuff 
