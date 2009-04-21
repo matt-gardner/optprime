@@ -77,12 +77,10 @@ class Particle(object):
 
         self.rand = None
 
-    def copy(self, newid):
+    def copy(self):
         """Performs a deep copy and returns the new Particle.
-
-        An id must be specified for the new particle.
         """
-        p = Particle(newid, self.pos, self.vel, self.value)
+        p = Particle(self.id, self.pos, self.vel, self.value)
         p.pbestpos = self.pbestpos
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
@@ -469,6 +467,18 @@ class SEParticle(Particle):
         strings = ((repr(x) if x is not None else '') for x in fields)
         return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
 
+    def copy(self):
+        """Performs a deep copy and returns the new Particle.
+        """
+        p = Particle(self.id, self.pos, self.vel, self.value)
+        p.pbestpos = self.pbestpos
+        p.pbestval = self.pbestval
+        p.nbestpos = self.nbestpos
+        p.nbestval = self.nbestval
+        p.batches = self.batches
+        p.iters = self.iters
+        sep = SEParticle(p, self.specpbest, self.specnbestid)
+        return sep
 
 class Dummy(Particle):
     """A dummy particle that just has an id and a rand, for use with SpecEx."""
@@ -530,6 +540,19 @@ class MessageParticle(Particle):
             p.nbestval = None
         m = cls(p)
         return m
+
+    def copy(self):
+        """Performs a deep copy and returns the new Particle.
+        """
+        p = Particle(self.id, self.pos, self.vel, self.value)
+        p.pbestpos = self.pbestpos
+        p.pbestval = self.pbestval
+        p.nbestpos = self.nbestpos
+        p.nbestval = self.nbestval
+        p.batches = self.batches
+        p.iters = self.iters
+        mp = MessageParticle(p)
+        return mp
     
 
 class SEMessageParticle(SEParticle):
@@ -589,6 +612,19 @@ class SEMessageParticle(SEParticle):
         sem = cls(sep)
         return sem
 
+    def copy(self):
+        """Performs a deep copy and returns the new Particle.
+        """
+        p = Particle(self.id, self.pos, self.vel, self.value)
+        p.pbestpos = self.pbestpos
+        p.pbestval = self.pbestval
+        p.nbestpos = self.nbestpos
+        p.nbestval = self.nbestval
+        p.batches = self.batches
+        p.iters = self.iters
+        sep = SEParticle(p, self.specpbest, self.specnbestid)
+        semp = SEMessageParticle(sep)
+        return semp
 
 
 class Swarm(object):
