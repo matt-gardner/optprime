@@ -102,6 +102,10 @@ class SpecExPSO(standardpso.StandardPSO):
                         particles = []
                         for bucket in last_out_data:
                             for reduce_id, particle in bucket:
+                                # Only output real particles, not SEParticles.
+                                # Also, outputs that use current particle
+                                # position and value will be off on the value,
+                                # because it hasn't been evaluated yet.
                                 record = unpack(particle)
                                 if type(record) == Particle:
                                     particles.append(record)
@@ -142,8 +146,8 @@ class SpecExPSO(standardpso.StandardPSO):
         yield (str(particle.id), repr(particle))
 
         # Emit a message for each dependent particle.  In this case we're just
-        # sending around the whole particle, because the speculative stuff 
-        # needs it.
+        # sending around the whole particle as a message, because the 
+        # speculative stuff needs it.
         message = particle.make_message_particle()
         for dep_id in self.specmethod.message_ids(particle):
             yield (str(dep_id), repr(message))
@@ -182,14 +186,14 @@ class SpecExPSO(standardpso.StandardPSO):
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # We now have a finished particle at the second iteration.  We move it
-        # to the third iteration, then get its neighbors at the third iteration
+        # to the third iteration, then get its neighbors at the third iteration.
         self.just_move(newparticle)
 
         # In a dynamic topology, the neighbors at iteration three could be 
         # different than the neighbors at iteration two, so find the neighbors
         # again (newparticle is now at iteration 3, so this will pick the right
         # neighbors), then move them.  In order to move correctly, they need to
-        # update their nbest
+        # update their nbest.
         it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
                 it1messages, it2messages)
         self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
@@ -205,7 +209,7 @@ class SpecExPSO(standardpso.StandardPSO):
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # Generate and yield children.  Because we don't have a ReduceMap yet,
-        # we tack on a key that will get separated in the sepso_tmp_map
+        # we tack on a key that will get separated in the sepso_tmp_map.
         yield key+'^'+repr(newparticle)
         nchildren = self.specmethod.generate_children(newparticle, it3neighbors)
         for i, child in enumerate(nchildren):
@@ -225,6 +229,10 @@ class SpecExPSO(standardpso.StandardPSO):
 
     def findbest_reduce(self, key, value_iter):
         particles = []
+        # All of the Particles and SEParticles are one or two iterations ahead
+        # of the last iteration they have evaluated, and SEParticles don't have
+        # anything interesting to say.  So, to get an accurate iteration count,
+        # we decrement the iteration of best by 1.
         for value in value_iter:
             record = unpack(value)
             if type(record) == Particle:

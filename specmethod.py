@@ -24,6 +24,11 @@ class _SpecMethod(ParamObj):
         particle is at iteration 1, children are all speculative children of
         particle (at iteration 2).  it1messages contain all messages that 
         particle received in the Reduce phase.
+
+        This function cannot modify the state of any of its arguments, or else
+        very bad things happen.  The particle that is returned should be created
+        from child.make_real_particle(), and that new particle's state should
+        be updated, not the child message itself.
         """
         raise NotImplementedError
 
@@ -91,6 +96,13 @@ class _SpecMethod(ParamObj):
         relation to its previous pbestval.
         Also, it doesn't know the value of the function at the nbest position
         that it guessed.  It has to get that from its parent.
+        So, this function passes along the iteration 1 nbestval that was 
+        determined in pick_child and updates the iteration 2 pbest.  The 
+        child is at iteration 2 (minus nbest) after this method.
+
+        Best is passed in separately from particle to be sure that the state
+        of particle doesn't have to be changed in pick_child, because sometimes
+        it's just a message that you really don't want to change.
         """
         comparator = self.specex.function.comparator
         if Particle.isbetter(particle.pbestval, child.pbestval, comparator):
@@ -144,11 +156,16 @@ class ReproducePSO(_SpecMethod):
         """To find the correct branch that PSO would have taken, you need to 
         see whether or not the particle updated its pbest and find out which
         of the particle's neighbors was the new nbest.  Then update the child
-        that matches that branch and return it.
+        that matches that branch and return it.  Nothing that got passed into
+        this function should have modified state at the end.
         """
         comparator = self.specex.function.comparator
         neighbors = self.get_neighbors(particle, it1messages)
-        # Look at the messages to see which branch you actually took
+        # Look at the messages to see which branch you actually took.
+        # You only need an isbetter to figure out the branch, and then you
+        # don't modify the state of the messages with an nbest_cand (as this
+        # same method gets called with a message as 'particle' from 
+        # pick_neighbor_children).
         best = self.specex.findbest(neighbors)
         if particle.isbetter(best.pbestval, particle.nbestval, comparator):
             nbestid = best.id
@@ -156,7 +173,8 @@ class ReproducePSO(_SpecMethod):
             nbestid = -1
 
         # If you updated your pbest, then your current value will be your
-        # pbestval
+        # pbestval.  It's a floating point comparison, but the values would
+        # have been set from each other, so it's safe.
         updatedpbest = (particle.pbestval == particle.value)
 
         # Look through the children and pick the child that corresponds to the
@@ -164,6 +182,8 @@ class ReproducePSO(_SpecMethod):
         for child in children:
             if child.specpbest == updatedpbest and \
                 child.specnbestid == nbestid:
+                    # Make the child into a particle before modifying its state,
+                    # so that the messages never get modified.
                     newchild = child.make_real_particle()
                     self.update_child_bests(particle, best, newchild)
                     return newchild
@@ -186,10 +206,15 @@ class ReproducePSO(_SpecMethod):
         return neighbor_children
 
     def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
+        """Self explanatory?  I think so.  Update your neighbors' nbest with
+        the messages that they received.
+        """
         comparator = self.specex.function.comparator
         for neighbor in neighbors:
             n = self.pick_neighbor_children(neighbor, it1messages, it2messages)
             best = self.specex.findbest(n)
+            # Neighbors here are new particles, not messages, so you can, in 
+            # fact you must, modify their state with nbest_cand.
             neighbor.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
 
