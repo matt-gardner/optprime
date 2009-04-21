@@ -150,10 +150,11 @@ class ReproducePSO(_SpecMethod):
         neighbors = self.get_neighbors(particle, it1messages)
         # Look at the messages to see which branch you actually took
         best = self.specex.findbest(neighbors)
-        if (particle.nbest_cand(best.pbestpos, best.pbestval, comparator)):
+        if particle.nbest_cand(best.pbestpos, best.pbestval, comparator):
             nbestid = best.id
         else:
             nbestid = -1
+
         # If you updated your pbest, then your current value will be your
         # pbestval
         updatedpbest = (particle.pbestval == particle.value)
@@ -186,7 +187,9 @@ class ReproducePSO(_SpecMethod):
     def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
         comparator = self.specex.function.comparator
         for neighbor in neighbors:
-            n = self.pick_neighbor_children(neighbor, it1messages, it2messages)
+            n = self.pick_neighbor_children(neighbor, 
+                    self.specex.copy_messages(it1messages), 
+                    self.specex.copy_messages(it2messages))
             best = self.specex.findbest(n)
             neighbor.nbest_cand(best.pbestpos, best.pbestval, comparator)
 

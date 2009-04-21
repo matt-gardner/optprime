@@ -69,7 +69,6 @@ class SpecExPSO(standardpso.StandardPSO):
                     splits=numtasks, parter=self.mod_partition)
             next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
                     splits=numtasks, parter=self.mod_partition)
-            return
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
@@ -92,7 +91,7 @@ class SpecExPSO(standardpso.StandardPSO):
                 if tty:
                     ready = job.wait(timeout=1.0, *waitset)
                     if last_swarm in ready:
-                        print >>tty, "Finished iteration", last_iteration
+                        print >>tty, "Finished iteration", last_iteration*2
                 else:
                     ready = job.wait(*waitset)
 
@@ -103,7 +102,9 @@ class SpecExPSO(standardpso.StandardPSO):
                         particles = []
                         for bucket in last_out_data:
                             for reduce_id, particle in bucket:
-                                particles.append(Particle.unpack(particle))
+                                record = unpack(particle)
+                                if type(record) == Particle:
+                                    particles.append(record)
 
                 waitset -= set(ready)
 
@@ -168,21 +169,20 @@ class SpecExPSO(standardpso.StandardPSO):
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
-        newparticle = self.specmethod.pick_child(particle, it1messages, 
-            children)
+        newparticle = self.specmethod.pick_child(particle, 
+                self.copy_messages(it1messages), children)
         
         # Specmethod.pick_child updates the child's pbest, so all you need to 
         # finish the second iteration is to update the nbest.
         # To update nbest, you need a set of actual neighbors at the second
         # iteration - that's why we use newparticle instead of particle here.
         it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
-                it1messages, it2messages)
+            self.copy_messages(it1messages), self.copy_messages(it2messages))
         best = self.findbest(it2neighbors)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
         # We now have a finished particle at the second iteration.  We move it
         # to the third iteration, then get its neighbors at the third iteration
-        self.set_motion_rand(newparticle)
         self.just_move(newparticle)
 
         # In a dynamic topology, the neighbors at iteration three could be 
@@ -191,11 +191,10 @@ class SpecExPSO(standardpso.StandardPSO):
         # neighbors), then move them.  In order to move correctly, they need to
         # update their nbest
         it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
-                it1messages, it2messages)
-        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
-                it2messages)
+            self.copy_messages(it1messages), self.copy_messages(it2messages))
+        self.specmethod.update_neighbor_nbest(it3neighbors, 
+            self.copy_messages(it1messages), self.copy_messages(it2messages))
         for neighbor in it3neighbors:
-            self.set_motion_rand(neighbor)
             self.just_move(neighbor)
 
         # In a dynamic topology, you might not already know your iteration 3
@@ -208,13 +207,13 @@ class SpecExPSO(standardpso.StandardPSO):
         # Generate and yield children.  Because we don't have a ReduceMap yet,
         # we tack on a key that will get separated in the sepso_tmp_map
         yield key+'^'+repr(newparticle)
-        children = self.specmethod.generate_children(newparticle, it3neighbors)
-        for i, child in enumerate(children):
+        nchildren = self.specmethod.generate_children(newparticle, it3neighbors)
+        for i, child in enumerate(nchildren):
             newkey = (i+1)*self.topology.num+int(key)
             yield str(newkey)+'^'+repr(child)
 
     def sepso_tmp_map(self, key, value):
-        newkey, newvalue = value.split('^')
+        newkey, newvalue = value.split('^', 1)
         yield (newkey, newvalue)
 
     ##########################################################################
@@ -225,8 +224,13 @@ class SpecExPSO(standardpso.StandardPSO):
         yield '0', value
 
     def findbest_reduce(self, key, value_iter):
-        particles = (Particle.unpack(value) for value in value_iter)
+        particles = []
+        for value in value_iter:
+            record = unpack(value)
+            if type(record) == Particle:
+                particles.append(record)
         best = self.findbest(particles)
+        best.iters -= 1
         yield repr(best)
 
     ##########################################################################
@@ -252,6 +256,11 @@ class SpecExPSO(standardpso.StandardPSO):
         for p in particles:
             self.just_move(p)
 
+    def copy_messages(self, messages):
+        copies = []
+        for m in messages:
+            copies.append(m.copy())
+        return copies
 
 ##############################################################################
 # Busywork
