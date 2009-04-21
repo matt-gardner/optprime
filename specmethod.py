@@ -82,7 +82,7 @@ class _SpecMethod(ParamObj):
             cand.iters = olditer
         return realneighbors
 
-    def update_child_bests(self, particle, child):
+    def update_child_bests(self, particle, best, child):
         """Update the pbest and nbest of a child particle from its parent.
         
         In speculative execution this is necessary because the child 
@@ -96,9 +96,9 @@ class _SpecMethod(ParamObj):
         if Particle.isbetter(particle.pbestval, child.pbestval, comparator):
             child.pbestpos = particle.pbestpos
             child.pbestval = particle.pbestval
-        if Particle.isbetter(particle.nbestval, child.nbestval, comparator):
-            child.nbestpos = particle.nbestpos
-            child.nbestval = particle.nbestval
+        if Particle.isbetter(best.pbestval, child.nbestval, comparator):
+            child.nbestpos = best.pbestpos
+            child.nbestval = best.pbestval
 
 
 class ReproducePSO(_SpecMethod):
@@ -150,7 +150,7 @@ class ReproducePSO(_SpecMethod):
         neighbors = self.get_neighbors(particle, it1messages)
         # Look at the messages to see which branch you actually took
         best = self.specex.findbest(neighbors)
-        if particle.nbest_cand(best.pbestpos, best.pbestval, comparator):
+        if particle.isbetter(best.pbestval, particle.nbestval, comparator):
             nbestid = best.id
         else:
             nbestid = -1
@@ -164,8 +164,9 @@ class ReproducePSO(_SpecMethod):
         for child in children:
             if child.specpbest == updatedpbest and \
                 child.specnbestid == nbestid:
-                    self.update_child_bests(particle, child)
-                    return child.make_real_particle()
+                    newchild = child.make_real_particle()
+                    self.update_child_bests(particle, best, newchild)
+                    return newchild
         raise RuntimeError("Didn't find a child that matched the right branch!")
 
     def pick_neighbor_children(self, particle, it1messages, it2messages):
@@ -187,9 +188,7 @@ class ReproducePSO(_SpecMethod):
     def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
         comparator = self.specex.function.comparator
         for neighbor in neighbors:
-            n = self.pick_neighbor_children(neighbor, 
-                    self.specex.copy_messages(it1messages), 
-                    self.specex.copy_messages(it2messages))
+            n = self.pick_neighbor_children(neighbor, it1messages, it2messages)
             best = self.specex.findbest(n)
             neighbor.nbest_cand(best.pbestpos, best.pbestval, comparator)
 

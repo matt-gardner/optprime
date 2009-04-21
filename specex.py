@@ -169,15 +169,15 @@ class SpecExPSO(standardpso.StandardPSO):
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
-        newparticle = self.specmethod.pick_child(particle, 
-                self.copy_messages(it1messages), children)
+        newparticle = self.specmethod.pick_child(particle, it1messages, 
+                children)
         
         # Specmethod.pick_child updates the child's pbest, so all you need to 
         # finish the second iteration is to update the nbest.
         # To update nbest, you need a set of actual neighbors at the second
         # iteration - that's why we use newparticle instead of particle here.
         it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
-            self.copy_messages(it1messages), self.copy_messages(it2messages))
+                it1messages, it2messages)
         best = self.findbest(it2neighbors)
         newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
@@ -191,9 +191,9 @@ class SpecExPSO(standardpso.StandardPSO):
         # neighbors), then move them.  In order to move correctly, they need to
         # update their nbest
         it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
-            self.copy_messages(it1messages), self.copy_messages(it2messages))
-        self.specmethod.update_neighbor_nbest(it3neighbors, 
-            self.copy_messages(it1messages), self.copy_messages(it2messages))
+                it1messages, it2messages)
+        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
+                it2messages)
         for neighbor in it3neighbors:
             self.just_move(neighbor)
 
@@ -255,12 +255,6 @@ class SpecExPSO(standardpso.StandardPSO):
     def move_all(self, particles):
         for p in particles:
             self.just_move(p)
-
-    def copy_messages(self, messages):
-        copies = []
-        for m in messages:
-            copies.append(m.copy())
-        return copies
 
 ##############################################################################
 # Busywork
