@@ -87,31 +87,6 @@ class _SpecMethod(ParamObj):
             cand.iters = olditer
         return realneighbors
 
-    def update_child_bests(self, particle, best, child):
-        """Update the pbest and nbest of a child particle from its parent.
-        
-        In speculative execution this is necessary because the child 
-        particle doesn't know if the value that it found is better than the 
-        value the parent found at its position; it only updated its pbest in 
-        relation to its previous pbestval.
-        Also, it doesn't know the value of the function at the nbest position
-        that it guessed.  It has to get that from its parent.
-        So, this function passes along the iteration 1 nbestval that was 
-        determined in pick_child and updates the iteration 2 pbest.  The 
-        child is at iteration 2 (minus nbest) after this method.
-
-        Best is passed in separately from particle to be sure that the state
-        of particle doesn't have to be changed in pick_child, because sometimes
-        it's just a message that you really don't want to change.
-        """
-        comparator = self.specex.function.comparator
-        if Particle.isbetter(particle.pbestval, child.pbestval, comparator):
-            child.pbestpos = particle.pbestpos
-            child.pbestval = particle.pbestval
-        if Particle.isbetter(best.pbestval, child.nbestval, comparator):
-            child.nbestpos = best.pbestpos
-            child.nbestval = best.pbestval
-
 
 class ReproducePSO(_SpecMethod):
     """Reproduce standard PSO, in case you couldn't tell from the class name...
@@ -137,20 +112,20 @@ class ReproducePSO(_SpecMethod):
         iteration to make sure you're sending it to the right neighbor in the
         end.
         """
-        messages = set()
+        ids = set()
         self.specex.set_neighborhood_rand(particle)
         for n in self.specex.topology.iterneighbors(particle):
-            messages.add(n)
+            ids.add(n)
             ndummy = Dummy(n, particle.iters+1, particle.batches)
             self.specex.set_neighborhood_rand(ndummy)
             for n2 in self.specex.topology.iterneighbors(ndummy):
-                messages.add(n2)
+                ids.add(n2)
                 if type(particle) == Particle:
                     n2dummy = Dummy(n2, particle.iters+2, particle.batches)
                     self.specex.set_neighborhood_rand(n2dummy)
                     for n3 in self.specex.topology.iterneighbors(n2dummy):
-                        messages.add(n3)
-        return messages
+                        ids.add(n3)
+        return ids
 
     def pick_child(self, particle, it1messages, children):
         """To find the correct branch that PSO would have taken, you need to 
@@ -166,9 +141,10 @@ class ReproducePSO(_SpecMethod):
         # don't modify the state of the messages with an nbest_cand (as this
         # same method gets called with a message as 'particle' from 
         # pick_neighbor_children).
-        best = self.specex.findbest(neighbors)
-        if particle.isbetter(best.pbestval, particle.nbestval, comparator):
-            nbestid = best.id
+        best_neighbor = self.specex.findbest(neighbors)
+        if particle.isbetter(best_neighbor.pbestval, particle.nbestval, 
+                comparator):
+            nbestid = best_neighbor.id
         else:
             nbestid = -1
 
@@ -180,13 +156,13 @@ class ReproducePSO(_SpecMethod):
         # Look through the children and pick the child that corresponds to the
         # branch you took
         for child in children:
-            if child.specpbest == updatedpbest and \
-                child.specnbestid == nbestid:
-                    # Make the child into a particle before modifying its state,
-                    # so that the messages never get modified.
-                    newchild = child.make_real_particle()
-                    self.update_child_bests(particle, best, newchild)
-                    return newchild
+            if (child.specpbest == updatedpbest and
+                    child.specnbestid == nbestid):
+                # Make the child into a particle before modifying its state,
+                # so that the messages never get modified.
+                newchild = child.make_real_particle()
+                self.update_child_bests(particle, best_neighbor, newchild)
+                return newchild
         raise RuntimeError("Didn't find a child that matched the right branch!")
 
     def pick_neighbor_children(self, particle, it1messages, it2messages):
@@ -217,10 +193,71 @@ class ReproducePSO(_SpecMethod):
             # fact you must, modify their state with nbest_cand.
             neighbor.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
+    def update_child_bests(self, particle, best_neighbor, child):
+        """Update the pbest and nbest of a child particle from its parent.
+        
+        In speculative execution this is necessary because the child 
+        particle doesn't know if the value that it found is better than the 
+        value the parent found at its position; it only updated its pbest in 
+        relation to its previous pbestval.
+        Also, it doesn't know the value of the function at the nbest position
+        that it guessed.  It has to get that from its parent.
+        So, this function passes along the iteration 1 nbestval that was 
+        determined in pick_child and updates the iteration 2 pbest.  The 
+        child is at iteration 2 (minus nbest) after this method.
 
-class PickBestChild(_SpecMethod):
+        Best is passed in separately from particle to be sure that the state
+        of particle doesn't have to be changed in pick_child, because sometimes
+        it's just a message that you really don't want to change.
+        """
+        comparator = self.specex.function.comparator
+        # Passing along the nbestval from iteration 1
+        if Particle.isbetter(best_neighbor.pbestval, child.nbestval, 
+                comparator):
+            # In the ReproducePSO case this first line could be an assert, but 
+            # not in the PickBestChild case.
+            child.nbestpos = best_neighbor.pbestpos
+            child.nbestval = best_neighbor.pbestval
+        # Set the pbest for iteration 2
+        if Particle.isbetter(particle.pbestval, child.pbestval, comparator):
+            child.pbestpos = particle.pbestpos
+            child.pbestval = particle.pbestval
+
+
+class PickBestChild(ReproducePSO):
+    """Use all information from speculative particles and pick the best child.
+
+    ReproducePSO shows that speculative execution can be done such that PSO
+    remains unchanged.  However, a lot of information from the speculative
+    particles is wasted, even if it was better than the branch that standard
+    PSO would have taken.  This method uses that information and always assumes
+    that the correct speculative child is the one with the best value.
+
+    The only place this method is different from ReproducePSO is in the
+    pick_child method, so we inherit from it.
     """
-    """
+
+    def pick_child(self, particle, it1messages, children):
+        """To find the correct branch that PSO would have taken, you need to 
+        see whether or not the particle updated its pbest and find out which
+        of the particle's neighbors was the new nbest.  Then update the child
+        that matches that branch and return it.  Nothing that got passed into
+        this function should have modified state at the end.
+        """
+        # We still do this so that the child will have the correct nbestval.
+        comparator = self.specex.function.comparator
+        neighbors = self.get_neighbors(particle, it1messages)
+        best = self.specex.findbest(neighbors)
+
+        # Look through the children and pick the child that corresponds to the
+        # branch you took
+        bestchild = None
+        for child in children:
+            if (bestchild is None) or comparator(child.value, bestchild.value):
+                bestchild = child
+        newchild = bestchild.make_real_particle()
+        self.update_child_bests(particle, best, newchild)
+        return newchild
 
 class _Pruning(ParamObj):
     """Speculative Pruning

@@ -153,6 +153,13 @@ class SpecExPSO(standardpso.StandardPSO):
             yield (str(dep_id), repr(message))
 
     def sepso_reduce(self, key, value_iter):
+        # Particles are at iteration 1, as are their messages, MessageParticles.
+        # SEParticles and SEMessageParticles are at iteration 2.
+        # You should only ever have one Particle in the reduce phase, and all
+        # of the SEParticles send themselves (not as messages) to the same
+        # Reduce task as their parent Particle, so they are children.
+        # MessageParticles are messages from iteration 1 particles, and
+        # SEMessageParticles are messages from iteration 2 particles.
         comparator = self.function.comparator
         particle = None
         it1messages = []
