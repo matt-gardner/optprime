@@ -229,7 +229,6 @@ class SpecExPSO(standardpso.StandardPSO):
 
     ##########################################################################
     # MapReduce to Find the Best Particle
-    # TODO: make this work
 
     def collapse_map(self, key, value):
         yield '0', value
