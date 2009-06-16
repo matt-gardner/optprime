@@ -104,7 +104,7 @@ class Particle(object):
         else:
             value = self.pbestval
             pos = self.pbestpos
-        return Message(self.id, value, pos)
+        return Message(self.id, pos, value)
 
     def make_message_particle(self):
         m = MessageParticle(self)
