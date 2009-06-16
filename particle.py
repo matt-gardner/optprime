@@ -89,7 +89,7 @@ class Particle(object):
         p.iters = self.iters
         return p
 
-    def make_message(self, transitive_best):
+    def make_message(self, transitive_best, comparator):
         """Creates a pseudo-particle which will be sent to a neighbor.
 
         This is used only in the Mrs PSO implementation.
@@ -97,11 +97,14 @@ class Particle(object):
         The `transitive_best` option determines whether the nbest should be
         sent instead of the pbest.
         """
-        if transitive_best:
-            m = Message(self.id, self.nbestpos, self.nbestval)
+        if (transitive_best
+                and self.isbetter(self.nbestval, self.pbestval, comparator)):
+            value = self.nbestval
+            pos = self.nbestpos
         else:
-            m = Message(self.id, self.pbestpos, self.pbestval)
-        return m
+            value = self.pbestval
+            pos = self.pbestpos
+        return Message(self.id, value, pos)
 
     def make_message_particle(self):
         m = MessageParticle(self)
