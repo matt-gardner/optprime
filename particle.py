@@ -376,6 +376,7 @@ class SEParticle(Particle):
     >>>
     """
     CLASS_ID = 'sep'
+
     def __init__(self, p, specpbest=False, specnbestid=-1):
         self.id = p.id
         self.pos = p.pos
@@ -428,20 +429,6 @@ class SEParticle(Particle):
             specpbest = True
         sep = cls(p, specpbest, int(specnbestid))
         return sep
-
-    def make_message(self, transitive_best):
-        """Creates a pseudo-particle which will be sent to a neighbor.
-
-        This is used only in the Mrs PSO implementation.
-
-        The `transitive_best` option determines whether the nbest should be
-        sent instead of the pbest.
-        """
-        if transitive_best:
-            m = SEMessage(self.id, self.nbestpos, self.nbestval)
-        else:
-            m = SEMessage(self.id, self.pbestpos, self.pbestval)
-        return m
 
     def make_message_particle(self):
         m = SEMessageParticle(self)
