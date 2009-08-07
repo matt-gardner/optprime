@@ -156,6 +156,8 @@ class StandardPSO(mrs.MapReduce):
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
         last_swarm = new_data
+        last_interm_data = None
+        old_swarm = None
         last_out_data = None
         next_out_data = None
         last_iteration = 0
@@ -216,8 +218,19 @@ class StandardPSO(mrs.MapReduce):
                     kwds['best'] = best
                 output(**kwds)
 
+            # Now that last_swarm is ready, last_interm_data and old_swarm can
+            # be deleted.
+            if old_swarm:
+                old_swarm.close()
+                old_swarm = None
+            if last_interm_data:
+                last_interm_data.close()
+                last_interm_data = None
+
             # Set up for the next iteration.
             last_iteration = iteration
+            old_swarm = last_swarm
+            last_interm_data = interm_data
             last_swarm = next_swarm
             last_out_data = next_out_data
 
