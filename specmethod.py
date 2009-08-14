@@ -259,8 +259,8 @@ class PickBestChild(ReproducePSO):
         self.update_child_bests(particle, best, newchild)
         return newchild
 
-class _Pruning(ParamObj):
-    """Speculative Pruning
+class _Pruner(ParamObj):
+    """Speculative Pruner
     
     You have an infinite tree of possible executions.  This class defines
     one method, generate_children, that decides how far to go down the 
@@ -276,7 +276,7 @@ class _Pruning(ParamObj):
         raise NotImplementedError
 
 
-class OneCompleteIteration(_Pruning):
+class OneCompleteIteration(_Pruner):
 
     def generate_children(self, particle, neighbors):
         """Given the particle and neighbors at iteration i, yield all possible
