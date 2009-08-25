@@ -173,7 +173,7 @@ class Stats(Output):
         self.last_val = 0
         self.counter = dict()
         self.changes = 0
-        self.bestpid = 0
+        self.bestid = 0
         self.consistent_changes = 0
         self.recently_seen_changes = 0
         self.recentlyseen = []
@@ -191,11 +191,11 @@ class Stats(Output):
         particles = kwds['particles']
         if self.iters == 1:
             for particle in particles:
-                self.prevpbest[particle.pid] = 0
-                self.stagnant_count[particle.pid] = 0
-                self.counter[particle.pid] = 0
-                self.iters_stagnant[particle.pid] = 0
-                self.prevnbest[particle.pid] = 0
+                self.prevpbest[particle.id] = 0
+                self.stagnant_count[particle.id] = 0
+                self.counter[particle.id] = 0
+                self.iters_stagnant[particle.id] = 0
+                self.prevnbest[particle.id] = 0
                 self.num_particles += 1
         stagnant = True
 
@@ -204,23 +204,23 @@ class Stats(Output):
         really_stagnant = 0
         for particle in particles:
             # Updated pbest
-            if particle.pbestval != self.prevpbest[particle.pid]:
+            if particle.pbestval != self.prevpbest[particle.id]:
                 self.num_pbest_updates += 1
-                self.iters_stagnant[particle.pid] = 0
+                self.iters_stagnant[particle.id] = 0
                 stagnant = False
             else:
                 # Updated nbest
-                if particle.nbestval != self.prevnbest[particle.pid]:
+                if particle.nbestval != self.prevnbest[particle.id]:
                     pass
                 # Didn't update either - stagnant particle
                 else: 
                     numstagnant += 1
-                    self.stagnant_count[particle.pid] += 1
-                    self.iters_stagnant[particle.pid] += 1
-                    if self.iters_stagnant[particle.pid] > 30:
+                    self.stagnant_count[particle.id] += 1
+                    self.iters_stagnant[particle.id] += 1
+                    if self.iters_stagnant[particle.id] > 30:
                         really_stagnant += 1
-            self.prevpbest[particle.pid] = particle.pbestval
-            self.prevnbest[particle.pid] = particle.nbestval
+            self.prevpbest[particle.id] = particle.pbestval
+            self.prevnbest[particle.id] = particle.nbestval
             self.num_pbest_possible_updates += 1
 
         # Done checking each particle, check the global best and print output
@@ -237,17 +237,17 @@ class Stats(Output):
         # gbest was updated
         else:
             self.last_val = best.pbestval
-            if best.pid in self.recentlyseen:
+            if best.id in self.recentlyseen:
                 self.recently_seen_changes += 1
-            if best.pid == self.bestpid:
+            if best.id == self.bestid:
                 self.consistent_changes += 1
             else:
-                self.recentlyseen.append(best.pid)
+                self.recentlyseen.append(best.id)
                 self.recentlyseen = self.recentlyseen[-self.num_recent:]
-            self.bestpid = best.pid
-            self.counter[best.pid] += 1
+            self.bestid = best.id
+            self.counter[best.id] += 1
             self.changes += 1
-            print self.iters, best.pbestval, best.pid, '\tStagnant particles:',\
+            print self.iters, best.pbestval, best.id, '\tStagnant particles:',\
                     numstagnant, '\tStagnant for more than 30 iterations:',\
                     really_stagnant
 
@@ -256,11 +256,11 @@ class Stats(Output):
         print 'Individual Particles: (Percent stagnant, percent particle'+\
                 ' was the gbest)'
         num_worthless = 0
-        for pid in self.stagnant_count:
-            percentstag = self.stagnant_count[pid]/self.iters
-            if percentstag > .9 and self.counter[pid] == 0:
+        for id in self.stagnant_count:
+            percentstag = self.stagnant_count[id]/self.iters
+            if percentstag > .9 and self.counter[id] == 0:
                 num_worthless += 1
-            print pid, percentstag, self.counter[pid]/self.changes
+            print id, percentstag, self.counter[id]/self.changes
         print 'Percent of iterations that gbest was not updated:'
         print self.not_updated/self.iters
         print 'Number of stagnant iterations:'
@@ -297,32 +297,32 @@ class BranchStats(Output):
         self.iters += 1
         if self.iters == 1:
             for particle in particles:
-                self.prevpbest[particle.pid] = 0
-                self.prevnbest[particle.pid] = 0
-                self.PnotN[particle.pid] = 0
-                self.PandN[particle.pid] = 0
-                self.PandNMe[particle.pid] = 0
-                self.notPnotN[particle.pid] = 0
-                self.notPbutN[particle.pid] = 0
+                self.prevpbest[particle.id] = 0
+                self.prevnbest[particle.id] = 0
+                self.PnotN[particle.id] = 0
+                self.PandN[particle.id] = 0
+                self.PandNMe[particle.id] = 0
+                self.notPnotN[particle.id] = 0
+                self.notPbutN[particle.id] = 0
 
         for particle in particles:
             # Updated nbest
-            if particle.nbestval != self.prevnbest[particle.pid]:
+            if particle.nbestval != self.prevnbest[particle.id]:
                 if particle.nbestval == particle.pbestval:
-                    self.PandNMe[particle.pid] += 1
+                    self.PandNMe[particle.id] += 1
                 else:
-                    if particle.pbestval != self.prevpbest[particle.pid]:
-                        self.PandN[particle.pid] += 1
+                    if particle.pbestval != self.prevpbest[particle.id]:
+                        self.PandN[particle.id] += 1
                     else:
-                        self.notPbutN[particle.pid] += 1
+                        self.notPbutN[particle.id] += 1
             # Did not update nbest
             else:
-                if particle.pbestval != self.prevpbest[particle.pid]:
-                    self.PnotN[particle.pid] += 1
+                if particle.pbestval != self.prevpbest[particle.id]:
+                    self.PnotN[particle.id] += 1
                 else:
-                    self.notPnotN[particle.pid] += 1
-            self.prevpbest[particle.pid] = particle.pbestval
-            self.prevnbest[particle.pid] = particle.nbestval
+                    self.notPnotN[particle.id] += 1
+            self.prevpbest[particle.id] = particle.pbestval
+            self.prevnbest[particle.id] = particle.nbestval
         print iteration, best.pbestval
 
     def finish(self):
@@ -333,18 +333,18 @@ class BranchStats(Output):
         avepandnme = []
         avenotpbutn = []
         avepandn = []
-        for pid in self.PnotN:
-            notpnotn = self.notPnotN[pid]/self.iters
+        for id in self.PnotN:
+            notpnotn = self.notPnotN[id]/self.iters
             avenotpnotn.append(notpnotn)
-            pnotn = self.PnotN[pid]/self.iters
+            pnotn = self.PnotN[id]/self.iters
             avepnotn.append(pnotn)
-            pandnme = self.PandNMe[pid]/self.iters
+            pandnme = self.PandNMe[id]/self.iters
             avepandnme.append(pandnme)
-            notpbutn = self.notPbutN[pid]/self.iters
+            notpbutn = self.notPbutN[id]/self.iters
             avenotpbutn.append(notpbutn)
-            pandn = self.PandN[pid]/self.iters
+            pandn = self.PandN[id]/self.iters
             avepandn.append(pandn)
-            print pid,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
+            print id,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
 
         print 'Averages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
         notpnotn = sum(avenotpnotn)/len(avenotpnotn)
