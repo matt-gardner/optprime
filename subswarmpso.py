@@ -210,7 +210,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         self.set_swarm_rand(swarm)
         # TODO: try "best in swarm" as an alternative approach.
         particle = swarm[0]
-        message = particle.make_message(self.opts.transitive_best)
+        comparator = self.function.comparator
+        message = particle.make_message(self.opts.transitive_best, comparator)
         for dep_id in self.link.iterneighbors(swarm):
             yield (str(dep_id), repr(message))
 
