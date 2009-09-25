@@ -264,7 +264,8 @@ class Stats(Output):
         print 'Percent of iterations that gbest was not updated:'
         print self.not_updated/self.iters
         print 'Number of stagnant iterations:'
-        print '%d (%f' % (self.stagnant_iters, self.stagnant_iters/self.iters)+'%)'
+        print '%d (%f' % (self.stagnant_iters,
+                100*self.stagnant_iters/self.iters)+'%)'
         print 'Pbest updates/possible pbest updates:'
         print self.num_pbest_updates/self.num_pbest_possible_updates
         print 'Percent of gbest updates that were by the same particle:'
