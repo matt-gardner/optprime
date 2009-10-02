@@ -113,6 +113,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
         last_pso_data = new_data
+        last_interm_data = None
+        old_pso_data = None
         last_out_data = None
         next_out_data = None
         last_iteration = 0
@@ -174,8 +176,19 @@ class SubswarmPSO(standardpso.StandardPSO):
                     kwds['best'] = best
                 output(**kwds)
 
+            # Now that last_pso_data is ready, last_interm_data and
+            # old_pso_data can be deleted:
+            if old_pso_data:
+                old_pso_data.close()
+                old_pso_data = None
+            if last_interm_data:
+                last_interm_data.close()
+                last_interm_data = None
+
             # Set up for the next iteration.
             last_iteration = iteration
+            old_pso_data = last_pso_data
+            last_interm_data = interm_data
             last_pso_data = next_pso_data
             last_out_data = next_out_data
 
@@ -197,7 +210,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         self.set_swarm_rand(swarm)
         # TODO: try "best in swarm" as an alternative approach.
         particle = swarm[0]
-        message = particle.make_message(self.opts.transitive_best)
+        comparator = self.function.comparator
+        message = particle.make_message(self.opts.transitive_best, comparator)
         for dep_id in self.link.iterneighbors(swarm):
             yield (str(dep_id), repr(message))
 
