@@ -25,7 +25,12 @@ class Vector(tuple):
     @classmethod
     def unpack(cls, string):
         """Creates a new Vector from a repr string."""
-        return cls(float(field) for field in string.split(','))
+        try:
+            return cls(float(field) for field in string.split(','))
+        except ValueError:
+            import sys
+            print >>sys.stderr, 'Vector could not unpack "%s".' % string
+            raise
 
     def __repr__(self):
         return ','.join(repr(x) for x in self)

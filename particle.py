@@ -682,7 +682,12 @@ def unpack(state):
         cls = CLASS_IDS[start]
     except KeyError:
         raise ValueError('Cannot unpack a state string of class "%s".' % start)
-    return cls.unpack(state)
+    try:
+        return cls.unpack(state)
+    except ValueError:
+        import sys
+        print >>sys.stderr, 'Could not unpack the state string "%s".' % state
+        raise
 
 
 # Valid class identifiers and their corresponding classes.
