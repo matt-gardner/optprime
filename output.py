@@ -264,7 +264,8 @@ class Stats(Output):
         print 'Percent of iterations that gbest was not updated:'
         print self.not_updated/self.iters
         print 'Number of stagnant iterations:'
-        print '%d (%f' % (self.stagnant_iters, self.stagnant_iters/self.iters)+'%)'
+        print '%d (%f' % (self.stagnant_iters,
+                100*self.stagnant_iters/self.iters)+'%)'
         print 'Pbest updates/possible pbest updates:'
         print self.num_pbest_updates/self.num_pbest_possible_updates
         print 'Percent of gbest updates that were by the same particle:'
@@ -284,11 +285,14 @@ class BranchStats(Output):
         self.iters = 0
         self.prevpbest = dict()
         self.prevnbest = dict()
+        self.prevnbestid = dict()
         self.PnotN = dict()
         self.PandN = dict()
         self.PandNMe = dict()
         self.notPnotN = dict()
         self.notPbutN = dict()
+        self.consistentnbest = dict()
+        self.positions = dict()
 
     def __call__(self, **kwds):
         best = kwds['best']
@@ -299,15 +303,22 @@ class BranchStats(Output):
             for particle in particles:
                 self.prevpbest[particle.id] = 0
                 self.prevnbest[particle.id] = 0
+                self.prevnbestid[particle.id] = -1
                 self.PnotN[particle.id] = 0
                 self.PandN[particle.id] = 0
                 self.PandNMe[particle.id] = 0
                 self.notPnotN[particle.id] = 0
                 self.notPbutN[particle.id] = 0
+                self.consistentnbest[particle.id] = 0
+
+        for particle in particles:
+            self.positions[particle.pos] = particle.id
 
         for particle in particles:
             # Updated nbest
             if particle.nbestval != self.prevnbest[particle.id]:
+                if self.prevnbestid[particle.id] == self.positions[particle.nbestpos]:
+                    self.consistentnbest[particle.id] += 1
                 if particle.nbestval == particle.pbestval:
                     self.PandNMe[particle.id] += 1
                 else:
@@ -323,11 +334,12 @@ class BranchStats(Output):
                     self.notPnotN[particle.id] += 1
             self.prevpbest[particle.id] = particle.pbestval
             self.prevnbest[particle.id] = particle.nbestval
+            self.prevnbestid[particle.id] = self.positions[particle.nbestpos]
         print iteration, best.pbestval
 
     def finish(self):
-        print 'Stats:'
-        print 'Individual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        print '\nStats:'
+        print '\nIndividual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
         avenotpnotn = []
         avepnotn = []
         avepandnme = []
@@ -346,12 +358,28 @@ class BranchStats(Output):
             avepandn.append(pandn)
             print id,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
 
-        print 'Averages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        print '\nAverages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
         notpnotn = sum(avenotpnotn)/len(avenotpnotn)
         pnotn = sum(avepnotn)/len(avepnotn)
         pandnme = sum(avepandnme)/len(avepandnme)
         notpbutn = sum(avenotpbutn)/len(avenotpbutn)
         pandn = sum(avepandn)/len(avepandn)
         print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
+
+        print '\nIndividual Particles: (notP, P)'
+        avenotp = []
+        avep = []
+        for id in self.PnotN:
+            notp = (self.notPnotN[id]+self.notPbutN[id])/self.iters
+            avenotp.append(notp)
+            p = (self.PnotN[id]+self.PandNMe[id]+self.PandN[id])/self.iters
+            avep.append(p)
+            print id,'%.3f %.3f' % (notp,p)
+
+        print '\nAverages: (notP, P)'
+        notp = sum(avenotp)/len(avenotp)
+        p = sum(avep)/len(avep)
+        print '%.3f %.3f' % (notp,p)
+
 
 # vim: et sw=4 sts=4
