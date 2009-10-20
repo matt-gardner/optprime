@@ -76,7 +76,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                 if 'particles' in output.args:
                     kwds['particles'] = particles
                 if 'best' in output.args:
-                    kwds['best'] = self.findbest(chain(*subswarms), comp)
+                    kwds['best'] = self.findbest(chain(*subswarms))
                 output(**kwds)
         output.finish()
 
@@ -172,7 +172,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                     if len(particles) == 1:
                         best = particles[0]
                     else:
-                        best = self.findbest(particles, comp)
+                        best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
 
@@ -230,7 +230,7 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         assert swarm, 'Missing swarm %s in the reduce step' % key
 
-        best = self.findbest(messages, comparator)
+        best = self.findbest(messages)
         if best:
             swarm_head = swarm[0]
             # TODO: Think about whether we're setting the particle's random
@@ -247,9 +247,8 @@ class SubswarmPSO(standardpso.StandardPSO):
 
     def collapse_map(self, key, value):
         """Finds the best particle in the swarm and yields it with id 0."""
-        comparator = self.function.comparator
         swarm = Swarm.unpack(value)
-        best = self.findbest(swarm, comparator)
+        best = self.findbest(swarm)
         yield '0', repr(best)
 
     ##########################################################################
