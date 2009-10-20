@@ -440,6 +440,7 @@ class SEParticle(Particle):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
+        p.batches = self.batches
         p.iters = self.iters
         p.rand = None
         return p
