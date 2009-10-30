@@ -366,20 +366,20 @@ class BranchStats(Output):
         pandn = sum(avepandn)/len(avepandn)
         print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
 
-        print '\nIndividual Particles: (notP, P)'
-        avenotp = []
-        avep = []
+        print '\nIndividual Particles: (notN, N)'
+        avenotn = []
+        aven = []
         for id in self.PnotN:
-            notp = (self.notPnotN[id]+self.notPbutN[id])/self.iters
-            avenotp.append(notp)
-            p = (self.PnotN[id]+self.PandNMe[id]+self.PandN[id])/self.iters
-            avep.append(p)
-            print id,'%.3f %.3f' % (notp,p)
+            notn = (self.notPnotN[id]+self.PnotN[id])/self.iters
+            avenotn.append(notn)
+            n = (self.notPbutN[id]+self.PandNMe[id]+self.PandN[id])/self.iters
+            aven.append(n)
+            print id,'%.3f %.3f' % (notn,n)
 
-        print '\nAverages: (notP, P)'
-        notp = sum(avenotp)/len(avenotp)
-        p = sum(avep)/len(avep)
-        print '%.3f %.3f' % (notp,p)
+        print '\nAverages: (notN, N)'
+        notp = sum(avenotn)/len(avenotn)
+        p = sum(aven)/len(aven)
+        print '%.3f %.3f' % (notn,n)
 
 
 # vim: et sw=4 sts=4
