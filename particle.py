@@ -15,7 +15,7 @@ class Particle(object):
 
     >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
     >>> repr(p)
-    'p:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;'
+    'p:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;;0;False,-1'
     >>>
 
     Adding more detailed state to the particle shows what the full particle
@@ -28,14 +28,22 @@ class Particle(object):
     >>> p.value = -10.0
     >>> p.pbestval = -11.0
     >>> p.nbestval = -12.0
+    >>> p.lastbranch = [False, -1]
+    >>> p.tokens = 5
     >>> repr(p)
-    'p:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0'
+    'p:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0;5;False,-1'
     >>>
 
     A new particle is created by unpacking a repr string.  The repr string
     of the new particle is identical to the repr string of the old particle.
     >>> q = unpack(repr(p))
     >>> repr(q) == repr(p)
+    True
+    >>>
+
+    Copying the particle doesn't change anything about the particle.
+    >>> r = p.copy()
+    >>> repr(r) == repr(p)
     True
     >>>
 
@@ -74,6 +82,8 @@ class Particle(object):
         self.pbestval = value
         self.nbestpos = pos
         self.nbestval = value
+        self.lastbranch = [False, -1]
+        self.tokens = 0
 
         self.rand = None
 
@@ -85,6 +95,8 @@ class Particle(object):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
+        p.lastbranch = self.lastbranch
+        p.tokens = self.tokens
         p.batches = self.batches
         p.iters = self.iters
         return p
@@ -141,11 +153,13 @@ class Particle(object):
         >>> p.nbestpos
         1.0,2.0
         >>> p.nbest_cand(Vector((1.0,1.0)),-10.0,operator.lt)
+        False
         >>> p.nbestval
         -12.0
         >>> p.nbestpos
         1.0,2.0
         >>> p.nbest_cand(Vector((2.0,2.0)),-15,operator.lt)
+        True
         >>> p.nbestval
         -15
         >>> p.nbestpos
@@ -197,6 +211,8 @@ class Particle(object):
         self.pbestval = value
         self.nbestpos = pos
         self.nbestval = value
+        self.lastbranch = [False, -1]
+        self.tokens = 0
 
     def __str__(self):
         return "pos: %r; vel: %r; value: %r; pbestpos: %r; pbestval: %r" % (
@@ -205,9 +221,10 @@ class Particle(object):
     def __repr__(self):
         fields = (self.id, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,
-                self.nbestval)
+                self.nbestval, self.tokens)
+        lastbranch = '%s,%d' % (self.lastbranch[0], self.lastbranch[1])
         strings = ((repr(x) if x is not None else '') for x in fields)
-        return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
+        return '%s:%s' % (self.CLASS_ID, ';'.join(strings)+';'+lastbranch)
 
     @classmethod
     def unpack(cls, state):
@@ -219,7 +236,7 @@ class Particle(object):
         assert state.startswith(prefix)
         state = state[len(prefix):]
         (id, batches, iters, pos, vel, value, pbestpos, pbestval,
-                nbestpos, nbestval) = state.split(';')
+                nbestpos, nbestval, tokens, lastbranch) = state.split(';')
         id = int(id)
         pos = Vector.unpack(pos)
         vel = Vector.unpack(vel)
@@ -240,6 +257,13 @@ class Particle(object):
             p.nbestval = float(nbestval)
         else:
             p.nbestval = None
+        pbestbranch, nbestbranch = lastbranch.split(',')
+        if pbestbranch == 'False':
+            pbestbranch = False
+        else:
+            pbestbranch = True
+        p.lastbranch = [pbestbranch, int(nbestbranch)]
+        p.tokens = int(tokens)
         return p
 
     def __lt__(self, other):
@@ -500,7 +524,7 @@ class MessageParticle(Particle):
 
     @classmethod
     def unpack(cls, state):
-        """Unpacks a state string, returning a new SEParticle.
+        """Unpacks a state string, returning a new MessageParticle
 
         The state string would have been created with repr(separticle).
         """
@@ -545,6 +569,13 @@ class MessageParticle(Particle):
         mp = MessageParticle(p)
         return mp
     
+    def __repr__(self):
+        fields = (self.id, self.batches, self.iters, self.pos, self.vel,
+                self.value, self.pbestpos, self.pbestval, self.nbestpos,
+                self.nbestval)
+        strings = ((repr(x) if x is not None else '') for x in fields)
+        return '%s:%s' % (self.CLASS_ID, ';'.join(strings))
+
 
 class SEMessageParticle(SEParticle):
     """A complete particle that is actually a message."""
@@ -624,7 +655,7 @@ class Swarm(object):
     >>> particles = [Particle(42, 1.0, 2.0), Particle(41, 3.0, 4.0)]
     >>> s = Swarm(17, particles)
     >>> repr(s)
-    's:17&p:42;0;0;1.0;2.0;;1.0;;1.0;&p:41;0;0;3.0;4.0;;3.0;;3.0;'
+    's:17&p:42;0;0;1.0;2.0;;1.0;;1.0;;0;False,-1&p:41;0;0;3.0;4.0;;3.0;;3.0;;0;False,-1'
     >>>
 
     Test of round trip:
