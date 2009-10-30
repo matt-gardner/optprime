@@ -21,6 +21,9 @@ class SpecExPSO(standardpso.StandardPSO):
 
         pruner.setup(self)
         self.specmethod.setup(self, pruner)
+        if self.opts.min_tokens * self.topology.num > self.opts.tokens:
+            raise ValueError("There aren't enough tokens to satisfy the min "
+                    "token requirement.")
 
     ##########################################################################
     # MapReduce Implementation
@@ -33,6 +36,12 @@ class SpecExPSO(standardpso.StandardPSO):
 
         particles = list(self.topology.newparticles(batch, rand))
         self.move_all(particles)
+        for particle in particles:
+            particle.tokens = self.opts.min_tokens
+        available_tokens = self.opts.tokens - (self.opts.min_tokens *
+                len(particles))
+        for i in range(available_tokens):
+            particles[rand.randrange(len(particles))].tokens += 1
         init_particles = []
         for p in particles:
             init_particles.append((str(p.id),repr(p)))
@@ -158,7 +167,16 @@ class SpecExPSO(standardpso.StandardPSO):
     def sepso_map(self, key, value):
         particle = unpack(value)
         assert particle.id == int(key)%self.topology.num
+        prev_val = particle.pbestval
         self.just_evaluate(particle)
+
+        # If we didn't update our pbest, pass a token to someone else
+        if (type(particle) == Particle and particle.pbestval == prev_val
+                and particle.tokens > self.opts.min_tokens):
+            particle.tokens -= 1
+            self.set_neighborhood_rand(particle, 1)
+            pass_to = particle.rand.randrange(self.topology.num)
+            yield (str(pass_to), 'token')
 
         # Emit the particle without changing its id:
         yield (str(particle.id), repr(particle))
@@ -183,7 +201,11 @@ class SpecExPSO(standardpso.StandardPSO):
         it1messages = []
         children = []
         it2messages = []
+        tokens = 0
         for value in value_iter:
+            if value == 'token':
+                tokens += 1
+                continue
             record = unpack(value)
             if type(record) == Particle:
                 particle = record
@@ -197,9 +219,11 @@ class SpecExPSO(standardpso.StandardPSO):
                 raise ValueError
 
         assert particle, 'Missing particle %s in the reduce step' % key
+        particle.tokens += tokens
 
         newparticle = self.specmethod.pick_child(particle, it1messages, 
                 children)
+        newparticle.tokens = particle.tokens
         
         # Specmethod.pick_child updates the child's pbest, so all you need to 
         # finish the second iteration is to update the nbest.
@@ -208,7 +232,10 @@ class SpecExPSO(standardpso.StandardPSO):
         it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
                 it1messages, it2messages)
         best = self.findbest(it2neighbors)
-        newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator)
+        if newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator):
+            newparticle.lastbranch[1] = best.id
+        else:
+            newparticle.lastbranch[1] = -1
 
         # We now have a finished particle at the second iteration.  We move it
         # to the third iteration, then get its neighbors at the third iteration.
@@ -308,6 +335,19 @@ def update_parser(parser):
             dest='pruner', action='extend', search=['specmethod'],
             help='Pruning method for generating speculative children',
             default='OneCompleteIteration',
+            )
+    parser.add_option('','--total-tokens',
+            dest='tokens', type='int',
+            help='Number of tokens to use (only for the TokenPruner).  This is'
+            ' the difference between the number of desired particles and the'
+            ' number of available processors.',
+            default=0,
+            )
+    parser.add_option('','--min-tokens',
+            dest='min_tokens', type='int',
+            help='The minimum number of tokens that each particle can have. '
+            'This cannot be greater than the total number of tokens available.',
+            default=0,
             )
 
     # There are some sticky issues involved with doing this speculatively

@@ -12,6 +12,7 @@ class _SpecMethod(ParamObj):
     """
 
     def setup(self, specex, pruner):
+        self.check_compatibility(pruner)
         self.specex = specex
         self.pruner = pruner
 
@@ -59,6 +60,13 @@ class _SpecMethod(ParamObj):
         """Return the set of particles to whom a particle must send messages."""
         raise NotImplementedError
 
+    def check_compatibility(self, pruner):
+        """Some SpecMethods require certain pruners.  Check for compatibility.
+
+        Raises an error if the pruner is incompatible with the SpecMethod,
+        does nothing if the pruner is compatible."""
+        raise NotImplementedError
+
     ##########################################################################
     # Methods that probably should not be overridden.  
 
@@ -99,10 +107,12 @@ class ReproducePSO(_SpecMethod):
     """
 
     def setup(self, specex, pruner):
+        super(ReproducePSO, self).setup(specex, pruner)
+
+    def check_compatibility(self, pruner):
         if not isinstance(pruner, OneCompleteIteration):
             raise ValueError('ReproducePSO must have OneCompleteIteration as '
                     'its pruner!')
-        super(ReproducePSO, self).setup(specex, pruner)
 
     def message_ids(self, particle):
         """Decide which particles need messages from this particle.
@@ -218,10 +228,13 @@ class ReproducePSO(_SpecMethod):
             # not in the PickBestChild case.
             child.nbestpos = best_neighbor.pbestpos
             child.nbestval = best_neighbor.pbestval
-        # Set the pbest for iteration 2
+        # Set the pbest for iteration 2, and update the last branch
         if Particle.isbetter(particle.pbestval, child.pbestval, comparator):
             child.pbestpos = particle.pbestpos
             child.pbestval = particle.pbestval
+            child.lastbranch[0] = False
+        else:
+            child.lastbranch[0] = True
 
 
 class PickBestChild(ReproducePSO):
@@ -235,29 +248,100 @@ class PickBestChild(ReproducePSO):
 
     The only place this method is different from ReproducePSO is in the
     pick_child method, so we inherit from it.
+
+    We also allow this SpecMethod to be used with any pruner.  Using it with
+    a pruner other than OneCompleteIteration could have interesting results.
     """
 
+    def check_compatibility(self, pruner):
+        pass
+
     def pick_child(self, particle, it1messages, children):
-        """To find the correct branch that PSO would have taken, you need to 
-        see whether or not the particle updated its pbest and find out which
-        of the particle's neighbors was the new nbest.  Then update the child
-        that matches that branch and return it.  Nothing that got passed into
-        this function should have modified state at the end.
+        """Instead of picking the branch that matches PSO, just take the branch
+        that produced the best value.  Nothing that got passed into this
+        function should have modified state at the end.
         """
         # We still do this so that the child will have the correct nbestval.
         comparator = self.specex.function.comparator
         neighbors = self.get_neighbors(particle, it1messages)
         best = self.specex.findbest(neighbors)
 
-        # Look through the children and pick the child that corresponds to the
-        # branch you took
+        # Look through the children and pick the child that has the best value
         bestchild = None
         for child in children:
             if (bestchild is None) or comparator(child.value, bestchild.value):
                 bestchild = child
         newchild = bestchild.make_real_particle()
+        newchild.lastbranch = [bestchild.specpbest, bestchild.specnbestid]
         self.update_child_bests(particle, best, newchild)
         return newchild
+
+
+class SocialPromotion(ReproducePSO):
+    """If the correct branch is not found, return the original particle.
+
+    This SpecMethod is for use with incomplete pruners.  If a complete pruner
+    is used, it results in exactly the same behavior as ReproducePSO.  If the
+    pruning is incomplete, we look to see if the correct branch was one of the
+    ones speculated about.  If not, we leave the particle an iteration behind
+    everyone else.  That is equivalent to pulling the particle as it is one
+    iteration forward, but the latter method makes dealing with topologies and
+    random seeds a lot easier.
+    """
+
+    def check_compatibility(self, pruner):
+        pass
+
+    def pick_child(self, particle, it1messages, children):
+        """We do the same here as in ReproducePSO, with one modification.  If
+        the correct branch is not found, instead of throwing an error we just
+        return the original particle, one iteration ahead.
+        """
+        comparator = self.specex.function.comparator
+        neighbors = self.get_neighbors(particle, it1messages)
+        # Look at the messages to see which branch you actually took.
+        # You only need an isbetter to figure out the branch, and then you
+        # don't modify the state of the messages with an nbest_cand (as this
+        # same method gets called with a message as 'particle' from 
+        # pick_neighbor_children).
+        best_neighbor = self.specex.findbest(neighbors)
+        if particle.isbetter(best_neighbor.pbestval, particle.nbestval, 
+                comparator):
+            nbestid = best_neighbor.id
+        else:
+            nbestid = -1
+
+        # If you updated your pbest, then your current value will be your
+        # pbestval.  It's a floating point comparison, but the values would
+        # have been set from each other, so it's safe.
+        updatedpbest = (particle.pbestval == particle.value)
+
+        # Update the last branch that was taken, but only if you're a particle.
+        # We don't really care about the branch messages took.  Also, this only
+        # matters here if we didn't guess the right branch.  If we did, then
+        # the child will get updated branch information later.
+        if type(particle) == Particle:
+            particle.lastbranch = [updatedpbest, nbestid]
+
+        # Look through the children and pick the child that corresponds to the
+        # branch you took
+        for child in children:
+            if (child.specpbest == updatedpbest and
+                    child.specnbestid == nbestid):
+                # Make the child into a particle before modifying its state,
+                # so that the messages never get modified.
+                newchild = child.make_real_particle()
+                self.update_child_bests(particle, best_neighbor, newchild)
+                return newchild
+
+        # We didn't find the right child--our speculation was insufficient.
+        # In that case, we redo the second iteration so we get the right
+        # branch.  But to actually implement that, what we do is pull the
+        # original particle ahead one iteration.
+        newparticle = particle.copy()
+        newparticle.iters += 1
+        return newparticle
+
 
 class _Pruner(ParamObj):
     """Speculative Pruner
@@ -307,5 +391,118 @@ class OneCompleteIteration(_Pruner):
             self.specex.set_motion_rand(child)
             self.specex.just_move(child)
             yield child
+
+
+class NoNBestUpdate(_Pruner):
+
+    def generate_children(self, particle, neighbors):
+        """Just speculate two children, the two where we assume we didn't get
+        an nbest update.
+        """
+        # Create child guessing that pbest was not updated
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.set_motion_rand(child)
+        self.specex.just_move(child)
+        yield child
+        # And now guessing that pbest was updated
+        child = SEParticle(particle, specpbest=True, specnbestid=-1)
+        child.pbestpos = particle.pos
+        self.specex.set_motion_rand(child)
+        self.specex.just_move(child)
+        yield child
+
+
+class StatsPruner(_Pruner):
+
+    def generate_children(self, particle, neighbors):
+        """Produce two children, one for no nbest, no pbest, and one for the
+        last branch that was taken by this particle.
+        """
+        # Create child guessing that neither pbest nor nbest was updated
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.set_motion_rand(child)
+        self.specex.just_move(child)
+        yield child
+        # And now for the last branch that was taken
+        if particle.lastbranch[0] == True:
+            specpbest = True
+        else:
+            specpbest = False
+        specnbestid = particle.lastbranch[1]
+        child = SEParticle(particle, specpbest=specpbest,
+                specnbestid=specnbestid)
+        self.specex.set_motion_rand(child)
+        self.specex.just_move(child)
+        yield child
+
+
+class TokenBased(_Pruner):
+    """Produce however many children you have tokens for.
+    
+    Start with no nbest, no pbest.  If you have two tokens, move to pbest, but
+    no nbest.  Then take the last branch.  Then just start randomly guessing.
+    """
+
+    def generate_children(self, particle, neighbors):
+        if particle.tokens > 0:
+            children = []
+            # Create child guessing that neither pbest nor nbest was updated
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.set_motion_rand(child)
+            self.specex.just_move(child)
+            children.append((False, -1))
+            yield child
+        if particle.tokens > 1:
+            # And now guessing that pbest was updated
+            child = SEParticle(particle, specpbest=True, specnbestid=-1)
+            child.pbestpos = particle.pos
+            self.specex.set_motion_rand(child)
+            self.specex.just_move(child)
+            children.append((True, -1))
+            yield child
+        if particle.tokens > 2:
+            # And now for the last branch that was taken
+            if particle.lastbranch[0] == True:
+                specpbest = True
+            else:
+                specpbest = False
+            specnbestid = particle.lastbranch[1]
+            if specnbestid != -1:
+                child = SEParticle(particle, specpbest=specpbest,
+                        specnbestid=specnbestid)
+                self.specex.set_motion_rand(child)
+                self.specex.just_move(child)
+            else:
+                self.specex.set_neighborhood_rand(particle)
+                specnbestid = particle.rand.randrange(len(neighbors))
+                child = SEParticle(particle, specpbest=specpbest,
+                        specnbestid=specnbestid)
+                self.specex.set_motion_rand(child)
+                self.specex.just_move(child)
+            children.append((specpbest, specnbestid))
+            yield child
+        if particle.tokens > 3:
+            for i in range(particle.tokens-3):
+                tries = 0
+                failed = False
+                while (specpbest, specnbestid) in children:
+                    tries += 1
+                    if tries > 10:
+                        failed = True
+                        break
+                    if particle.rand.randrange(2):
+                        specpbest = True
+                    else:
+                        specpbest = False
+                    specnbestid = particle.rand.randrange(len(neighbors))
+                if failed:
+                    break
+                child = SEParticle(particle, specpbest=specpbest,
+                        specnbestid=specnbestid)
+                self.specex.set_motion_rand(child)
+                self.specex.just_move(child)
+                children.append((specpbest, specnbestid))
+                yield child
+
 
 # vim: et sw=4 sts=4
