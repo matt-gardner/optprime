@@ -258,9 +258,16 @@ class PickBestChild(ReproducePSO):
 
     def pick_child(self, particle, it1messages, children):
         """Instead of picking the branch that matches PSO, just take the branch
-        that produced the best value.  Nothing that got passed into this
-        function should have modified state at the end.
+        that produced the best value.  If there are no speculative children for
+        whatever reason, return the particle like in SocialPromotion.
+        
+        Nothing that got passed into this function should have modified state
+        at the end.
         """
+        if not children:
+            newparticle = particle.copy()
+            newparticle.iters += 1
+            return newparticle
         # We still do this so that the child will have the correct nbestval.
         comparator = self.specex.function.comparator
         neighbors = self.get_neighbors(particle, it1messages)
@@ -436,7 +443,7 @@ class StatsPruner(_Pruner):
         yield child
 
 
-class TokenBased(_Pruner):
+class TokenBasedOneIter(_Pruner):
     """Produce however many children you have tokens for.
     
     Start with no nbest, no pbest.  If you have two tokens, move to pbest, but
@@ -503,6 +510,79 @@ class TokenBased(_Pruner):
                 self.specex.just_move(child)
                 children.append((specpbest, specnbestid))
                 yield child
+
+
+class TokenBasedManyIters(_Pruner):
+    """Produce however many children you have tokens for.
+    
+    Start with no nbest, no pbest.  If you have two tokens, move to pbest, but
+    no nbest.  Then go more than one iteration ahead, the same branches.
+    """
+
+    def generate_children(self, particle, neighbors):
+        if particle.tokens > 0:
+            # Iteration 2, NN
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 1:
+            # Iteration 2, YN
+            child = SEParticle(particle, specpbest=True, specnbestid=-1)
+            child.pbestpos = particle.pos
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 2:
+            # Iteration 3, NN-NN
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            child = SEParticle(child, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 3:
+            # Iteration 3, NN-YN
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            child.pbestpos = child.pos
+            child = SEParticle(child, specpbest=True, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 4:
+            # Iteration 3, YN-NN
+            child = SEParticle(particle, specpbest=True, specnbestid=-1)
+            child.pbestpos = particle.pos
+            self.specex.just_move(child)
+            child = SEParticle(child, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 5:
+            # Iteration 3, YN-YN
+            child = SEParticle(particle, specpbest=True, specnbestid=-1)
+            child.pbestpos = particle.pos
+            self.specex.just_move(child)
+            child.pbestpos = child.pos
+            child = SEParticle(child, specpbest=True, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 6:
+            # Iteration 4, NN-NN-NN
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            child = SEParticle(child, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            child = SEParticle(child, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+        if particle.tokens > 7:
+            # Iteration 4, NN-NN-YN
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            child = SEParticle(child, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            child.pbestpos = child.pos
+            child = SEParticle(child, specpbest=True, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+
 
 
 # vim: et sw=4 sts=4
