@@ -279,6 +279,7 @@ class PickBestChild(ReproducePSO):
             if (bestchild is None) or comparator(child.value, bestchild.value):
                 bestchild = child
         newchild = bestchild.make_real_particle()
+        newchild.iters = particle.iters + 1
         newchild.lastbranch = [bestchild.specpbest, bestchild.specnbestid]
         self.update_child_bests(particle, best, newchild)
         return newchild
