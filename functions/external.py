@@ -24,6 +24,8 @@ class CommandLine(_general._Base):
                     'each dimension'),
             quiet=Param(type='bool',
                 doc="Don't print messages to and from the external program"),
+            args=Param(default='',
+                doc="Args to be parsed shell-style and prepended to the command line")
             )
 
     def setup(self):
@@ -33,6 +35,11 @@ class CommandLine(_general._Base):
             raise RuntimeError('Must specify a constraints file!')
         if self.dims:
             raise RuntimeError('Do not specify dims (use a constraints file)!')
+
+        self.command = [self.exe]
+        if self.args:
+            import shlex
+            self.command += shlex.split(self.args)
 
         f = open(self.constraintsfile)
         constraints = []
@@ -51,7 +58,7 @@ class CommandLine(_general._Base):
     def __call__(self, vec):
         import sys
         from subprocess import Popen, PIPE
-        command = [self.exe]
+        command = list(self.command)
         for x in vec:
             command.append(repr(x))
         if not self.quiet:
@@ -85,13 +92,13 @@ class Stdin(CommandLine):
         from subprocess import Popen, PIPE
         super(Stdin, self).setup()
         if not self.restart:
-            self.func_proc = Popen((self.exe), stdout=PIPE, stdin=PIPE)
+            self.func_proc = Popen(self.command, stdout=PIPE, stdin=PIPE)
 
     def __call__(self, vec):
         import sys
         from subprocess import Popen, PIPE
         if self.restart:
-            self.func_proc = Popen((self.exe), stdout=PIPE, stdin=PIPE)
+            self.func_proc = Popen(self.command, stdout=PIPE, stdin=PIPE)
         if not self.quiet:
             print >> sys.stderr, 'Sending to program:',' '.join(repr(x) for x in vec)+' '
         self.func_proc.stdin.write(' '.join(repr(x) for x in vec)+'\n')
