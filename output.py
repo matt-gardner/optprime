@@ -358,14 +358,6 @@ class BranchStats(Output):
             avepandn.append(pandn)
             print id,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
 
-        print '\nAverages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
-        notpnotn = sum(avenotpnotn)/len(avenotpnotn)
-        pnotn = sum(avepnotn)/len(avepnotn)
-        pandnme = sum(avepandnme)/len(avepandnme)
-        notpbutn = sum(avenotpbutn)/len(avenotpbutn)
-        pandn = sum(avepandn)/len(avepandn)
-        print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
-
         print '\nIndividual Particles: (notN, N)'
         avenotn = []
         aven = []
@@ -376,6 +368,14 @@ class BranchStats(Output):
             aven.append(n)
             print id,'%.3f %.3f' % (notn,n)
 
+        print '\nAverages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        notpnotn = sum(avenotpnotn)/len(avenotpnotn)
+        pnotn = sum(avepnotn)/len(avepnotn)
+        pandnme = sum(avepandnme)/len(avepandnme)
+        notpbutn = sum(avenotpbutn)/len(avenotpbutn)
+        pandn = sum(avepandn)/len(avepandn)
+        print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
+        
         print '\nAverages: (notN, N)'
         notp = sum(avenotn)/len(avenotn)
         p = sum(aven)/len(aven)
