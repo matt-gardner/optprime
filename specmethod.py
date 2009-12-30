@@ -298,7 +298,9 @@ class SocialPromotion(ReproducePSO):
     """
 
     def check_compatibility(self, pruner):
-        pass
+        if isinstance(pruner, ManyIters):
+            raise ValueError('SocialPromotion does not work when you go more '
+                    'than one iteration ahead!')
 
     def pick_child(self, particle, it1messages, children):
         """We do the same here as in ReproducePSO, with one modification.  If
@@ -513,7 +515,71 @@ class TokenBasedOneIter(_Pruner):
                 yield child
 
 
-class TokenBasedManyIters(_Pruner):
+class ManyIters(_Pruner):
+    """A pruning super-class for all pruners that go more than one iteration
+    ahead.
+
+    This is useful so that speculative methods that aren't capable of going
+    more than one iteration ahead can throw an error on just one class, instead
+    of having to know about all of the possible pruners.
+    """
+
+class ManyItersSevenEvals(ManyIters):
+    """Use the same number of evaluations as OneCompleteIteration, but go many
+    iterations ahead.
+
+    We do the same evaluations as TokenBasedManyIters, but we don't look at
+    tokens.  All of the particles do the same number of evaluations.
+    """
+
+    def generate_children(self, particle, neighbors):
+        # Iteration 2, NN
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        yield child
+        # Iteration 2, YN
+        child = SEParticle(particle, specpbest=True, specnbestid=-1)
+        child.pbestpos = particle.pos
+        self.specex.just_move(child)
+        yield child
+        # Iteration 3, NN-NN
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        child = SEParticle(child, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        yield child
+        # Iteration 3, NN-YN
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        child.pbestpos = child.pos
+        child = SEParticle(child, specpbest=True, specnbestid=-1)
+        self.specex.just_move(child)
+        yield child
+        # Iteration 3, YN-NN
+        child = SEParticle(particle, specpbest=True, specnbestid=-1)
+        child.pbestpos = particle.pos
+        self.specex.just_move(child)
+        child = SEParticle(child, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        yield child
+        # Iteration 3, YN-YN
+        child = SEParticle(particle, specpbest=True, specnbestid=-1)
+        child.pbestpos = particle.pos
+        self.specex.just_move(child)
+        child.pbestpos = child.pos
+        child = SEParticle(child, specpbest=True, specnbestid=-1)
+        self.specex.just_move(child)
+        yield child
+        # Iteration 4, NN-NN-NN
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        child = SEParticle(child, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        child = SEParticle(child, specpbest=False, specnbestid=-1)
+        self.specex.just_move(child)
+        yield child
+
+class TokenBasedManyIters(ManyIters):
     """Produce however many children you have tokens for.
     
     Start with no nbest, no pbest.  If you have two tokens, move to pbest, but
