@@ -8,7 +8,7 @@ NEIGHBORS=5
 ITERATIONS=5000
 OUTFREQ=100
 
-shortfunc="${FUNCTION%.*}"
+shortfunc="${FUNCTION#*.}"
 datadir="$HOME/clone/psodata/data_${shortfunc}_${DIMS}/${TOPOLOGY}_${PARTICLES}_${NEIGHBORS}"
 template="iters_${ITERATIONS}_freq_${OUTFREQ}"
 
