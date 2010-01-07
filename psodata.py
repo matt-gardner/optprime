@@ -7,6 +7,12 @@ class Batch(object):
     def __init__(self):
         self.keys = []
         self.map = {}
+        self.done = False
+
+    def _set_done(self):
+        """Records that the batch had a terminating "DONE" statement."""
+        assert not self.done
+        self.done = True
 
     def add(self, key, value):
         self.keys.append(key)
@@ -18,6 +24,9 @@ class Batch(object):
     def __iter__(self):
         return iter(self.keys)
 
+    def __len__(self):
+        return len(self.keys)
+
     def last(self):
         return self.keys[-1]
 
@@ -28,24 +37,52 @@ class Batch(object):
 
 class PSOData(object):
     def __init__(self, infile):
-        self.headers = []
+        self.options = {}
         self.batches = []
+        in_options = False
 
         for line in infile:
-            if line[0:7] == '# Batch':
-                self.batches.append(Batch())
-                continue
+            lastbatch = self.batches[-1] if self.batches else None
+
             if line.isspace():
+                in_options = False
                 continue
             if (line[0] == '#'):
-                if line.split()[1] not in ('Batch', 'DONE'):
-                    self.headers.append(line)
+                if line.startswith('# Batch'):
+                    in_options = False
+                    self.batches.append(Batch())
+                elif line.startswith('# DONE'):
+                    assert lastbatch
+                    lastbatch._set_done()
+                elif line.startswith('# Options'):
+                    in_options = True
+                elif in_options:
+                    self._add_option_line(line)
                 continue
-            iteration, value = line.split()
-            iteration = int(iteration)
-            value = float(value)
-            lastbatch = self.batches[-1]
+
+            outputter = self.options['out']
+            if outputter == 'output.Basic':
+                outfreq = int(self.options['out__freq'])
+                iteration = 1 + outfreq * len(lastbatch)
+                value = float(line.strip())
+            elif outputter == 'output.Pair':
+                iteration, value = line.split()
+                iteration = int(iteration)
+                value = float(value)
             lastbatch.add(iteration, value)
+
+    def _add_option_line(self, line):
+        assert line[0] == '#'
+        line = line[1:]
+        if '=' not in line:
+            print line
+        key, value = line.split('=', 1)
+        key = key.strip()
+        value = value.strip()
+        self.options[key] = value
+
+    def __getitem__(self, index):
+        return self.batches[index]
 
     def __iter__(self):
         return iter(self.batches)
