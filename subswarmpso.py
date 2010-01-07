@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import sys, optparse, operator
+import sys, operator
 from itertools import chain
 
 import mrs
