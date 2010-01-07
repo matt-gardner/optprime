@@ -7,6 +7,8 @@ from amlpso.psodata import PSOData
 from evilplot import Plot, Points, RawData
 
 parser = optparse.OptionParser()
+parser.add_option('--print', dest='print_page', action='store_true',
+        help='Send to the printer')
 opts, args = parser.parse_args()
 
 if not args:
@@ -30,5 +32,8 @@ for filename in args:
     plot.append(RawData(bars, style='errorbars'))
 
 plot.show()
+
+if opts.print_page:
+    plot.print_page()
 
 # vim: et sw=4 sts=4
