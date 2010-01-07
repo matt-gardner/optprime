@@ -71,6 +71,10 @@ class PSOData(object):
                 value = float(value)
             lastbatch.add(iteration, value)
 
+        if not lastbatch.done:
+            print 'WARNING: ignoring last batch (incomplete)'
+            del self.batches[-1]
+
     def _add_option_line(self, line):
         assert line[0] == '#'
         line = line[1:]

@@ -1,10 +1,15 @@
 #!/usr/bin/env python
 
 from __future__ import division
+import math
 import optparse
+from itertools import islice
 
 from amlpso.psodata import PSOData
 from evilplot import Plot, Points, RawData
+
+MAX_BAR_SAMPLES = 40
+MAX_SAMPLES = 500
 
 parser = optparse.OptionParser()
 parser.add_option('--print', dest='print_page', action='store_true',
@@ -24,8 +29,12 @@ for filename in args:
     trim = int(len(data) / 10)
     points = []
     bars = []
-    for iteration in data[0]:
+    iterations = len(data[0])
+    samples_step = int(math.ceil(iterations / MAX_SAMPLES))
+    bar_samples_step = int(math.ceil(iterations / MAX_BAR_SAMPLES))
+    for iteration in islice(data[0], 0, None, samples_step):
         points.append((iteration, data.average(iteration)))
+    for iteration in islice(data[0], 0, None, bar_samples_step):
         low, med, high = data.statistics(iteration, trim)
         bars.append((iteration, med, low, high))
     plot.append(Points(points, title=filename, style='lines'))
