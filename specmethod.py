@@ -670,4 +670,21 @@ class TokenManyItersOnlyPbest(ManyIters):
                 yield child
 
 
+class TokenManyItersOnlyNbest(ManyIters):
+    """Produce however many children you have tokens for down the YN branch.
+    """
+
+    def generate_children(self, particle, neighbors):
+        if particle.tokens > 0:
+            child = SEParticle(particle, specpbest=False, specnbestid=-1)
+            self.specex.just_move(child)
+            yield child
+            i = 1
+            while i < particle.tokens:
+                i += 1
+                child = SEParticle(child, specpbest=False, specnbestid=-1)
+                self.specex.just_move(child)
+                yield child
+
+
 # vim: et sw=4 sts=4
