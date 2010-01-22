@@ -651,5 +651,23 @@ class TokenBasedManyIters(ManyIters):
             yield child
 
 
+class TokenManyItersOnlyPbest(ManyIters):
+    """Produce however many children you have tokens for down the YN branch.
+    """
+
+    def generate_children(self, particle, neighbors):
+        if particle.tokens > 0:
+            child = SEParticle(particle, specpbest=True, specnbestid=-1)
+            child.pbestpos = particle.pos
+            self.specex.just_move(child)
+            yield child
+            i = 1
+            while i < particle.tokens:
+                i += 1
+                child = SEParticle(child, specpbest=True, specnbestid=-1)
+                child.pbestpos = child.pos
+                self.specex.just_move(child)
+                yield child
+
 
 # vim: et sw=4 sts=4
