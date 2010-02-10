@@ -343,6 +343,7 @@ class StandardPSO(mrs.MapReduce):
             print "# Options:"
             for key, value in sorted(vars(self.opts).iteritems()):
                 print '#   %s = %s' % (key, value)
+            self.function.master_log()
             print ""
             sys.stdout.flush()
 

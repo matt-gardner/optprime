@@ -12,6 +12,10 @@ class _Base(ParamObj):
                 doc='Maximize the function instead of minimizing.'),
             )
 
+    def master_log(self):
+        # print something after the master's logs
+        pass
+
     def setup(self):
         import operator
         self._set_constraints(((0,0),)*self.dims)
