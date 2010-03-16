@@ -422,7 +422,18 @@ class NoNBestUpdate(_Pruner):
         yield child
 
 
-class StatsPruner(_Pruner):
+class Stagnant(_Pruner):
+
+    def generate_children(self, particle, neighbors):
+        """Just one particle, for the stagnant case.
+        """
+        child = SEParticle(particle, specpbest=False, specnbestid=-1)
+        self.specex.set_motion_rand(child)
+        self.specex.just_move(child)
+        yield child
+
+
+class Stats(_Pruner):
 
     def generate_children(self, particle, neighbors):
         """Produce two children, one for no nbest, no pbest, and one for the
@@ -446,7 +457,7 @@ class StatsPruner(_Pruner):
         yield child
 
 
-class LastBranchPruner(_Pruner):
+class LastBranch(_Pruner):
 
     def generate_children(self, particle, neighbors):
         """Produce just one child, corresponding to the last branch that was
