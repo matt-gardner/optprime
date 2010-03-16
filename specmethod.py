@@ -446,6 +446,24 @@ class StatsPruner(_Pruner):
         yield child
 
 
+class LastBranchPruner(_Pruner):
+
+    def generate_children(self, particle, neighbors):
+        """Produce just one child, corresponding to the last branch that was
+        taken by this particle.
+        """
+        # And now for the last branch that was taken
+        if particle.lastbranch[0] == True:
+            specpbest = True
+        else:
+            specpbest = False
+        specnbestid = particle.lastbranch[1]
+        child = SEParticle(particle, specpbest=specpbest,
+                specnbestid=specnbestid)
+        self.specex.set_motion_rand(child)
+        self.specex.just_move(child)
+        yield child
+
 class TokenBasedOneIter(_Pruner):
     """Produce however many children you have tokens for.
     
