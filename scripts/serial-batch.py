@@ -38,8 +38,8 @@ for particles in PARTICLES:
         proc.stdin.write('cd ~/clone/amlpso\n')
         proc.stdin.write('pwd\n')
         proc.stdin.write('python standardpso.py -i %s --out-freq=%s'
-            ' -f %s -d %s -t %s -n %s >"$FILENAME"\n'
-            % (iters, OUTFREQ, FUNCTION, DIMS, TOPOLOGY, particles))
+            ' -f %s -d %s -t %s -n %s --top-neighbors %s >"$FILENAME"\n'
+            % (iters, OUTFREQ, FUNCTION, DIMS, TOPOLOGY, particles, neighbors))
         proc.stdin.close()
         proc.wait()
 
