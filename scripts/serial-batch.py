@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 
-BATCHES = 1
+BATCHES = 4
 
 PARTICLES = [5, 50, 500, 5000]
 FUNCTION = 'sphere.Sphere'
@@ -37,7 +37,8 @@ for particles in PARTICLES:
                 % (datadir, template))
         proc.stdin.write('cd ~/clone/amlpso\n')
         proc.stdin.write('pwd\n')
-        proc.stdin.write('python standardpso.py -i %s --out-freq=%s -b 20 -f %s -d %s -t %s -n %s >"$FILENAME"\n'
+        proc.stdin.write('python standardpso.py -i %s --out-freq=%s'
+            ' -f %s -d %s -t %s -n %s >"$FILENAME"\n'
             % (iters, OUTFREQ, FUNCTION, DIMS, TOPOLOGY, particles))
         proc.stdin.close()
         proc.wait()
