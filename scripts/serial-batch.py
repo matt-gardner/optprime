@@ -25,7 +25,7 @@ for particles in PARTICLES:
     neighbors = int(math.ceil(NEIGHBORS_PROPORTION * particles))
     #neighbors = int(math.ceil(math.log(particles)))
     datadir = os.path.expanduser('~/clone/psodata/data_%s_%s/%s_%s_%s'
-            % (shortfunc, DIMS, TOPOLOGY, particles, NEIGHBORS))
+            % (shortfunc, DIMS, TOPOLOGY, particles, neighbors))
     template = 'iters_%s_freq_%s' % (iters, OUTFREQ)
     try:
         os.makedirs(datadir)
