@@ -38,20 +38,19 @@ for particles in PARTICLES:
     except OSError:
         pass
     for i in xrange(BATCHES):
+        command = ('python standardpso.py -i %s -o Pair --out-freq=%s'
+            ' -f %s -d %s -t %s -n %s'
+            % (iters, outfreq, FUNCTION, DIMS, TOPOLOGY, particles))
+        if TOPOLOGY not in NEIGHBORLESS_TOPOLOGIES:
+            command += ' --top-neighbors %s' % neighbors
+        command += ' >"$FILENAME"\n'
+
         proc = subprocess.Popen(('batch',), stdin=subprocess.PIPE)
         proc.stdin.write('FILENAME="$(mktemp --tmpdir=%s %s.XXX)"\n'
                 % (datadir, template))
         proc.stdin.write('cd ~/clone/amlpso\n')
         proc.stdin.write('pwd\n')
-        if TOPOLOGY in NEIGHBORLESS_TOPOLOGIES:
-            proc.stdin.write('python standardpso.py -i %s --out-freq=%s'
-                ' -f %s -d %s -t %s -n %s >"$FILENAME"\n'
-                % (iters, outfreq, FUNCTION, DIMS, TOPOLOGY, particles))
-        else:
-            proc.stdin.write('python standardpso.py -i %s --out-freq=%s'
-                ' -f %s -d %s -t %s -n %s --top-neighbors %s >"$FILENAME"\n'
-                % (iters, outfreq, FUNCTION, DIMS, TOPOLOGY, particles,
-                    neighbors))
+        proc.stdin.write(command)
         proc.stdin.close()
         proc.wait()
 
