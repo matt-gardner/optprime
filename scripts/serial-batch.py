@@ -27,10 +27,10 @@ for particles in PARTICLES:
     #neighbors = int(math.ceil(math.log(particles)))
     outfreq = int(math.ceil(OUTFREQ_EVALS / particles))
     if TOPOLOGY in NEIGHBORLESS_TOPOLOGIES:
-        datadir = os.path.expanduser('~/clone/psodata/data_%s_%s/%s_%s'
+        datadir = os.path.expanduser('~/clone/psodata/standard/%s_%s/%s_%s'
                 % (shortfunc, DIMS, TOPOLOGY, particles))
     else:
-        datadir = os.path.expanduser('~/clone/psodata/data_%s_%s/%s_%s_%s'
+        datadir = os.path.expanduser('~/clone/psodata/standard/%s_%s/%s_%s_%s'
                 % (shortfunc, DIMS, TOPOLOGY, particles, neighbors))
     template = 'iters_%s_freq_%s' % (iters, outfreq)
     try:
