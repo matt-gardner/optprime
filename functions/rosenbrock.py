@@ -3,6 +3,11 @@ from itertools import izip
 import _general
 
 class Rosenbrock(_general._Base):
+    """The Rosenbrock benchmark function
+
+    Rosenbrock has a banana-shaped valley and is _extremely_ difficult
+    to optimize.
+    """
     def setup(self):
         super(Rosenbrock,self).setup()
         self._set_constraints(((-100,100),) * self.dims)
