@@ -29,7 +29,7 @@ class Schwefel221(_general._Base):
     """
 
     def setup(self):
-        super(Schwefel,self).setup()
+        super(Schwefel221,self).setup()
         self._set_constraints(((-500,500),) * self.dims)
 
     def __call__(self, vec):
