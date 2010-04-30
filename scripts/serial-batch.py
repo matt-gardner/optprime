@@ -35,8 +35,10 @@ for particles in PARTICLES:
     template = 'iters_%s_freq_%s' % (iters, outfreq)
     try:
         os.makedirs(datadir)
-    except OSError:
-        pass
+    except OSError, e:
+        import errno
+        if e.errno != errno.EEXIST:
+            raise
     for i in xrange(BATCHES):
         command = ('python standardpso.py -i %s -o Pair --out-freq=%s'
             ' -f %s -d %s -t %s -n %s'
