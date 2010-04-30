@@ -40,7 +40,7 @@ for particles in PARTICLES:
         if e.errno != errno.EEXIST:
             raise
     for i in xrange(BATCHES):
-        command = ('python standardpso.py -i %s -o Pair --out-freq=%s'
+        command = ('python -W ignore standardpso.py -i %s -o Pair --out-freq=%s'
             ' -f %s -d %s -t %s -n %s'
             % (iters, outfreq, FUNCTION, DIMS, TOPOLOGY, particles))
         if TOPOLOGY not in NEIGHBORLESS_TOPOLOGIES:
@@ -51,7 +51,6 @@ for particles in PARTICLES:
         proc.stdin.write('FILENAME="$(mktemp --tmpdir=%s %s.XXX)"\n'
                 % (datadir, template))
         proc.stdin.write('cd ~/clone/amlpso\n')
-        proc.stdin.write('pwd\n')
         proc.stdin.write(command)
         proc.stdin.close()
         proc.wait()
