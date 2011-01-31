@@ -356,6 +356,7 @@ class StandardPSO(mrs.MapReduce):
             self.tmpfiles = []
 
     def cleanup(self):
+        import os
         for f in self.tmpfiles:
             os.unlink(f)
 
