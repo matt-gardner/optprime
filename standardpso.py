@@ -54,8 +54,6 @@ class StandardPSO(mrs.MapReduce):
         Compare to the run_batch method, which uses MapReduce to do the same
         thing.
         """
-        self.setup()
-
         # Create the Population.
         rand = self.initialization_rand(batch)
         particles = list(self.topology.newparticles(batch, rand))
@@ -79,8 +77,6 @@ class StandardPSO(mrs.MapReduce):
                     kwds['best'] = self.findbest(particles)
                 output(**kwds)
         output.finish()
-
-        self.cleanup()
 
     def bypass_iteration(self, particles, swarmid=0):
         """Runs one iteration of PSO.
@@ -138,7 +134,6 @@ class StandardPSO(mrs.MapReduce):
         Compare to the bypass_batch method, which does the same thing without
         using MapReduce.
         """
-        self.setup()
         rand = self.initialization_rand(batch)
         init_particles = [(str(p.id), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
@@ -348,17 +343,6 @@ class StandardPSO(mrs.MapReduce):
             sys.stdout.flush()
 
         return True
-
-    def setup(self):
-        try:
-            self.tmpfiles = self.function.tmpfiles()
-        except AttributeError:
-            self.tmpfiles = []
-
-    def cleanup(self):
-        import os
-        for f in self.tmpfiles:
-            os.unlink(f)
 
     ##########################################################################
     # Rand Setters

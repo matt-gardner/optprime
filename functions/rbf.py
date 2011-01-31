@@ -44,12 +44,13 @@ class RBF(_general._Base):
         super(RBF,self).setup()
         self._set_constraints(((-50,50),) * self.dims)
         self.data_dims = None
-        try:
+
+        if self.datafiles:
             datafile = self.datafiles.split()[0]
             self.datapoints = [tuple(float(field) for field in line.split(','))
                             for line in open(datafile)]
-        except IndexError:
-            self.datapoints = []
+        else:
+            self.datapoints = self.generate_data()
 
         # Debugging:
         #import os, tempfile
@@ -85,8 +86,8 @@ class RBF(_general._Base):
 
         return output_weight * gaussian(sq_dist ** 0.5, scale=RBF_STDDEV)
 
-    def tmpfiles(self):
-        """Generate some points in a temporary file and return the filename."""
+    def generate_data(self):
+        """Generate some points."""
         import random
         rand = random.Random(self.seed)
 
@@ -109,17 +110,14 @@ class RBF(_general._Base):
         print >>stderr, 'Vector used to generate points:', \
                 ','.join(str(x) for x in vec)
 
-        import os, tempfile
-        csvfd, csvfilename = tempfile.mkstemp()
-        csvfile = os.fdopen(csvfd, 'w')
+        datapoints = []
         inputs_constraints = ((-50, 50),) * self.data_dims
         inputs_cube = Cube(inputs_constraints)
         for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
             point_and_value = tuple(chain(point, (self.net_value(vec, point),)))
-            print >>csvfile, ','.join(str(x) for x in point_and_value)
-        csvfile.close()
-        return (csvfilename,)
+            datapoints.append(point_and_value)
+        return datapoints
 
 
 def itergroup(iterator, count):
@@ -176,12 +174,9 @@ def generate_points(bases, points, inputdims, randomseed):
     rbf.inputdims = inputdims
     rbf.npoints = points
 
-    csvfilename = rbf.tmpfiles()[0]
-    csvfile = open(csvfilename)
-    for line in csvfile:
-        print line,
-    from os import unlink
-    unlink(csvfilename)
+    points = rbf.generate_data()
+    for point in points:
+        print ','.join(str(x) for x in point)
 
 
 if __name__ == '__main__':
