@@ -117,7 +117,6 @@ class RBF(_general._Base):
         for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
             point_and_value = tuple(chain(point, (self.net_value(vec, point),)))
-            self.datapoints.append(point_and_value)
             print >>csvfile, ','.join(str(x) for x in point_and_value)
         csvfile.close()
         return (csvfilename,)
