@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
+import datetime
 import sys, operator
 
 import mrs
@@ -238,7 +239,14 @@ class StandardPSO(mrs.MapReduce):
         comparator = self.function.comparator
         particle = unpack(value)
         assert particle.id == int(key)
+
+        before = datetime.datetime.now()
         self.move_and_evaluate(particle)
+        after = datetime.datetime.now()
+        delta = after - before
+        seconds = (delta.days * 86400 + delta.seconds
+                + delta.microseconds / 1000000)
+        print 'pso_map: particle %s (%s seconds)' % (key, seconds)
 
         # Emit the particle without changing its id:
         yield (key, repr(particle))
@@ -261,6 +269,7 @@ class StandardPSO(mrs.MapReduce):
                 messages.append(record)
             else:
                 raise ValueError
+        print 'pso_reduce: particle %s (%s messages)' % (key, len(messages))
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
@@ -276,7 +285,8 @@ class StandardPSO(mrs.MapReduce):
         yield '0', value
 
     def findbest_reduce(self, key, value_iter):
-        particles = (Particle.unpack(value) for value in value_iter)
+        particles = [Particle.unpack(value) for value in value_iter]
+        print 'findbest_reduce: %s particles' % len(particles)
         best = self.findbest(particles)
         yield repr(best)
 
