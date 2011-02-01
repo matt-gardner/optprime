@@ -105,7 +105,7 @@ class Extended(Output):
 class Everything(Output):
     """Outputs the iteration, best value, best position, and elapsed time."""
 
-    args = frozenset(('best',))
+    args = frozenset(('best', 'iteration'))
 
     def start(self):
         from datetime import datetime
@@ -114,7 +114,8 @@ class Everything(Output):
 
     def __call__(self, **kwds):
         best = kwds['best']
-        iteration = best.iters
+        iteration = kwds['iteration']
+
         if iteration <= 0: return
         from datetime import datetime
         now = datetime.now()
