@@ -1,21 +1,14 @@
 from __future__ import division
 from itertools import izip, chain
+import math
 import _general
-
-try:
-    from scipy import stats
-    gaussian = stats.norm.pdf
-except ImportError:
-    from math import sqrt, exp, pi
-    def gaussian(x,scale=1.0):
-        return 1.0/(scale*sqrt(2*pi))*exp(-(x/scale)**2/2.0)
 
 #RBF_STDDEV = 10
 RBF_STDDEV = 25
 
 
 class RBF(_general._Base):
-    """Radial Basis Function Network
+    """Radial Basis Function Network trainer
 
     The function takes an RBF and returns the sum squared error over the
     dataset in the first file in 'datafiles'.
@@ -71,20 +64,19 @@ class RBF(_general._Base):
             sumsqerr += (output - self.net_value(vec, point)) ** 2
         return sumsqerr
 
-    def net_value( self, vec, point ):
+    def net_value(self, vec, point):
         """Return the value of the RBF network at a given point."""
         return sum(self.rbf_value(func, point) for func in \
                         itergroup(vec, 2 * self.data_dims + 1))
 
-    def rbf_value( self, params, point ):
+    def rbf_value(self, params, point):
         """Return the value of a single basis function at a given point."""
-        output_weight = abs(params[0])
+        output_weight = params[0]
         param_iter = itergroup(params[1:], 2)
 
-        sq_dist = sum((abs(weight) * (x - center) ** 2) for
-                (weight, center), x in izip(param_iter, point))
-
-        return output_weight * gaussian(sq_dist ** 0.5, scale=RBF_STDDEV)
+        return output_weight * sum(
+            (math.exp(-weight * (x - center) ** 2))
+                for ((weight, center), x) in izip(param_iter, point))
 
     def generate_data(self):
         """Generate some points."""
@@ -94,18 +86,15 @@ class RBF(_general._Base):
         self.data_dims = self.inputdims
         nbases = int(self.dims / (1 + 2 * self.data_dims))
 
-        # We'll limit constraints a bit for our generated data.
-        center_constraints = []
+        vec = []
         for i in xrange(nbases):
-            center_constraints.append((0, 50))
+            output_weight = rand.gammavariate(5, 5)
+            vec.append(output_weight)
             for j in xrange(self.data_dims):
-                center_constraints.append((0, 50))
-                center_constraints.append((-50, 50))
-                # Use this if you want to make the RBF centers more evenly spaced:
-                #center_constraints.append((-50 + 100 * i / nbases,
-                #    -50 + 100 * (i + 1) / nbases))
-        from amlpso.cubes.cube import Cube
-        vec = Cube(center_constraints).random_vec(rand)
+                input_weight = rand.gammavariate(5, 5)
+                center = rand.uniform(-50, 50)
+                vec.append(input_weight)
+                vec.append(center)
         from sys import stderr
         print >>stderr, 'Vector used to generate points:', \
                 ','.join(str(x) for x in vec)
@@ -115,7 +104,7 @@ class RBF(_general._Base):
         inputs_cube = Cube(inputs_constraints)
         for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
-            point_and_value = tuple(chain(point, (self.net_value(vec, point),)))
+            point_and_value = tuple(point) + (self.net_value(vec, point),)
             datapoints.append(point_and_value)
         return datapoints
 
@@ -167,7 +156,7 @@ def get_rbf_plot_func(inputdims, vec):
 
 
 def generate_points(nbases, points, inputdims, randomseed):
-    """Create a random RBF and generate points with it."""
+    """Create a random RBF network and generate points with it."""
 
     dims = nbases * (1 + 2 * inputdims)
     rbf = RBF(dims=dims)
