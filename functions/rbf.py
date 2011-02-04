@@ -166,7 +166,7 @@ def get_rbf_plot_func(inputdims, vec):
     return function
 
 
-def generate_points(bases, points, inputdims, randomseed):
+def generate_points(nbases, points, inputdims, randomseed):
     """Create a random RBF and generate points with it."""
 
     dims = nbases * (1 + 2 * inputdims)
@@ -191,7 +191,7 @@ if __name__ == '__main__':
             help='Number of Input Dimensions')
     parser.add_option('-r', '--randomseed', dest='rand', type='int',
             help='Random Seed for Bases')
-    parser.set_defaults(nbases=2, npoints=1000, inputdims=1, rand=0)
+    parser.set_defaults(nbases=2, npoints=1000, inputdims=1, rand=42)
 
     options, args = parser.parse_args()
     nbases = options.nbases
