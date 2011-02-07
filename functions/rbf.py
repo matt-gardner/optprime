@@ -68,6 +68,7 @@ class RBF(_general._Base):
 
     def net_value(self, vec, point):
         """Return the value of the RBF network at a given point."""
+        # Sum over the individual basis functions.
         return sum(self.rbf_value(func, point) for func in \
                         itergroup(vec, 2 * self.inputdims + 1))
 
@@ -77,6 +78,7 @@ class RBF(_general._Base):
         param_iter = itergroup(params[1:], 2)
         input_weight_multiplier = self.input_weight_multiplier()
 
+        # Sum over the dimensions of the data point.
         total = 0
         for ((weight, center), x) in izip(param_iter, point):
             # Ensure that the [inverse] weight stays above 0.
@@ -101,7 +103,7 @@ class RBF(_general._Base):
                 center = rand.uniform(0, 100)
                 vec.append(input_weight)
                 vec.append(center)
-        self.generating_vec = vec
+        self.generating_vec = tuple(vec)
 
     def generate_data(self, rand):
         """Generate some points."""
