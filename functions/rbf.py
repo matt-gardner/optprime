@@ -33,33 +33,35 @@ class RBF(_general._Base):
                 doc='Random seed used to generate points')
             )
 
-    def setup(self):
-        super(RBF,self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
-        self.data_dims = None
+    def setup(self, vec=None):
+        """Initialize the RBF function.
 
-        if self.datafiles:
-            datafile = self.datafiles.split()[0]
-            self.datapoints = [tuple(float(field) for field in line.split(','))
-                            for line in open(datafile)]
+        Allows an option vec option to specify the generating vector
+        (otherwise such a vector is randomly generated using the seed).
+        """
+        super(RBF, self).setup()
+        self._set_constraints(((0,100),) * self.dims)
+        self.nbases = int(self.dims / (1 + 2 * self.inputdims))
+
+        import random
+
+        if vec:
+            self.generating_vec = vec
         else:
-            self.datapoints = self.generate_data()
-
-        # Debugging:
-        #import os, tempfile
-        #from subprocess import Popen, PIPE
-        #self.debug_proc = Popen(('%s/bin/hadoop' % os.environ['HADOOP_HOME'],
-        #    'dfs', '-put', '-', tempfile.mktemp()), stdin=PIPE)
-        #example: print >>self.debug_proc.stdin, 'Hello!'
+            rand = random.Random(self.seed)
+            self.initialize_vec(rand)
+            from sys import stderr
+            print >>stderr, 'Vector used to generate points:', \
+                    ','.join(str(x) for x in self.generating_vec)
+        # Use a second Random instance so that the set of generated data
+        # is identical regardless of where the generating vector came from.
+        rand = random.Random(self.seed + 1)
+        self.generate_data(rand)
 
     def __call__(self, vec):
         """Evaluate sum squared error."""
         sumsqerr = 0.0
         for point in self.datapoints:
-            # Figure out the dimensionality of our dataset by looking at the
-            # first point in the file.
-            if self.data_dims is None:
-                self.data_dims = len(point) - 1
             output = point[-1]
             sumsqerr += (output - self.net_value(vec, point)) ** 2
         return sumsqerr
@@ -67,46 +69,53 @@ class RBF(_general._Base):
     def net_value(self, vec, point):
         """Return the value of the RBF network at a given point."""
         return sum(self.rbf_value(func, point) for func in \
-                        itergroup(vec, 2 * self.data_dims + 1))
+                        itergroup(vec, 2 * self.inputdims + 1))
 
     def rbf_value(self, params, point):
         """Return the value of a single basis function at a given point."""
         output_weight = params[0]
         param_iter = itergroup(params[1:], 2)
+        input_weight_multiplier = self.input_weight_multiplier()
 
-        return output_weight * sum(
-            (math.exp(-weight * (x - center) ** 2))
-                for ((weight, center), x) in izip(param_iter, point))
+        total = 0
+        for ((weight, center), x) in izip(param_iter, point):
+            # Ensure that the [inverse] weight stays above 0.
+            weight = max(0.01, weight)
+            total += math.exp(-input_weight_multiplier / weight
+                    * (x - center) ** 2)
+        return output_weight * total
 
-    def generate_data(self):
-        """Generate some points."""
-        import random
-        rand = random.Random(self.seed)
+    def input_weight_multiplier(self):
+        """Convert from range [0, 100] to a "nice-looking" range."""
+        return self.nbases / self.inputdims / 20
 
-        self.data_dims = self.inputdims
-        nbases = int(self.dims / (1 + 2 * self.data_dims))
-
+    def initialize_vec(self, rand):
+        """Create a generating vector."""
         vec = []
-        for i in xrange(nbases):
-            output_weight = rand.gammavariate(5, 5)
+        for i in xrange(self.nbases):
+            # Note: expected value of gamma is (alpha * beta)
+            output_weight = rand.gammavariate(20, 2)
             vec.append(output_weight)
-            for j in xrange(self.data_dims):
-                input_weight = rand.gammavariate(5, 5)
-                center = rand.uniform(-50, 50)
+            for j in xrange(self.inputdims):
+                input_weight = rand.gammavariate(20, 2)
+                center = rand.uniform(0, 100)
                 vec.append(input_weight)
                 vec.append(center)
-        from sys import stderr
-        print >>stderr, 'Vector used to generate points:', \
-                ','.join(str(x) for x in vec)
+        self.generating_vec = vec
+
+    def generate_data(self, rand):
+        """Generate some points."""
+        from amlpso.cubes.cube import Cube
+        inputs_constraints = ((0, 100),) * self.inputdims
+        inputs_cube = Cube(inputs_constraints)
+        vec = self.generating_vec
 
         datapoints = []
-        inputs_constraints = ((-50, 50),) * self.data_dims
-        inputs_cube = Cube(inputs_constraints)
         for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
             point_and_value = tuple(point) + (self.net_value(vec, point),)
             datapoints.append(point_and_value)
-        return datapoints
+        self.datapoints = datapoints
 
 
 def itergroup(iterator, count):
@@ -129,24 +138,24 @@ def itergroup(iterator, count):
         yield value
 
 
-def get_rbf_plot_func(inputdims, vec):
+def vec_to_rbf(inputdims, vec):
     """Get an easy to use function for the given number of input dimensions and
     the given vec."""
     try:
-        split = vec.split(' ')
-        if len(split) < 2:
-            raise ValueError
-        vec = tuple(float(s) for s in split)
-    except (AttributeError, ValueError):
-        split = vec.split(',')
-        if len(split) < 2:
-            raise ValueError
-        vec = tuple(float(s) for s in split)
+        vec = tuple(float(s) for s in vec.split(','))
+    except AttributeError:
+        pass
     if len(vec) % (2 * inputdims + 1) != 0:
         raise ValueError('Wrong number of input dimensions in given vec!')
-    rbf = RBF()
-    rbf.data_dims = inputdims
-    if inputdims == 1:
+    rbf = RBF(inputdims=inputdims)
+    rbf.setup(vec=vec)
+    return rbf
+
+
+def get_rbf_plot_func(rbf):
+    """Get an easy to use function for the given RBF instance."""
+    vec = rbf.generating_vec
+    if rbf.inputdims == 1:
         def function(x):
             return rbf.net_value(vec, (x,))
     else:
@@ -159,12 +168,10 @@ def generate_points(nbases, points, inputdims, randomseed):
     """Create a random RBF network and generate points with it."""
 
     dims = nbases * (1 + 2 * inputdims)
-    rbf = RBF(dims=dims)
-    rbf.inputdims = inputdims
-    rbf.npoints = points
+    rbf = RBF(dims=dims, inputdims=inputdims, npoints=points, seed=randomseed)
+    rbf.setup()
 
-    points = rbf.generate_data()
-    for point in points:
+    for point in rbf.datapoints:
         print ','.join(str(x) for x in point)
 
 
