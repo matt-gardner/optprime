@@ -78,8 +78,10 @@ class RBF(_general._Base):
         # Sum over the dimensions of the data point.
         total = 0
         for ((weight, center), x) in izip(param_iter, point):
-            # Ensure that the [inverse] weight stays above 0.
-            weight = max(0.01, weight)
+            # Penalty for the [inverse] weight stays above 0.
+            if weight < 0.01:
+                total += abs(weight - 0.01) ** 2
+                weight = 0.01
             total += math.exp(-input_weight_multiplier / weight
                     * (x - center) ** 2)
         return output_weight * total
