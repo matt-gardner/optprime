@@ -3,9 +3,6 @@ from itertools import izip, chain
 import math
 import _general
 
-#RBF_STDDEV = 10
-RBF_STDDEV = 25
-
 
 class RBF(_general._Base):
     """Radial Basis Function Network trainer
@@ -149,7 +146,7 @@ def vec_to_rbf(inputdims, vec):
         pass
     if len(vec) % (2 * inputdims + 1) != 0:
         raise ValueError('Wrong number of input dimensions in given vec!')
-    rbf = RBF(inputdims=inputdims)
+    rbf = RBF(dims=len(vec), inputdims=inputdims)
     rbf.setup(vec=vec)
     return rbf
 
