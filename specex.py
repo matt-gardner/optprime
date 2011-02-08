@@ -31,7 +31,6 @@ class SpecExPSO(standardpso.StandardPSO):
     def run_batch(self, job, batch, tty):
         """Performs a single batch of Speculative Execution PSO using MapReduce.
         """
-        self.setup()
         rand = self.initialization_rand(batch)
 
         particles = list(self.topology.newparticles(batch, rand))
