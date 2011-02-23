@@ -20,13 +20,17 @@ class RBF(_general._Base):
     from mrs.param import Param
 
     _params = dict(
-            datafiles=Param(default='', 
+            datafiles=Param(default='',
                 doc='File with training data (CSV format)'),
-            npoints=Param(default=1000, type='int', 
+            npoints=Param(default=1000, type='int',
                 doc='Number of generated data points'),
-            inputdims=Param(default=1, type='int', 
+            inputdims=Param(default=1, type='int',
                 doc='Dimensionality of generated points'),
-            seed=Param(default=42, type='int', 
+            evenly_spaced=Param(type='bool',
+                doc='Evenly space the basis centers in the generating network'),
+            data_noise=Param(default=0, type='float',
+                doc='Std dev of Gaussian noise added to the generated data'),
+            seed=Param(default=42, type='int',
                 doc='Random seed used to generate points')
             )
 
@@ -97,6 +101,9 @@ class RBF(_general._Base):
 
     def initialize_vec(self, rand):
         """Create a generating vector."""
+        if self.evenly_spaced and self.inputdims != 1:
+            raise NotImplementedError('The evenly_spaced option '
+                    'only currently works with inputdims=1.')
         vec = []
         for i in xrange(self.nbases):
             # Note: expected value of gamma is (alpha * beta)
@@ -104,7 +111,10 @@ class RBF(_general._Base):
             vec.append(output_weight)
             for j in xrange(self.inputdims):
                 input_weight = rand.gammavariate(20, 2)
-                center = rand.uniform(0, 100)
+                if self.evenly_spaced:
+                    center = (i + .5) * (100 / self.nbases)
+                else:
+                    center = rand.uniform(0, 100)
                 vec.append(input_weight)
                 vec.append(center)
         self.generating_vec = tuple(vec)
@@ -119,7 +129,10 @@ class RBF(_general._Base):
         datapoints = []
         for i in xrange(self.npoints):
             point = inputs_cube.random_vec(rand)
-            point_and_value = tuple(point) + (self.net_value(vec, point),)
+            value = self.net_value(vec, point)
+            if self.data_noise:
+                value += rand.normalvariate(0, self.data_noise)
+            point_and_value = tuple(point) + (value,)
             datapoints.append(point_and_value)
         self.datapoints = datapoints
 
