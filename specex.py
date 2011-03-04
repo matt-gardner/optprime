@@ -60,6 +60,9 @@ class SpecExPSO(standardpso.StandardPSO):
         new_data = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
 
+        del init_particles
+        del neighbors
+
         output = param.instantiate(self.opts, 'out')
         output.start()
 
@@ -67,19 +70,19 @@ class SpecExPSO(standardpso.StandardPSO):
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
         last_swarm = new_data
-        last_interm_data = None
-        last_tmp_swarm = None
-        old_swarm = None
         last_out_data = None
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
             interm_data = job.map_data(last_swarm, self.sepso_map, 
                     splits=numtasks, parter=self.mod_partition)
+            last_swarm.close()
             tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
                     splits=numtasks, parter=self.mod_partition)
+            interm_data.close()
             next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
                     splits=numtasks, parter=self.mod_partition)
+            tmp_swarm.close()
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
@@ -92,6 +95,7 @@ class SpecExPSO(standardpso.StandardPSO):
                             self.collapse_map, splits=1)
                     next_out_data = job.reduce_data(collapsed_data,
                             self.findbest_reduce, splits=1)
+                    collapsed_data.close()
 
             waitset = set()
             if iteration > 1:
@@ -120,6 +124,7 @@ class SpecExPSO(standardpso.StandardPSO):
                                 record = unpack(particle)
                                 if type(record) == Particle:
                                     particles.append(record)
+                    last_out_data.close()
 
                 waitset -= set(ready)
 
@@ -138,23 +143,8 @@ class SpecExPSO(standardpso.StandardPSO):
                     kwds['best'] = best
                 output(**kwds)
 
-            # Now that last_swarm is ready, last_interm_data and old_swarm can
-            # be deleted.
-            if old_swarm:
-                old_swarm.close()
-                old_swarm = None
-            if last_interm_data:
-                last_interm_data.close()
-                last_interm_data = None
-            if last_tmp_swarm:
-                last_tmp_swarm.close()
-                last_tmp_swarm = None
-
             # Set up for the next iteration.
             last_iteration = iteration
-            old_swarm = last_swarm
-            last_interm_data = interm_data
-            last_tmp_swarm = tmp_swarm
             last_swarm = next_swarm
             last_out_data = next_out_data
 
