@@ -76,7 +76,8 @@ class SpecExPSO(standardpso.StandardPSO):
         for iteration in xrange(1, 1 + self.opts.iters):
             interm_data = job.map_data(last_swarm, self.sepso_map, 
                     splits=numtasks, parter=self.mod_partition)
-            last_swarm.close()
+            if last_swarm != last_out_data:
+                last_swarm.close()
             tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
                     splits=numtasks, parter=self.mod_partition)
             interm_data.close()
