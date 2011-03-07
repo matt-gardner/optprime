@@ -101,7 +101,7 @@ class SpecExPSO(standardpso.StandardPSO):
             waitset = set()
             if iteration > 1:
                 waitset.add(last_swarm)
-            if last_out_data:
+            if last_out_data is not None:
                 waitset.add(last_out_data)
             while waitset:
                 if tty:
