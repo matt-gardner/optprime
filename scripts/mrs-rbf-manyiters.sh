@@ -3,7 +3,7 @@ JOBNAME="rbf-manyiters"
 $HOME/clone/mrs/examples/potato.py -n "$JOBNAME" -h /admin/potatoes/all6 \
     $HOME/clone/amlpso/specex.py \
     -f rbf.RBF -d 30 \
-    --func-npoints=50000 --func-data-noise=2 --func-evenly-spaced \
+    --func-npoints=10000 --func-data-noise=2 --func-evenly-spaced \
     -t Rand --top-num=18 --top-neighbors=2 \
     -s PickBestChild -p ManyItersSevenEvals \
-    -i 1000 -b 3 -o Everything
+    -i 1000 -b 15 -o Everything \
