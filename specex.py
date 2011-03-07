@@ -57,7 +57,7 @@ class SpecExPSO(standardpso.StandardPSO):
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(init_particles)
-        new_data = job.local_data(init_particles, parter=self.mod_partition,
+        last_swarm = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
 
         del init_particles
@@ -69,7 +69,6 @@ class SpecExPSO(standardpso.StandardPSO):
         # Perform iterations.  Note: we submit the next iteration while the
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
-        last_swarm = new_data
         last_out_data = None
         next_out_data = None
         last_iteration = 0
@@ -126,6 +125,7 @@ class SpecExPSO(standardpso.StandardPSO):
                                 if type(record) == Particle:
                                     particles.append(record)
                     last_out_data.close()
+                    last_out_data = None
 
                 waitset -= set(ready)
 
@@ -143,6 +143,7 @@ class SpecExPSO(standardpso.StandardPSO):
                         best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
+                del kwds
 
             # Set up for the next iteration.
             last_iteration = iteration
