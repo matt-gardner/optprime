@@ -375,7 +375,7 @@ class StandardPSO(mrs.MapReduce):
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
-        from mrs.impl import SEED_BITS
+        from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
         offset = self.MOTION_OFFSET + base * (p.id + base * (p.iters + base *
             (p.batches + base * swarmid)))
@@ -393,7 +393,7 @@ class StandardPSO(mrs.MapReduce):
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
-        from mrs.impl import SEED_BITS
+        from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
         offset = self.NEIGHBORHOOD_OFFSET + base * (n.id + base * (n.iters +
             base * (n.batches + base * swarmid)))
@@ -404,7 +404,7 @@ class StandardPSO(mrs.MapReduce):
 
         This ensures that each batch will have a unique initial swarm state.
         """
-        from mrs.impl import SEED_BITS
+        from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
         offset = self.INITIALIZATION_OFFSET + base * batch
         return self.random(offset)
