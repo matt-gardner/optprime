@@ -73,14 +73,14 @@ class SpecExPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.sepso_map, 
+            interm_data = job.map_data(last_swarm, self.sepso_map,
                     splits=numtasks, parter=self.mod_partition)
             if last_swarm != last_out_data:
                 last_swarm.close()
-            tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
+            tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce,
                     splits=numtasks, parter=self.mod_partition)
             interm_data.close()
-            next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
+            next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map,
                     splits=numtasks, parter=self.mod_partition)
             tmp_swarm.close()
 
@@ -173,7 +173,7 @@ class SpecExPSO(standardpso.StandardPSO):
         yield (str(particle.id), repr(particle))
 
         # Emit a message for each dependent particle.  In this case we're just
-        # sending around the whole particle as a message, because the 
+        # sending around the whole particle as a message, because the
         # speculative stuff needs it.
         message = particle.make_message_particle()
         for dep_id in self.specmethod.message_ids(particle):
@@ -212,15 +212,15 @@ class SpecExPSO(standardpso.StandardPSO):
         assert particle, 'Missing particle %s in the reduce step' % key
         particle.tokens += tokens
 
-        newparticle = self.specmethod.pick_child(particle, it1messages, 
+        newparticle = self.specmethod.pick_child(particle, it1messages,
                 children)
         newparticle.tokens = particle.tokens
-        
-        # Specmethod.pick_child updates the child's pbest, so all you need to 
+
+        # Specmethod.pick_child updates the child's pbest, so all you need to
         # finish the second iteration is to update the nbest.
         # To update nbest, you need a set of actual neighbors at the second
         # iteration - that's why we use newparticle instead of particle here.
-        it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
+        it2neighbors = self.specmethod.pick_neighbor_children(newparticle,
                 it1messages, it2messages)
         best = self.findbest(it2neighbors)
         if newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator):
@@ -232,20 +232,20 @@ class SpecExPSO(standardpso.StandardPSO):
         # to the third iteration, then get its neighbors at the third iteration.
         self.just_move(newparticle)
 
-        # In a dynamic topology, the neighbors at iteration three could be 
+        # In a dynamic topology, the neighbors at iteration three could be
         # different than the neighbors at iteration two, so find the neighbors
         # again (newparticle is now at iteration 3, so this will pick the right
         # neighbors), then move them.  In order to move correctly, they need to
         # update their nbest.
         it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
                 it1messages, it2messages)
-        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
+        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages,
                 it2messages)
         for neighbor in it3neighbors:
             self.just_move(neighbor)
 
         # In a dynamic topology, you might not already know your iteration 3
-        # neighbors' iteration 2 pbest.  In order to speculate correctly, you 
+        # neighbors' iteration 2 pbest.  In order to speculate correctly, you
         # need that information.  Turns out we already have it, so update nbest
         # for your iteration 3 particle with your neighbors' pbest.
         best = self.findbest(it3neighbors)
@@ -284,10 +284,10 @@ class SpecExPSO(standardpso.StandardPSO):
         yield repr(best)
 
     ##########################################################################
-    # Helper Functions 
+    # Helper Functions
 
     def just_evaluate(self, p):
-        """Evaluates the particle's position without moving it.  Updates the 
+        """Evaluates the particle's position without moving it.  Updates the
         pbest of the particle if necessary."""
         value = self.function(p.pos)
         p.update_value(value, self.function.comparator)
@@ -343,7 +343,7 @@ def update_parser(parser):
 
     # There are some sticky issues involved with doing this speculatively
     # that I haven't worried about.  If we ever feel like we should do this,
-    # we need make some changes to the code.  Until then, disabling it is 
+    # we need make some changes to the code.  Until then, disabling it is
     # better than leaving it in and having it not work.
     parser.remove_option('--transitive-best')
 

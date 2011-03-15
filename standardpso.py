@@ -45,7 +45,7 @@ class StandardPSO(mrs.MapReduce):
                 if (self.opts.batches > 1):
                     print "# Batch %d" % batch
                 self.bypass_batch(batch)
-                print "# DONE" 
+                print "# DONE"
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
@@ -105,7 +105,7 @@ class StandardPSO(mrs.MapReduce):
 
     def run(self, job):
         """Run Mrs PSO function
-        
+
         This is run on the master.
         """
         if not self.cli_startup():
@@ -125,7 +125,7 @@ class StandardPSO(mrs.MapReduce):
                 if (self.opts.batches > 1):
                     print "# Batch %d" % batch
                 self.run_batch(job, batch, tty)
-                print "# DONE" 
+                print "# DONE"
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
