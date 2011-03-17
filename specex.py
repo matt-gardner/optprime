@@ -240,7 +240,7 @@ class SpecExPSO(standardpso.StandardPSO):
         it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
                 it1messages, it2messages)
         self.specmethod.update_neighbor_nbest(it3neighbors, it1messages,
-                it2messages)
+                it2messages, it3=True)
         for neighbor in it3neighbors:
             self.just_move(neighbor)
 

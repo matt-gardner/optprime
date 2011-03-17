@@ -5,7 +5,7 @@ from particle import Particle, SEParticle, Dummy
 
 class _SpecMethod(ParamObj):
     """A method for performing speculative execution.
-    
+
     Things such as how to pick the speculative branch to accept, how much
     pruning to do, and how to determine which neighbors to accept are defined
     here.
@@ -18,7 +18,7 @@ class _SpecMethod(ParamObj):
 
     ##########################################################################
     # Methods that must be overridden
-    
+
     def pick_child(self, particle, it1messages, children):
         """Returns particle at iteration 2 (minus nbest).
 
@@ -50,7 +50,7 @@ class _SpecMethod(ParamObj):
         Neighbors is the set of neighbors at iteration 2 minus their nbest.
         Get whatever info is needed from it1messages and it2messages to update
         the nbest of all particles in neighbors.
-        
+
         Some speculative methods skip this step to save on messages that
         need to be passed, so the function would be empty.
         """
@@ -68,7 +68,7 @@ class _SpecMethod(ParamObj):
         raise NotImplementedError
 
     ##########################################################################
-    # Methods that probably should not be overridden.  
+    # Methods that probably should not be overridden.
 
     def generate_children(self, particle, neighbors):
         """Yield the speculative children of a particle given it and its
@@ -98,7 +98,7 @@ class _SpecMethod(ParamObj):
 
 class ReproducePSO(_SpecMethod):
     """Reproduce standard PSO, in case you couldn't tell from the class name...
-    
+
     Perform speculative execution in such a way that the original PSO is
     reproduced exactly, just two iterations at a time.  A lot of communication
     is required to make sure the behavior is exactly the same as the original
@@ -191,15 +191,18 @@ class ReproducePSO(_SpecMethod):
             neighbor_children.append(realchild)
         return neighbor_children
 
-    def update_neighbor_nbest(self, neighbors, it1messages, it2messages):
+    def update_neighbor_nbest(self, neighbors, it1messages, it2messages,
+            it3=False):
         """Self explanatory?  I think so.  Update your neighbors' nbest with
         the messages that they received.
         """
+        if it3 and self.pruner.no_neighbors:
+            return
         comparator = self.specex.function.comparator
         for neighbor in neighbors:
             n = self.pick_neighbor_children(neighbor, it1messages, it2messages)
             best = self.specex.findbest(n)
-            # Neighbors here are new particles, not messages, so you can, in 
+            # Neighbors here are new particles, not messages, so you can, in
             # fact you must, modify their state with nbest_cand.
             neighbor.nbest_cand(best.pbestpos, best.pbestval, comparator)
 
@@ -355,13 +358,14 @@ class SocialPromotion(ReproducePSO):
 
 class _Pruner(ParamObj):
     """Speculative Pruner
-    
+
     You have an infinite tree of possible executions.  This class defines
-    one method, generate_children, that decides how far to go down the 
+    one method, generate_children, that decides how far to go down the
     tree, and in what way.
     """
 
     def setup(self, specex):
+        self.no_neighbors = False
         self.specex = specex
 
     def generate_children(self, particle, neighbors):
@@ -404,6 +408,10 @@ class OneCompleteIteration(_Pruner):
 
 
 class NoNBestUpdate(_Pruner):
+
+    def setup(self, specex):
+        super(NoNBestUpdate, self).setup(specex)
+        self.no_neighbors = True
 
     def generate_children(self, particle, neighbors):
         """Just speculate two children, the two where we assume we didn't get
@@ -475,9 +483,10 @@ class LastBranch(_Pruner):
         self.specex.just_move(child)
         yield child
 
+
 class TokenBasedOneIter(_Pruner):
     """Produce however many children you have tokens for.
-    
+
     Start with no nbest, no pbest.  If you have two tokens, move to pbest, but
     no nbest.  Then take the last branch.  Then just start randomly guessing.
     """
@@ -561,6 +570,10 @@ class ManyItersSevenEvals(ManyIters):
     tokens.  All of the particles do the same number of evaluations.
     """
 
+    def setup(self, specex):
+        super(ManyItersSevenEvals, self).setup(specex)
+        self.no_neighbors = True
+
     def generate_children(self, particle, neighbors):
         # Iteration 2, NN
         child = SEParticle(particle, specpbest=False, specnbestid=-1)
@@ -608,9 +621,10 @@ class ManyItersSevenEvals(ManyIters):
         self.specex.just_move(child)
         yield child
 
+
 class TokenBasedManyIters(ManyIters):
     """Produce however many children you have tokens for.
-    
+
     Start with no nbest, no pbest.  If you have two tokens, move to pbest, but
     no nbest.  Then go more than one iteration ahead, the same branches.
     """
