@@ -57,8 +57,11 @@ class SpecExPSO(standardpso.StandardPSO):
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(init_particles)
-        new_data = job.local_data(init_particles, parter=self.mod_partition,
+        last_swarm = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
+
+        del init_particles
+        del neighbors
 
         output = param.instantiate(self.opts, 'out')
         output.start()
@@ -66,20 +69,20 @@ class SpecExPSO(standardpso.StandardPSO):
         # Perform iterations.  Note: we submit the next iteration while the
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
-        last_swarm = new_data
-        last_interm_data = None
-        last_tmp_swarm = None
-        old_swarm = None
         last_out_data = None
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.sepso_map, 
+            interm_data = job.map_data(last_swarm, self.sepso_map,
                     splits=numtasks, parter=self.mod_partition)
-            tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce, 
+            if last_swarm != last_out_data:
+                last_swarm.close()
+            tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce,
                     splits=numtasks, parter=self.mod_partition)
-            next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map, 
+            interm_data.close()
+            next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map,
                     splits=numtasks, parter=self.mod_partition)
+            tmp_swarm.close()
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
@@ -92,11 +95,12 @@ class SpecExPSO(standardpso.StandardPSO):
                             self.collapse_map, splits=1)
                     next_out_data = job.reduce_data(collapsed_data,
                             self.findbest_reduce, splits=1)
+                    collapsed_data.close()
 
             waitset = set()
             if iteration > 1:
                 waitset.add(last_swarm)
-            if last_out_data:
+            if last_out_data is not None:
                 waitset.add(last_out_data)
             while waitset:
                 if tty:
@@ -120,6 +124,8 @@ class SpecExPSO(standardpso.StandardPSO):
                                 record = unpack(particle)
                                 if type(record) == Particle:
                                     particles.append(record)
+                    last_out_data.close()
+                    last_out_data = None
 
                 waitset -= set(ready)
 
@@ -137,24 +143,10 @@ class SpecExPSO(standardpso.StandardPSO):
                         best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
-
-            # Now that last_swarm is ready, last_interm_data and old_swarm can
-            # be deleted.
-            if old_swarm:
-                old_swarm.close()
-                old_swarm = None
-            if last_interm_data:
-                last_interm_data.close()
-                last_interm_data = None
-            if last_tmp_swarm:
-                last_tmp_swarm.close()
-                last_tmp_swarm = None
+                del kwds
 
             # Set up for the next iteration.
             last_iteration = iteration
-            old_swarm = last_swarm
-            last_interm_data = interm_data
-            last_tmp_swarm = tmp_swarm
             last_swarm = next_swarm
             last_out_data = next_out_data
 
@@ -181,7 +173,7 @@ class SpecExPSO(standardpso.StandardPSO):
         yield (str(particle.id), repr(particle))
 
         # Emit a message for each dependent particle.  In this case we're just
-        # sending around the whole particle as a message, because the 
+        # sending around the whole particle as a message, because the
         # speculative stuff needs it.
         message = particle.make_message_particle()
         for dep_id in self.specmethod.message_ids(particle):
@@ -220,15 +212,15 @@ class SpecExPSO(standardpso.StandardPSO):
         assert particle, 'Missing particle %s in the reduce step' % key
         particle.tokens += tokens
 
-        newparticle = self.specmethod.pick_child(particle, it1messages, 
+        newparticle = self.specmethod.pick_child(particle, it1messages,
                 children)
         newparticle.tokens = particle.tokens
-        
-        # Specmethod.pick_child updates the child's pbest, so all you need to 
+
+        # Specmethod.pick_child updates the child's pbest, so all you need to
         # finish the second iteration is to update the nbest.
         # To update nbest, you need a set of actual neighbors at the second
         # iteration - that's why we use newparticle instead of particle here.
-        it2neighbors = self.specmethod.pick_neighbor_children(newparticle, 
+        it2neighbors = self.specmethod.pick_neighbor_children(newparticle,
                 it1messages, it2messages)
         best = self.findbest(it2neighbors)
         if newparticle.nbest_cand(best.pbestpos, best.pbestval, comparator):
@@ -240,20 +232,20 @@ class SpecExPSO(standardpso.StandardPSO):
         # to the third iteration, then get its neighbors at the third iteration.
         self.just_move(newparticle)
 
-        # In a dynamic topology, the neighbors at iteration three could be 
+        # In a dynamic topology, the neighbors at iteration three could be
         # different than the neighbors at iteration two, so find the neighbors
         # again (newparticle is now at iteration 3, so this will pick the right
         # neighbors), then move them.  In order to move correctly, they need to
         # update their nbest.
         it3neighbors = self.specmethod.pick_neighbor_children(newparticle,
                 it1messages, it2messages)
-        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages, 
+        self.specmethod.update_neighbor_nbest(it3neighbors, it1messages,
                 it2messages)
         for neighbor in it3neighbors:
             self.just_move(neighbor)
 
         # In a dynamic topology, you might not already know your iteration 3
-        # neighbors' iteration 2 pbest.  In order to speculate correctly, you 
+        # neighbors' iteration 2 pbest.  In order to speculate correctly, you
         # need that information.  Turns out we already have it, so update nbest
         # for your iteration 3 particle with your neighbors' pbest.
         best = self.findbest(it3neighbors)
@@ -292,10 +284,10 @@ class SpecExPSO(standardpso.StandardPSO):
         yield repr(best)
 
     ##########################################################################
-    # Helper Functions 
+    # Helper Functions
 
     def just_evaluate(self, p):
-        """Evaluates the particle's position without moving it.  Updates the 
+        """Evaluates the particle's position without moving it.  Updates the
         pbest of the particle if necessary."""
         value = self.function(p.pos)
         p.update_value(value, self.function.comparator)
@@ -351,7 +343,7 @@ def update_parser(parser):
 
     # There are some sticky issues involved with doing this speculatively
     # that I haven't worried about.  If we ever feel like we should do this,
-    # we need make some changes to the code.  Until then, disabling it is 
+    # we need make some changes to the code.  Until then, disabling it is
     # better than leaving it in and having it not work.
     parser.remove_option('--transitive-best')
 
