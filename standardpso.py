@@ -142,7 +142,7 @@ class StandardPSO(mrs.MapReduce):
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(init_particles)
-        new_data = job.local_data(init_particles, parter=self.mod_partition,
+        last_swarm = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
 
         output = param.instantiate(self.opts, 'out')
@@ -151,17 +151,17 @@ class StandardPSO(mrs.MapReduce):
         # Perform iterations.  Note: we submit the next iteration while the
         # previous is being computed.  Also, the next PSO iteration depends on
         # the same data as the output phase, so they can run concurrently.
-        last_swarm = new_data
-        last_interm_data = None
-        old_swarm = None
         last_out_data = None
         next_out_data = None
         last_iteration = 0
         for iteration in xrange(1, 1 + self.opts.iters):
             interm_data = job.map_data(last_swarm, self.pso_map,
                     splits=numtasks, parter=self.mod_partition)
+            if last_swarm != last_out_data:
+                last_swarm.close()
             next_swarm = job.reduce_data(interm_data, self.pso_reduce,
                     splits=numtasks, parter=self.mod_partition)
+            interm_data.close()
 
             next_out_data = None
             if not ((iteration - 1) % output.freq):
@@ -174,6 +174,7 @@ class StandardPSO(mrs.MapReduce):
                             self.collapse_map, splits=1)
                     next_out_data = job.reduce_data(collapsed_data,
                             self.findbest_reduce, splits=1)
+                    collapsed_data.close()
 
             waitset = set()
             if iteration > 1:
@@ -196,6 +197,8 @@ class StandardPSO(mrs.MapReduce):
                         for bucket in last_out_data:
                             for reduce_id, particle in bucket:
                                 particles.append(Particle.unpack(particle))
+                    last_out_data.close()
+                    last_out_data = None
 
                 waitset -= set(ready)
 
@@ -213,15 +216,7 @@ class StandardPSO(mrs.MapReduce):
                         best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
-
-            # Now that last_swarm is ready, last_interm_data and old_swarm can
-            # be deleted.
-            if old_swarm:
-                old_swarm.close()
-                old_swarm = None
-            if last_interm_data:
-                last_interm_data.close()
-                last_interm_data = None
+                del kwds
 
             # Set up for the next iteration.
             last_iteration = iteration
@@ -246,7 +241,6 @@ class StandardPSO(mrs.MapReduce):
         delta = after - before
         seconds = (delta.days * 86400 + delta.seconds
                 + delta.microseconds / 1000000)
-        print 'pso_map: particle %s (%s seconds)' % (key, seconds)
 
         # Emit the particle without changing its id:
         yield (key, repr(particle))
@@ -269,7 +263,6 @@ class StandardPSO(mrs.MapReduce):
                 messages.append(record)
             else:
                 raise ValueError
-        print 'pso_reduce: particle %s (%s messages)' % (key, len(messages))
 
         assert particle, 'Missing particle %s in the reduce step' % key
 
@@ -286,7 +279,6 @@ class StandardPSO(mrs.MapReduce):
 
     def findbest_reduce(self, key, value_iter):
         particles = [Particle.unpack(value) for value in value_iter]
-        print 'findbest_reduce: %s particles' % len(particles)
         best = self.findbest(particles)
         yield repr(best)
 
