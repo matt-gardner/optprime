@@ -2,8 +2,11 @@ from __future__ import division
 import basic
 from amlpso.vector import Vector
 
-from Numeric import array, dot, transpose, identity, zeros
-from LinearAlgebra import inverse
+from mrs.param import Param
+from numpy import array, dot, transpose, identity, zeros
+from numpy.random.mtrand import RandomState
+from numpy.linalg import inv
+from particle import Particle
 
 import sys
 
@@ -25,14 +28,15 @@ class Kalman(basic._Base):
                 doc='Strength of the relationship between nbest and pbest' ),
         )
 
-    def __init__(self, *args, **kargs):
-        super(Kalman, self).__init__(*args, **kargs)
+    def setup(self, function, *args, **kargs):
+        super(Kalman, self).setup(function, *args, **kargs)
+        self.constraints = function.constraints
 
         self.filters = {}
 
     def getfilter(self, particle):
-        if id(particle) in self.filters:
-            return self.filters[id(particle)]
+        if particle.id in self.filters:
+            return self.filters[particle.id]
 
         cfac = self.cfac
         dims = self.dims
@@ -53,31 +57,31 @@ class Kalman(basic._Base):
         # velocity has a covariance based on a static number.  THIS WORKS.  DO
         # NOT CHANGE IT.
 
-        pcov = identity(dims*2, typecode='d')
+        pcov = identity(dims*2)
         for i in xrange(dims):
             pcov[i][i] = cfac * lengths[i]
             pcov[i+dims][i+dims] = pcov[i][i]
 
-        trans = identity(dims*2, typecode='d')
+        trans = identity(dims*2)
         for i in xrange(dims):
             trans[i][i+dims] = self.velmultiplier # Add velocity to position
 
-        tcov = identity(dims*2, typecode='d')
+        tcov = identity(dims*2)
         for i in xrange(dims):
             tcov[i][i] = cfac * lengths[i]
             tcov[i+dims][i+dims] = tcov[i][i]
 
         if not self.usepbest:
-            cchar = identity(dims, typecode='d')
-            ccov = identity(dims, typecode='d')
+            cchar = identity(dims)
+            ccov = identity(dims)
             for i in xrange(dims):
                 ccov[i][i] = cfac * lengths[i]
         else:
-            cchar = identity(dims*2, typecode='d')
+            cchar = identity(dims*2)
             for i in xrange(dims):
                 cchar[i+dims][i] = 1
                 cchar[i+dims][i+dims] = 0
-            ccov = identity(dims*2, typecode='d')
+            ccov = identity(dims*2)
             for i in xrange(dims):
                 v = cfac * lengths[i]
                 ccov[i][i] = v
@@ -90,14 +94,32 @@ class Kalman(basic._Base):
         # TODO: Add this back in if we need to
         #kalman.add( particle.pos )
 
-        self.filters[id(particle)] = kalman
-        return self.filters[id(particle)]
+        self.filters[particle.id] = kalman
+        return self.filters[particle.id]
 
     def __call__(self, particle):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
+        # I'm not sure what "given a particle that it should be moving toward"
+        # means.  We only take one argument, and that's "this particle"
 
-        kalman = self.getfilter(particle, particle.rand)
+        # In a Bypass mrs implementation (and possibly also with Serial),
+        # Kalman motion should work just fine.  However, in parallel, the state
+        # required for each particle's motion is not persistent.  We would need
+        # to add a "motion state" field to the particle, or something similar,
+        # so that each Slave task can access the state that is supposed to be
+        # building up in the Kalman filter
+
+        # Note that care needs to be taken in speculative methods to not
+        # clobber the state that is passed around, or superfluously add to the
+        # state when other particles are evaluating the motion, or when
+        # speculative children are being moved.  This needs to be rethought to
+        # be compatible with speculative evaluation.
+
+        raise NotImplementedError("Kalman motion requires state that is not "
+                "persistent in mrs")
+
+        kalman = self.getfilter(particle)
 
         grel = particle.nbestpos - particle.pos
         if self.norandscale:
@@ -120,9 +142,12 @@ class Kalman(basic._Base):
         else:
             mean, var = kalman.filt()
 
-        raise NotImplementedError("Hey!  RandomArray.multivariate_normal "
-                "can't take a Random instance!")
-        newstate = multivariate_normal(mean, var)
+        # Bad!  We should find a better way to initialize the random state
+        # instead of just drawing a random number from the particle rand
+        # This does give reproducible results, it just makes the random numbers
+        # from state less good
+        state = RandomState(particle.rand.randint(0, sys.maxint))
+        newstate = state.multivariate_normal(mean, var)
         return Vector(newstate[:self.dims]),Vector(newstate[self.dims:])
 
 
@@ -150,7 +175,7 @@ class KalmanFilter(object):
 
         # Pad the characteristic matrix in case it isn't already
         if num_obs != num_states and len(char[0]) != num_states:
-            self.h = zeros((num_obs,num_states),typecode='f')
+            self.h = zeros((num_obs,num_states))
             carr = array( char ) * 1.0
             for row1, row2 in zip(self.h,carr):
                 for i, x in enumerate(row2):
@@ -179,7 +204,7 @@ class KalmanFilter(object):
         ftf = ddot(self.f, self.sig_t, self.f_T)
 
         g1 = ddot(ftf + self.sig_x, self.h_T)
-        g2 = inverse(ddot(self.h, ftf + self.sig_x, self.h_T) + self.sig_z)
+        g2 = inv(ddot(self.h, ftf + self.sig_x, self.h_T) + self.sig_z)
         gain = ddot(g1, g2)
 
         # Now we have the Kalman gain matrix.  With that, we calculate the
