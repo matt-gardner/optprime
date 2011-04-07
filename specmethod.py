@@ -138,7 +138,7 @@ class ReproducePSO(_SpecMethod):
         return ids
 
     def pick_child(self, particle, it1messages, children):
-        """To find the correct branch that PSO would have taken, you need to 
+        """To find the correct branch that PSO would have taken, you need to
         see whether or not the particle updated its pbest and find out which
         of the particle's neighbors was the new nbest.  Then update the child
         that matches that branch and return it.  Nothing that got passed into
@@ -149,10 +149,10 @@ class ReproducePSO(_SpecMethod):
         # Look at the messages to see which branch you actually took.
         # You only need an isbetter to figure out the branch, and then you
         # don't modify the state of the messages with an nbest_cand (as this
-        # same method gets called with a message as 'particle' from 
+        # same method gets called with a message as 'particle' from
         # pick_neighbor_children).
         best_neighbor = self.specex.findbest(neighbors)
-        if particle.isbetter(best_neighbor.pbestval, particle.nbestval, 
+        if particle.isbetter(best_neighbor.pbestval, particle.nbestval,
                 comparator):
             nbestid = best_neighbor.id
         else:
