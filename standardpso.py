@@ -164,7 +164,7 @@ class StandardPSO(mrs.MapReduce):
             interm_data.close()
 
             next_out_data = None
-            if not ((iteration - 1) % output.freq):
+            if (iteration - 1) % output.freq == 0:
                 if 'particles' in output.args:
                     next_out_data = next_swarm
                 elif 'best' in output.args:
