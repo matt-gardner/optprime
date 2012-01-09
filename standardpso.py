@@ -185,7 +185,8 @@ class StandardPSO(mrs.MapReduce):
                 if tty:
                     ready = job.wait(timeout=1.0, *waitset)
                     if last_swarm in ready:
-                        print >>tty, "Finished iteration", last_iteration
+                        #print >>tty, "Finished iteration", last_iteration
+                        pass
                 else:
                     ready = job.wait(*waitset)
 
