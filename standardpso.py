@@ -77,7 +77,10 @@ class StandardPSO(mrs.MapReduce):
                 if 'best' in output.args:
                     kwds['best'] = self.findbest(particles)
                 output(**kwds)
-        output.finish()
+                if self.stop_condition(particles):
+                    output.finish(True)
+                    return
+        output.finish(False)
 
     def bypass_iteration(self, particles, swarmid=0):
         """Runs one iteration of PSO.
@@ -216,6 +219,9 @@ class StandardPSO(mrs.MapReduce):
                         best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
+                if self.stop_condition(particles):
+                    output.finish(True)
+                    return
                 del kwds
 
             # Set up for the next iteration.
@@ -225,7 +231,7 @@ class StandardPSO(mrs.MapReduce):
             last_swarm = next_swarm
             last_out_data = next_out_data
 
-        output.finish()
+        output.finish(False)
 
     ##########################################################################
     # Primary MapReduce
@@ -304,6 +310,16 @@ class StandardPSO(mrs.MapReduce):
             if (best is None) or comparator(cand, best):
                 best = cand
         return best
+
+    def stop_condition(self, candidates):
+        """Determines whether the stopping criteria has been met.
+
+        In other words, whether any particle has succeeded (e.g., at 0).
+        """
+        for cand in candidates:
+            if self.function.is_opt(cand.value):
+                return True
+        return False
 
     def cli_startup(self):
         """Checks whether the repository is dirty and reports options.

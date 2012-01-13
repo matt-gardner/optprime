@@ -1,4 +1,7 @@
 from __future__ import division
+
+import operator
+
 from mrs.param import ParamObj, Param
 
 class _Base(ParamObj):
@@ -10,14 +13,15 @@ class _Base(ParamObj):
                 doc='Relative center of function, between 0 and 1 per dim.'),
             maximize=Param(type='bool',
                 doc='Maximize the function instead of minimizing.'),
+            success=Param(default=10.0**(-10), type='float',
+                doc='Success value (the algorithm stops when reached)'),
             )
 
     def master_log(self):
-        # print something after the master's logs
+        """print something after the master's logs"""
         pass
 
     def setup(self):
-        import operator
         self._set_constraints(((0,0),)*self.dims)
         if self.maximize:
             self.comparator = operator.gt
@@ -39,3 +43,10 @@ class _Base(ParamObj):
 
     def __call__(self, vec):
         return 0
+
+    def is_opt(self, value):
+        """Determines whether the value is officially optimal.
+
+        In other words, whether the value is sufficiently low/high.
+        """
+        return self.comparator(value, self.success)
