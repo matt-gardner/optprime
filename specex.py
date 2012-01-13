@@ -143,6 +143,9 @@ class SpecExPSO(standardpso.StandardPSO):
                         best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
+                if self.stop_condition(particles):
+                    output.finish(True)
+                    return
                 del kwds
 
             # Set up for the next iteration.
@@ -150,7 +153,7 @@ class SpecExPSO(standardpso.StandardPSO):
             last_swarm = next_swarm
             last_out_data = next_out_data
 
-        output.finish()
+        output.finish(False)
 
     ##########################################################################
     # Primary MapReduce

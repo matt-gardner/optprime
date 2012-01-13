@@ -32,7 +32,7 @@ class Output(ParamObj):
     def start(self):
         pass
 
-    def finish(self):
+    def finish(self, success):
         pass
 
 
@@ -252,7 +252,7 @@ class Stats(Output):
                     numstagnant, '\tStagnant for more than 30 iterations:',\
                     really_stagnant
 
-    def finish(self):
+    def finish(self, success):
         print 'Stats:'
         print 'Individual Particles: (Percent stagnant, percent particle'+\
                 ' was the gbest)'
@@ -338,7 +338,7 @@ class BranchStats(Output):
             self.prevnbestid[particle.id] = self.positions[particle.nbestpos]
         print iteration, best.pbestval
 
-    def finish(self):
+    def finish(self, success):
         print '\nStats:'
         print '\nIndividual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
         avenotpnotn = []
