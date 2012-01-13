@@ -78,9 +78,11 @@ class SubswarmPSO(standardpso.StandardPSO):
                 if 'best' in output.args:
                     kwds['best'] = self.findbest(chain(*subswarms))
                 output(**kwds)
-        output.finish()
+                if self.stop_condition(particles):
+                    output.finish(True)
+                    return
+        output.finish(False)
 
-        self.cleanup()
 
     ##########################################################################
     # MapReduce Implementation
@@ -175,6 +177,9 @@ class SubswarmPSO(standardpso.StandardPSO):
                         best = self.findbest(particles)
                     kwds['best'] = best
                 output(**kwds)
+                if self.stop_condition(particles):
+                    output.finish(True)
+                    return
 
             # Now that last_pso_data is ready, last_interm_data and
             # old_pso_data can be deleted:
@@ -192,7 +197,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             last_pso_data = next_pso_data
             last_out_data = next_out_data
 
-        output.finish()
+        output.finish(False)
 
     ##########################################################################
     # Primary MapReduce
