@@ -138,72 +138,77 @@ class StandardPSO(mrs.MapReduce):
         rand = self.initialization_rand(batch)
         init_particles = [(str(p.id), repr(p)) for p in
                 self.topology.newparticles(batch, rand)]
-
         numtasks = self.opts.numtasks
         if not numtasks:
             numtasks = len(init_particles)
-        last_swarm = job.local_data(init_particles, parter=self.mod_partition,
+        start_swarm = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
+        last_data = job.map_data(start_swarm, self.pso_map,
+                        splits=numtasks, parter=self.mod_partition)
 
         output = param.instantiate(self.opts, 'out')
         output.start()
 
-        # Perform iterations.  Note: we submit the next iteration while the
-        # previous is being computed.  Also, the next PSO iteration depends on
-        # the same data as the output phase, so they can run concurrently.
-        last_out_data = None
-        next_out_data = None
-        last_iteration = 0
-        for iteration in xrange(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.pso_map,
-                    splits=numtasks, parter=self.mod_partition)
-            if last_swarm != last_out_data:
-                last_swarm.close()
-            next_swarm = job.reduce_data(interm_data, self.pso_reduce,
-                    splits=numtasks, parter=self.mod_partition)
-            interm_data.close()
-
-            next_out_data = None
-            if (iteration - 1) % output.freq == 0:
+        next_out = None
+        last_out = None
+        for i in xrange(0, self.opts.iters):
+            if i % output.freq == 0:
+                curr_swarm = job.reduce_data(last_data, self.pso_reduce,
+                        splits=numtasks, parter=self.mod_partition)
+                next_data = job.map_data(curr_swarm, self.pso_map,
+                        splits=numtasks, parter=self.mod_partition)
                 if 'particles' in output.args:
-                    next_out_data = next_swarm
+                    next_out = curr_swarm
                 elif 'best' in output.args:
                     # Create a new output_data MapReduce phase to find the
                     # best particle in the population.
-                    collapsed_data = job.map_data(next_swarm,
+                    collapsed_data = job.map_data(curr_swarm,
                             self.collapse_map, splits=1)
-                    next_out_data = job.reduce_data(collapsed_data,
+                    next_out = job.reduce_data(collapsed_data,
                             self.findbest_reduce, splits=1)
                     collapsed_data.close()
+            elif i <= self.opts.iters:
+                next_out = None
+                ### next four lines for testing.....
+                curr_swarm = job.reduce_data(last_data, self.pso_reduce,
+                        splits=numtasks, parter=self.mod_partition)       
+                next_data = job.map_data(curr_swarm, self.pso_map,
+                        splits=numtasks, parter=self.mod_partition) 
 
+                #next_data = job.reducemap_data(last_data, self.pso_reduce,
+                #        self.pso_map, splits=numtasks, parter=self.mod_partition)
+
+            last_data.close()
+
+            # Wait for last submissions to finish and then print out results
             waitset = set()
-            if iteration > 1:
+            if i > 0:
                 waitset.add(last_swarm)
-            if last_out_data is not None:
-                waitset.add(last_out_data)
+            if last_out is not None:
+                waitset.add(last_out)
             while waitset:
                 if tty:
                     ready = job.wait(timeout=1.0, *waitset)
                     if last_swarm in ready:
-                        print >>tty, "Finished iteration", last_iteration
+                        print >>tty, "Finished iteration", (i-1)
                 else:
                     ready = job.wait(*waitset)
 
                 # Download output data and store as `particles`.
-                if last_out_data in ready:
+                if last_out in ready:
                     if 'best' in output.args or 'particles' in output.args:
-                        last_out_data.fetchall()
+                        last_out.fetchall()
                         particles = []
-                        for bucket in last_out_data:
+                        for bucket in last_out:
                             for reduce_id, particle in bucket:
                                 particles.append(Particle.unpack(particle))
-                    last_out_data.close()
-                    last_out_data = None
+                    last_out.close()
+                    last_out = None
 
                 waitset -= set(ready)
 
             # Print out the results.
-            if last_iteration > 0 and not ((last_iteration - 1) % output.freq):
+            if i > 0 and not ((i - 1) % output.freq):
                 kwds = {}
                 if 'iteration' in output.args:
                     kwds['iteration'] = last_iteration
@@ -219,11 +224,9 @@ class StandardPSO(mrs.MapReduce):
                 del kwds
 
             # Set up for the next iteration.
-            last_iteration = iteration
-            old_swarm = last_swarm
-            last_interm_data = interm_data
-            last_swarm = next_swarm
-            last_out_data = next_out_data
+            last_data = next_data
+            last_swarm = curr_swarm
+            last_out = next_out
 
         output.finish()
 
