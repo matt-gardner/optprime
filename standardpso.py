@@ -169,14 +169,8 @@ class StandardPSO(mrs.MapReduce):
                     collapsed_data.close()
             elif i <= self.opts.iters:
                 next_out = None
-                ### next four lines for testing.....
-                curr_swarm = job.reduce_data(last_data, self.pso_reduce,
-                        splits=numtasks, parter=self.mod_partition)       
-                next_data = job.map_data(curr_swarm, self.pso_map,
-                        splits=numtasks, parter=self.mod_partition) 
-
-                #next_data = job.reducemap_data(last_data, self.pso_reduce,
-                #        self.pso_map, splits=numtasks, parter=self.mod_partition)
+                next_data = job.reducemap_data(last_data, self.pso_reduce,
+                        self.pso_map, splits=numtasks, parter=self.mod_partition)
 
             last_data.close()
 
@@ -190,7 +184,8 @@ class StandardPSO(mrs.MapReduce):
                 if tty:
                     ready = job.wait(timeout=1.0, *waitset)
                     if last_swarm in ready:
-                        print >>tty, "Finished iteration", (i-1)
+                        #print >>tty, "Finished iteration", (i)
+                        pass
                 else:
                     ready = job.wait(*waitset)
 
