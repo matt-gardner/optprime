@@ -129,6 +129,7 @@ class StandardPSO(mrs.MapReduce):
                     print "# Batch %d" % batch
                 self.run_batch(job, batch, tty)
                 print "# DONE"
+            return True
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
@@ -148,14 +149,14 @@ class StandardPSO(mrs.MapReduce):
                 splits=numtasks)
         last_data = job.map_data(start_swarm, self.pso_map,
                         splits=numtasks, parter=self.mod_partition)
-
+        start_swarm.close()
         output = param.instantiate(self.opts, 'out')
         output.start()
 
         next_out = None
         last_out = None
-        for i in xrange(0, self.opts.iters):
-            if i % output.freq == 0:
+        for last_i in xrange(1, self.opts.iters+1):
+            if (last_i-1) % output.freq == 0:
                 curr_swarm = job.reduce_data(last_data, self.pso_reduce,
                         splits=numtasks, parter=self.mod_partition)
                 next_data = job.map_data(curr_swarm, self.pso_map,
@@ -167,10 +168,11 @@ class StandardPSO(mrs.MapReduce):
                     # best particle in the population.
                     collapsed_data = job.map_data(curr_swarm,
                             self.collapse_map, splits=1)
+                    curr_swarm.close()
                     next_out = job.reduce_data(collapsed_data,
                             self.findbest_reduce, splits=1)
                     collapsed_data.close()
-            elif i <= self.opts.iters:
+            elif last_i < self.opts.iters:
                 next_out = None
                 next_data = job.reducemap_data(last_data, self.pso_reduce,
                         self.pso_map, splits=numtasks, parter=self.mod_partition)
@@ -178,17 +180,14 @@ class StandardPSO(mrs.MapReduce):
             last_data.close()
 
             # Wait for last submissions to finish and then print out results
-            waitset = set()
-            if i > 0:
-                waitset.add(last_swarm)
+            waitset = set([last_data])
             if last_out is not None:
                 waitset.add(last_out)
             while waitset:
                 if tty:
                     ready = job.wait(timeout=1.0, *waitset)
-                    if last_swarm in ready:
-                        #print >>tty, "Finished iteration", (i)
-                        pass
+                    if last_data in ready:
+                        print >>tty, "Finished iteration", last_i
                 else:
                     ready = job.wait(*waitset)
 
@@ -202,31 +201,30 @@ class StandardPSO(mrs.MapReduce):
                                 particles.append(Particle.unpack(particle))
                     last_out.close()
                     last_out = None
+                    
+                    # Print out the results.
+                    kwds = {}
+                    if 'iteration' in output.args:
+                        kwds['iteration'] = last_iteration
+                    if 'particles' in output.args:
+                        kwds['particles'] = particles
+                    if 'best' in output.args:
+                        if len(particles) == 1:
+                            best = particles[0]
+                        else:
+                            best = self.findbest(particles)
+                        kwds['best'] = best
+                    output(**kwds)
+                    if self.stop_condition(particles):
+                        output.finish(True)
+                        return
+                    del kwds
+                    particles = None
 
                 waitset -= set(ready)
 
-            # Print out the results.
-            if i > 0 and not ((i - 1) % output.freq):
-                kwds = {}
-                if 'iteration' in output.args:
-                    kwds['iteration'] = last_iteration
-                if 'particles' in output.args:
-                    kwds['particles'] = particles
-                if 'best' in output.args:
-                    if len(particles) == 1:
-                        best = particles[0]
-                    else:
-                        best = self.findbest(particles)
-                    kwds['best'] = best
-                output(**kwds)
-                if self.stop_condition(particles):
-                    output.finish(True)
-                    return
-                del kwds
-
             # Set up for the next iteration.
             last_data = next_data
-            last_swarm = curr_swarm
             last_out = next_out
 
         output.finish(False)
