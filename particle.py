@@ -6,7 +6,7 @@ import operator
 
 class Particle(object):
     """Particle for Particle Swarm Optimization.
-    
+
     The particle assumes that the position and velocity are Vectors so it
     doesn't have to coerce them.
 
@@ -147,7 +147,7 @@ class Particle(object):
 
     def nbest_cand(self, potential_pos, potential_val, comparator):
         """Update nbest if the given value is better than the current nbest.
-        
+
         >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
         >>> p.nbestval = -12.0
         >>> p.nbestpos
@@ -164,7 +164,7 @@ class Particle(object):
         -15
         >>> p.nbestpos
         2.0,2.0
-        >>> 
+        >>>
         """
         if self.isbetter(potential_val, self.nbestval, comparator):
             self.nbestpos = potential_pos
@@ -192,7 +192,7 @@ class Particle(object):
         True
         >>> Particle.isbetter(4,None,operator.gt)
         True
-        >>> 
+        >>>
         """
         if potential is None:
             return False
@@ -568,7 +568,7 @@ class MessageParticle(Particle):
         p.iters = self.iters
         mp = MessageParticle(p)
         return mp
-    
+
     def __repr__(self):
         fields = (self.id, self.batches, self.iters, self.pos, self.vel,
                 self.value, self.pbestpos, self.pbestval, self.nbestpos,

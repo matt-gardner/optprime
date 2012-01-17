@@ -23,7 +23,7 @@ class _SpecMethod(ParamObj):
         """Returns particle at iteration 2 (minus nbest).
 
         particle is at iteration 1, children are all speculative children of
-        particle (at iteration 2).  it1messages contain all messages that 
+        particle (at iteration 2).  it1messages contain all messages that
         particle received in the Reduce phase.
 
         This function cannot modify the state of any of its arguments, or else
@@ -36,10 +36,10 @@ class _SpecMethod(ParamObj):
     def pick_neighbor_children(self, particle, it1messages, it2messages):
         """Returns particle's neighbors at iteration 2 (minus nbest).
 
-        it1messages contains all iteration 1 messages particle received, not 
+        it1messages contains all iteration 1 messages particle received, not
         all of which are actual neighbors of particle.  it2messages contains
         all iteration 2 (speculative) messages particle received.  Pick the
-        actual neighbors from it1messages, and pick their children from 
+        actual neighbors from it1messages, and pick their children from
         it2messages.  Update the children's pbest and return them.
         """
         raise NotImplementedError
@@ -78,11 +78,11 @@ class _SpecMethod(ParamObj):
     def get_neighbors(self, particle, messages):
         """Get the neighbors of particle from the set of messages.
 
-        It is a bit less work if the topology is symmetric, but this works 
-        in general.  
-        
-        Also, messing with the neighbors' iteration is because of dynamic 
-        topologies - if the particle wants its neighbors at a certain 
+        It is a bit less work if the topology is symmetric, but this works
+        in general.
+
+        Also, messing with the neighbors' iteration is because of dynamic
+        topologies - if the particle wants its neighbors at a certain
         iteration, make sure the neighbors are also on that iteration.
         """
         realneighbors = []
@@ -118,7 +118,7 @@ class ReproducePSO(_SpecMethod):
         """Decide which particles need messages from this particle.
 
         Only Particles ever have to send messages three neighbors down.
-        When you send to a neighbor's neighbor you need to increment the 
+        When you send to a neighbor's neighbor you need to increment the
         iteration to make sure you're sending it to the right neighbor in the
         end.
         """
@@ -176,7 +176,7 @@ class ReproducePSO(_SpecMethod):
         raise RuntimeError("Didn't find a child that matched the right branch!")
 
     def pick_neighbor_children(self, particle, it1messages, it2messages):
-        """This function grabs the particle's neighbors from it1messages, 
+        """This function grabs the particle's neighbors from it1messages,
         figures out which of their children is the correct one to take from
         it2messages, updates their pbest (done in pick_child), and returns them.
         """
@@ -208,15 +208,15 @@ class ReproducePSO(_SpecMethod):
 
     def update_child_bests(self, particle, best_neighbor, child):
         """Update the pbest and nbest of a child particle from its parent.
-        
-        In speculative execution this is necessary because the child 
-        particle doesn't know if the value that it found is better than the 
-        value the parent found at its position; it only updated its pbest in 
+
+        In speculative execution this is necessary because the child
+        particle doesn't know if the value that it found is better than the
+        value the parent found at its position; it only updated its pbest in
         relation to its previous pbestval.
         Also, it doesn't know the value of the function at the nbest position
         that it guessed.  It has to get that from its parent.
-        So, this function passes along the iteration 1 nbestval that was 
-        determined in pick_child and updates the iteration 2 pbest.  The 
+        So, this function passes along the iteration 1 nbestval that was
+        determined in pick_child and updates the iteration 2 pbest.  The
         child is at iteration 2 (minus nbest) after this method.
 
         Best is passed in separately from particle to be sure that the state
@@ -225,9 +225,9 @@ class ReproducePSO(_SpecMethod):
         """
         comparator = self.specex.function.comparator
         # Passing along the nbestval from iteration 1
-        if Particle.isbetter(best_neighbor.pbestval, child.nbestval, 
+        if Particle.isbetter(best_neighbor.pbestval, child.nbestval,
                 comparator):
-            # In the ReproducePSO case this first line could be an assert, but 
+            # In the ReproducePSO case this first line could be an assert, but
             # not in the PickBestChild case.
             child.nbestpos = best_neighbor.pbestpos
             child.nbestval = best_neighbor.pbestval
@@ -263,7 +263,7 @@ class PickBestChild(ReproducePSO):
         """Instead of picking the branch that matches PSO, just take the branch
         that produced the best value.  If there are no speculative children for
         whatever reason, return the particle like in SocialPromotion.
-        
+
         Nothing that got passed into this function should have modified state
         at the end.
         """
@@ -315,10 +315,10 @@ class SocialPromotion(ReproducePSO):
         # Look at the messages to see which branch you actually took.
         # You only need an isbetter to figure out the branch, and then you
         # don't modify the state of the messages with an nbest_cand (as this
-        # same method gets called with a message as 'particle' from 
+        # same method gets called with a message as 'particle' from
         # pick_neighbor_children).
         best_neighbor = self.specex.findbest(neighbors)
-        if particle.isbetter(best_neighbor.pbestval, particle.nbestval, 
+        if particle.isbetter(best_neighbor.pbestval, particle.nbestval,
                 comparator):
             nbestid = best_neighbor.id
         else:
