@@ -65,7 +65,7 @@ class StandardPSO(mrs.MapReduce):
         output = param.instantiate(self.opts, 'out')
         output.start()
         for iteration in xrange(1, 1 + self.opts.iters):
-            self.bypass_iteration(particles)
+            self.bypass_iteration(particles, batch)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
             if not ((iteration-1) % output.freq):
@@ -82,12 +82,14 @@ class StandardPSO(mrs.MapReduce):
                     return
         output.finish(False)
 
-    def bypass_iteration(self, particles, swarmid=0):
+    def bypass_iteration(self, particles, batchid, swarmid=0):
         """Runs one iteration of PSO.
 
         The swarmid is used for seed initialization when this is used in
         subswarms.
         """
+        self.randomize_function_center(batchid)
+
         # Update position and value.
         for p in particles:
             self.move_and_evaluate(p, swarmid)
@@ -242,6 +244,8 @@ class StandardPSO(mrs.MapReduce):
         assert particle.id == int(key)
 
         before = datetime.datetime.now()
+
+        self.randomize_function_center(particle.batches)
         self.move_and_evaluate(particle)
         after = datetime.datetime.now()
         delta = after - before
@@ -298,6 +302,7 @@ class StandardPSO(mrs.MapReduce):
             newpos, newvel = self.motion(p)
         else:
             newpos, newvel = p.pos, p.vel
+        self.randomize_function_center(p.batches)
         # TODO(?): value = self.function(newpos, p.rand)
         value = self.function(newpos)
         p.update(newpos, newvel, value, self.function.comparator)
@@ -372,6 +377,7 @@ class StandardPSO(mrs.MapReduce):
     INITIALIZATION_OFFSET = 2
     SUBSWARM_OFFSET = 3
     NEIGHBORHOOD_OFFSET = 4
+    FUNCTION_OFFSET = 5
 
     def set_motion_rand(self, p, swarmid=0):
         """Makes a Random for the given particle and saves it to `p.rand`.
@@ -416,6 +422,26 @@ class StandardPSO(mrs.MapReduce):
         base = 2 ** SEED_BITS
         offset = self.INITIALIZATION_OFFSET + base * batch
         return self.random(offset)
+
+    def function_rand(self, batch):
+        """Returns a new Random for the given batch number.
+
+        This should be used just before performing motion on the particle.
+
+        Note that the Random depends on the particle id, iteration, batch, and
+        swarmid.  The swarmid is only needed in the subswarms case (to make
+        sure that the particles in different subswarms have unique seeds), but
+        it doesn't hurt the standardpso case to include it.
+        """
+        from mrs.main import SEED_BITS
+        base = 2 ** SEED_BITS
+        offset = self.FUNCTION_OFFSET + base * batch
+        return self.random(offset)
+
+    def randomize_function_center(self, batch):
+        """Sets the random function center for the given batch number."""
+        rand = self.function_rand(batch)
+        self.function.randomize_center(rand)
 
 
 ##############################################################################
