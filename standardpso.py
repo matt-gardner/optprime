@@ -2,7 +2,9 @@
 
 from __future__ import division
 import datetime
-import sys, operator
+import operator
+import sys
+import time
 
 import mrs
 from mrs import param
@@ -351,8 +353,8 @@ class StandardPSO(mrs.MapReduce):
 
         # Report command-line options.
         if not self.opts.quiet:
-            import email
-            date = email.Utils.formatdate(localtime=True)
+            now = time.localtime()
+            date = time.strftime("%a, %d %b %Y %H:%M:%S +0000", now)
             print '#', sys.argv[0]
             print '# Date:', date
             print '# Git Status:'
