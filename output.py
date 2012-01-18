@@ -43,7 +43,7 @@ class Basic(Output):
 
     def __call__(self, **kwds):
         """Output the current state of the simulation.
-        
+
         In this particular instance, it just dumps stuff out to stdout, and it
         only outputs the globally best value in the swarm.
         """
@@ -214,7 +214,7 @@ class Stats(Output):
                 if particle.nbestval != self.prevnbest[particle.id]:
                     pass
                 # Didn't update either - stagnant particle
-                else: 
+                else:
                     numstagnant += 1
                     self.stagnant_count[particle.id] += 1
                     self.iters_stagnant[particle.id] += 1
@@ -376,7 +376,7 @@ class BranchStats(Output):
         notpbutn = sum(avenotpbutn)/len(avenotpbutn)
         pandn = sum(avepandn)/len(avepandn)
         print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
-        
+
         print '\nAverages: (notN, N)'
         notp = sum(avenotn)/len(avenotn)
         p = sum(aven)/len(aven)

@@ -101,7 +101,7 @@ class PSOData(object):
 
     def statistics(self, key, trim):
         """Finds low, median, and high values after trimming outliers.
-        
+
         Note that if trim is 2, and we have 20 samples, this is the 10th,
         50th, and 90th percentiles.
         """
