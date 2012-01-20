@@ -147,86 +147,64 @@ class StandardPSO(mrs.MapReduce):
             numtasks = len(init_particles)
         start_swarm = job.local_data(init_particles, parter=self.mod_partition,
                 splits=numtasks)
-        last_data = job.map_data(start_swarm, self.pso_map,
-                        splits=numtasks, parter=self.mod_partition)
+        data = job.map_data(start_swarm, self.pso_map, splits=numtasks,
+                parter=self.mod_partition)
         start_swarm.close()
+        
         output = param.instantiate(self.opts, 'out')
         output.start()
-
-        next_out = None
-        last_out = None
-        for last_i in xrange(1, self.opts.iters+1):
-            if (last_i-1) % output.freq == 0:
-                curr_swarm = job.reduce_data(last_data, self.pso_reduce,
+        
+        Q_MAX = 4
+        data_list = list([(0, data)])
+        out_list = list()
+        for i in xrange(1, self.opts.iters+1+Q_MAX):
+            if i <= self.opts.iters:
+                if (i-1) % output.freq == 0:
+                    out_data = job.reduce_data(data, self.pso_reduce,
                         splits=numtasks, parter=self.mod_partition)
-                next_data = job.map_data(curr_swarm, self.pso_map,
-                        splits=numtasks, parter=self.mod_partition)
-                if 'particles' in output.args:
-                    next_out = curr_swarm
-                elif 'best' in output.args:
-                    # Create a new output_data MapReduce phase to find the
-                    # best particle in the population.
-                    collapsed_data = job.map_data(curr_swarm,
-                            self.collapse_map, splits=1)
-                    curr_swarm.close()
-                    next_out = job.reduce_data(collapsed_data,
-                            self.findbest_reduce, splits=1)
-                    collapsed_data.close()
-            elif last_i < self.opts.iters:
-                next_out = None
-                next_data = job.reducemap_data(last_data, self.pso_reduce,
-                        self.pso_map, splits=numtasks, parter=self.mod_partition)
-
-            last_data.close()
-
-            # Wait for last submissions to finish and then print out results
-            waitset = set([last_data])
-            if last_out is not None:
-                waitset.add(last_out)
-            while waitset:
-                if tty:
-                    ready = job.wait(timeout=1.0, *waitset)
-                    if last_data in ready:
-                        print >>tty, "Finished iteration", last_i
+                    out_list.append((i, out_data))
+                    data = job.map_data(out_data, self.pso_map, splits=numtasks,
+                        parter=self.mod_partition)
                 else:
+                    data = job.reducemap_data(data, self.pso_reduce,
+                        self.pso_map, splits=numtasks, parter=self.mod_partition)
+                data_list.append((i, data))
+                
+            if i >= Q_MAX:
+                if data_list:
+                    data_i, old_data = data_list.pop(0)
+                    waitset = set([old_data])
+                    got_data = False
+                while not got_data or (i == self.opts.iters+Q_MAX and out_list):
+                    if out_list:
+                        out_i, out = out_list[0]
+                        waitset.add(out)
                     ready = job.wait(*waitset)
-
-                # Download output data and store as `particles`.
-                if last_out in ready:
-                    if 'best' in output.args or 'particles' in output.args:
-                        last_out.fetchall()
-                        particles = []
-                        for bucket in last_out:
-                            for reduce_id, particle in bucket:
-                                particles.append(Particle.unpack(particle))
-                    last_out.close()
-                    last_out = None
-                    
-                    # Print out the results.
-                    kwds = {}
-                    if 'iteration' in output.args:
-                        kwds['iteration'] = last_iteration
-                    if 'particles' in output.args:
-                        kwds['particles'] = particles
-                    if 'best' in output.args:
-                        if len(particles) == 1:
-                            best = particles[0]
-                        else:
-                            best = self.findbest(particles)
-                        kwds['best'] = best
-                    output(**kwds)
-                    if self.stop_condition(particles):
-                        output.finish(True)
-                        return
-                    del kwds
-                    particles = None
-
-                waitset -= set(ready)
-
-            # Set up for the next iteration.
-            last_data = next_data
-            last_out = next_out
-
+                    if old_data in ready:
+                        old_data.close()
+                        got_data = True
+                    elif out in ready:
+                        del out_list[0]
+                        if 'best' in output.args or 'particles' in output.args:
+                            out.fetchall()
+                            particles = []
+                            for bucket in out:
+                                for reduce_id, particle in bucket:
+                                    particles.append(Particle.unpack(particle))
+                        out.close()
+                        kwds = {}
+                        if 'iteration' in output.args:
+                            kwds['iteration'] = last_iteration
+                        if 'particles' in output.args:
+                            kwds['particles'] = particles
+                        if 'best' in output.args:
+                            kwds['best'] = self.findbest(particles)
+                        output(**kwds)
+                        if self.stop_condition(particles):
+                            output.finish(True)
+                            return
+                    waitset -= set(ready)
+                                            
         output.finish(False)
 
     ##########################################################################
@@ -300,6 +278,9 @@ class StandardPSO(mrs.MapReduce):
 
     def findbest(self, candidates):
         """Returns the best particle or message from the given candidates."""
+        if len(candidates) == 1:
+            return candidates[0]
+        
         comparator = self.function.comparator
         best = None
         for cand in candidates:
