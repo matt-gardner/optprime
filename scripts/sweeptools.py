@@ -47,6 +47,9 @@ def run_batch(command, pwd, stdout_path, stderr_path):
             % (errdir, errfile))
     proc.stdin.write('cd %s\n' % pwd)
     proc.stdin.write(command)
+    proc.stdin.write('if [[ ! -s "$ERR_FILENAME" ]]; then\n')
+    proc.stdin.write('  rm "$ERR_FILENAME"\n')
+    proc.stdin.write('fi\n')
     proc.stdin.close()
     proc.wait()
 
