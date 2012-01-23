@@ -280,7 +280,6 @@ class StandardPSO(mrs.MapReduce):
         """Returns the best particle or message from the given candidates."""
         if len(candidates) == 1:
             return candidates[0]
-        
         comparator = self.function.comparator
         best = None
         for cand in candidates:
