@@ -23,8 +23,11 @@ class Output(ParamObj):
             )
 
     def __init__(self, *args, **kwds):
-        super(Output, self).__init__(args, kwds)
+        super(Output, self).__init__(*args, **kwds)
         assert self.args.issubset(VALID_ARGS)
+        self._tty = None
+        self._tty_failed = False
+        self.succeeded = False
 
     def __call__(self, **kwds):
         raise NotImplementedError()
@@ -32,8 +35,26 @@ class Output(ParamObj):
     def start(self):
         pass
 
-    def finish(self, success):
+    def success(self):
+        """Called to signify that the swarm found the global optimum."""
+        self.succeeded = True
+
+    def finish(self):
         pass
+
+    def print_to_tty(self, string):
+        if not self._tty and not self._tty_failed:
+            try:
+                self._tty = open('/dev/tty', 'w')
+            except IOError:
+                self._tty_failed = True
+        if self._tty:
+            print >>self._tty, string
+
+    def __del__(self):
+        if self._tty:
+            self._tty.close()
+            self._tty = None
 
 
 class Basic(Output):
@@ -252,7 +273,7 @@ class Stats(Output):
                     numstagnant, '\tStagnant for more than 30 iterations:',\
                     really_stagnant
 
-    def finish(self, success):
+    def finish(self):
         print 'Stats:'
         print 'Individual Particles: (Percent stagnant, percent particle'+\
                 ' was the gbest)'
@@ -282,7 +303,8 @@ class BranchStats(Output):
 
     args = frozenset(('iteration', 'particles', 'best'))
 
-    def __init__(self):
+    def __init__(self, *args, **kwds):
+        super(BranchStats, self).__init__(*args, **kwds)
         self.iters = 0
         self.prevpbest = dict()
         self.prevnbest = dict()
@@ -338,7 +360,7 @@ class BranchStats(Output):
             self.prevnbestid[particle.id] = self.positions[particle.nbestpos]
         print iteration, best.pbestval
 
-    def finish(self, success):
+    def finish(self):
         print '\nStats:'
         print '\nIndividual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
         avenotpnotn = []

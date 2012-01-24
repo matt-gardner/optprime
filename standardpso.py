@@ -14,7 +14,7 @@ from particle import Particle, Message, unpack
 # TODO: allow the initial set of particles to be given
 
 
-class StandardPSO(mrs.MapReduce):
+class StandardPSO(mrs.IterativeMR):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
@@ -32,6 +32,13 @@ class StandardPSO(mrs.MapReduce):
     ##########################################################################
     # Bypass Implementation
 
+    def batch_header(self, batch):
+        # Separate by two blank lines and a header.
+        print
+        print
+        if (self.opts.batches > 1):
+            print "# Batch %d" % batch
+
     def bypass(self):
         """Run a "native" version of PSO without MapReduce."""
 
@@ -41,12 +48,11 @@ class StandardPSO(mrs.MapReduce):
         # Perform the simulation in batches
         try:
             for batch in xrange(self.opts.batches):
-                # Separate by two blank lines and a header.
-                print
-                print
-                if (self.opts.batches > 1):
-                    print "# Batch %d" % batch
+                self.output = param.instantiate(self.opts, 'out')
+                self.output.start()
+                self.batch_header(batch)
                 self.bypass_batch(batch)
+                self.output.finish()
                 print "# DONE"
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
@@ -54,8 +60,8 @@ class StandardPSO(mrs.MapReduce):
     def bypass_batch(self, batch):
         """Performs a single batch of PSO without MapReduce.
 
-        Compare to the run_batch method, which uses MapReduce to do the same
-        thing.
+        Compare to the producer/consumer methods, which use MapReduce to do
+        the same thing.
         """
         # Create the Population.
         rand = self.initialization_rand(batch)
@@ -64,25 +70,22 @@ class StandardPSO(mrs.MapReduce):
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
         # particle by the end of the iteration.
-        output = param.instantiate(self.opts, 'out')
-        output.start()
         for iteration in xrange(1, 1 + self.opts.iters):
             self.bypass_iteration(particles, batch)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
-            if not ((iteration-1) % output.freq):
+            if not ((iteration-1) % self.output.freq):
                 kwds = {}
-                if 'iteration' in output.args:
+                if 'iteration' in self.output.args:
                     kwds['iteration'] = iteration
-                if 'particles' in output.args:
+                if 'particles' in self.output.args:
                     kwds['particles'] = particles
-                if 'best' in output.args:
+                if 'best' in self.output.args:
                     kwds['best'] = self.findbest(particles)
-                output(**kwds)
+                self.output(**kwds)
                 if self.stop_condition(particles):
-                    output.finish(True)
+                    self.output.success()
                     return
-        output.finish(False)
 
     def bypass_iteration(self, particles, batchid, swarmid=0):
         """Runs one iteration of PSO.
@@ -118,98 +121,102 @@ class StandardPSO(mrs.MapReduce):
         if not self.cli_startup():
             return
 
-        try:
-            tty = open('/dev/tty', 'w')
-        except IOError:
-            tty = None
-
         # Perform the simulation in batches
         try:
             for batch in xrange(self.opts.batches):
-                # Separate by two blank lines and a header.
-                print
-                print
-                if (self.opts.batches > 1):
-                    print "# Batch %d" % batch
-                self.run_batch(job, batch, tty)
+                self.current_batch = batch
+                self.batch_header(batch)
+                self.iteration = 0
+                self.output = param.instantiate(self.opts, 'out')
+                self.output.start()
+                mrs.IterativeMR.run(self, job)
+                self.output.finish()
                 print "# DONE"
             return True
         except KeyboardInterrupt, e:
             print "# INTERRUPTED"
 
-    def run_batch(self, job, batch, tty):
-        """Performs a single batch of PSO using MapReduce.
+    def producer(self, job):
+        if self.iteration > self.opts.iters:
+            return []
 
-        Compare to the bypass_batch method, which does the same thing without
-        using MapReduce.
-        """
-        rand = self.initialization_rand(batch)
-        init_particles = [(str(p.id), repr(p)) for p in
-                self.topology.newparticles(batch, rand)]
-        numtasks = self.opts.numtasks
-        if not numtasks:
-            numtasks = len(init_particles)
-        start_swarm = job.local_data(init_particles, parter=self.mod_partition,
-                splits=numtasks)
-        data = job.map_data(start_swarm, self.pso_map, splits=numtasks,
+        elif self.iteration == 0:
+            self.out_datasets = {}
+            self.datasets = {}
+            out_data = None
+
+            rand = self.initialization_rand(self.current_batch)
+            init_particles = [(str(p.id), repr(p)) for p in
+                    self.topology.newparticles(self.current_batch, rand)]
+            self.numtasks = self.opts.numtasks
+            if not self.numtasks:
+                self.numtasks = len(init_particles)
+            start_swarm = job.local_data(init_particles, splits=self.numtasks,
+                    parter=self.mod_partition)
+            data = job.map_data(start_swarm, self.pso_map, splits=self.numtasks,
+                    parter=self.mod_partition)
+            start_swarm.close()
+
+        elif (self.iteration - 1) % self.output.freq == 0:
+            out_data = job.reduce_data(self.last_data, self.pso_reduce,
+                splits=self.numtasks, parter=self.mod_partition)
+            if (self.last_data not in self.datasets and
+                    self.last_data not in self.out_datasets):
+                self.last_data.close()
+            data = job.map_data(out_data, self.pso_map, splits=self.numtasks,
                 parter=self.mod_partition)
-        start_swarm.close()
-        
-        output = param.instantiate(self.opts, 'out')
-        output.start()
-        
-        Q_MAX = 4
-        data_list = list([(0, data)])
-        out_list = list()
-        for i in xrange(1, self.opts.iters+1+Q_MAX):
-            if i <= self.opts.iters:
-                if (i-1) % output.freq == 0:
-                    out_data = job.reduce_data(data, self.pso_reduce,
-                        splits=numtasks, parter=self.mod_partition)
-                    out_list.append((i, out_data))
-                    data = job.map_data(out_data, self.pso_map, splits=numtasks,
-                        parter=self.mod_partition)
-                else:
-                    data = job.reducemap_data(data, self.pso_reduce,
-                        self.pso_map, splits=numtasks, parter=self.mod_partition)
-                data_list.append((i, data))
-                
-            if i >= Q_MAX:
-                if data_list:
-                    data_i, old_data = data_list.pop(0)
-                    waitset = set([old_data])
-                    got_data = False
-                while not got_data or (i == self.opts.iters+Q_MAX and out_list):
-                    if out_list:
-                        out_i, out = out_list[0]
-                        waitset.add(out)
-                    ready = job.wait(*waitset)
-                    if old_data in ready:
-                        old_data.close()
-                        got_data = True
-                    elif out in ready:
-                        del out_list[0]
-                        if 'best' in output.args or 'particles' in output.args:
-                            out.fetchall()
-                            particles = []
-                            for bucket in out:
-                                for reduce_id, particle in bucket:
-                                    particles.append(Particle.unpack(particle))
-                        out.close()
-                        kwds = {}
-                        if 'iteration' in output.args:
-                            kwds['iteration'] = last_iteration
-                        if 'particles' in output.args:
-                            kwds['particles'] = particles
-                        if 'best' in output.args:
-                            kwds['best'] = self.findbest(particles)
-                        output(**kwds)
-                        if self.stop_condition(particles):
-                            output.finish(True)
-                            return
-                    waitset -= set(ready)
-                                            
-        output.finish(False)
+
+        else:
+            out_data = None
+            data = job.reducemap_data(self.last_data, self.pso_reduce,
+                self.pso_map, splits=self.numtasks, parter=self.mod_partition)
+
+        self.iteration += 1
+        self.datasets[data] = self.iteration
+        self.last_data = data
+        if out_data:
+            self.out_datasets[out_data] = self.iteration
+            return [out_data, data]
+        else:
+            return [data]
+
+    def consumer(self, dataset):
+        # Note that depending on the output class, a dataset could be both
+        # in out_datasets and datasets.
+
+        if dataset in self.datasets:
+            iteration = self.datasets[dataset]
+            del self.datasets[dataset]
+
+            #self.output.print_to_tty("Finished iteration %s" % iteration)
+            if dataset not in self.out_datasets and dataset != self.last_data:
+                dataset.close()
+
+        if dataset in self.out_datasets:
+            iteration = self.out_datasets[dataset]
+            del self.out_datasets[dataset]
+
+            if 'best' in self.output.args or 'particles' in self.output.args:
+                dataset.fetchall()
+                particles = []
+                for bucket in dataset:
+                    for reduce_id, particle in bucket:
+                        particles.append(Particle.unpack(particle))
+            if dataset != self.last_data:
+                dataset.close()
+            kwds = {}
+            if 'iteration' in self.output.args:
+                kwds['iteration'] = last_iteration
+            if 'particles' in self.output.args:
+                kwds['particles'] = particles
+            if 'best' in self.output.args:
+                kwds['best'] = self.findbest(particles)
+            self.output(**kwds)
+            if self.stop_condition(particles):
+                self.output.success()
+                return False
+
+        return True
 
     ##########################################################################
     # Primary MapReduce
@@ -340,7 +347,6 @@ class StandardPSO(mrs.MapReduce):
             for key, value in sorted(vars(self.opts).iteritems()):
                 print '#   %s = %s' % (key, value)
             self.function.master_log()
-            print ""
             sys.stdout.flush()
 
         return True
