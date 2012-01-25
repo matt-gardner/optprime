@@ -8,7 +8,7 @@ import time
 
 import mrs
 from mrs import param
-from particle import Particle, Message, unpack
+from particle import Particle, Message, PSOPickler
 
 
 # TODO: allow the initial set of particles to be given
@@ -223,7 +223,7 @@ class StandardPSO(mrs.IterativeMR):
 
     def pso_map(self, key, value):
         comparator = self.function.comparator
-        particle = unpack(value)
+        particle = PSOPickler.loads(value)
         assert particle.id == int(key)
 
         before = datetime.datetime.now()
@@ -249,7 +249,7 @@ class StandardPSO(mrs.IterativeMR):
         particle = None
         messages = []
         for value in value_iter:
-            record = unpack(value)
+            record = PSOPickler.loads(value)
             if isinstance(record, Particle):
                 particle = record
             elif isinstance(record, Message):
@@ -271,7 +271,7 @@ class StandardPSO(mrs.IterativeMR):
         yield '0', value
 
     def findbest_reduce(self, key, value_iter):
-        particles = [Particle.unpack(value) for value in value_iter]
+        particles = [Particle.PSOPickler.loads(value) for value in value_iter]
         best = self.findbest(particles)
         yield repr(best)
 

@@ -7,7 +7,7 @@ from itertools import chain
 import mrs
 from mrs import param
 import standardpso
-from particle import Swarm, Particle, Message, unpack
+from particle import Swarm, Particle, Message, PSOPickler
 
 
 # TODO: allow the initial set of particles to be given
@@ -203,7 +203,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     # Primary MapReduce
 
     def pso_map(self, key, value):
-        swarm = unpack(value)
+        swarm = PSOPickler.loads(value)
         assert swarm.id == int(key)
         for i in xrange(self.opts.subiters):
             self.bypass_iteration(swarm, swarm.id)
@@ -225,7 +225,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         swarm = None
         messages = []
         for value in value_iter:
-            record = unpack(value)
+            record = PSOPickler.loads(value)
             if isinstance(record, Swarm):
                 swarm = record
             elif isinstance(record, Message):
@@ -252,7 +252,7 @@ class SubswarmPSO(standardpso.StandardPSO):
 
     def collapse_map(self, key, value):
         """Finds the best particle in the swarm and yields it with id 0."""
-        swarm = Swarm.unpack(value)
+        swarm = Swarm.PSOPickler.loads(value)
         best = self.findbest(swarm)
         yield '0', repr(best)
 

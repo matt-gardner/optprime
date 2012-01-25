@@ -1,7 +1,9 @@
 from __future__ import division
-from random import Random
-from vector import Vector
+
 import operator
+import sys
+
+from vector import Vector
 
 
 class Particle(object):
@@ -711,19 +713,39 @@ class Swarm(object):
         return p
 
 
-def unpack(state):
-    """Unpacks a state string, returning a Particle or Message."""
-    start, _ = state.split(':', 1)
-    try:
-        cls = CLASS_IDS[start]
-    except KeyError:
-        raise ValueError('Cannot unpack a state string of class "%s".' % start)
-    try:
-        return cls.unpack(state)
-    except ValueError:
-        import sys
-        print >>sys.stderr, 'Could not unpack the state string "%s".' % state
-        raise
+class PSOPickler(object):
+    """A Pickler-like implementation that is just for particle-like objects."""
+
+    @staticmethod
+    def dump(p, f):
+        f.write(self.dumps(p))
+
+    @staticmethod
+    def dumps(p):
+        return p.__getstate__()
+
+    @classmethod
+    def load(cls, f):
+        return cls.loads(f.read())
+
+    @staticmethod
+    def loads(state):
+        """Unpacks a state string, returning a Particle or Message."""
+        start, _ = state.split(':', 1)
+        try:
+            cls = CLASS_IDS[start]
+        except KeyError:
+            raise ValueError('Cannot unpack a state string of class "%s".'
+                    % start)
+
+        p = cls.__new__(cls)
+        try:
+            p.__setstate__(state)
+        except ValueError:
+            print >>sys.stderr, ('Could not unpack the state string "%s".'
+                    % state)
+            raise
+        return p
 
 
 # Valid class identifiers and their corresponding classes.
