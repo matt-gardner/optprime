@@ -22,9 +22,14 @@ class VectorSizeError(TypeError): pass
 
 class Vector(tuple):
     """Immutable vector object."""
+
     @classmethod
     def unpack(cls, string):
-        """Creates a new Vector from a repr string."""
+        """Creates a new Vector from a repr string.
+
+        Note that subclasses of tuple can't provide custom pickle protocol
+        methods.
+        """
         try:
             return cls(float(field) for field in string.split(','))
         except ValueError:
