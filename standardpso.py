@@ -153,18 +153,18 @@ class StandardPSO(mrs.IterativeMR):
                 self.numtasks = len(init_particles)
             start_swarm = job.local_data(init_particles, splits=self.numtasks,
                     parter=self.mod_partition)
-            data = job.map_data(start_swarm, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            data = job.map_data(start_swarm, self.pso_reduce,
+                    self.pso_map, splits=self.numtasks, parter=self.mod_partition)
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
-            out_data = job.reduce_data(self.last_data, self.pso_reduce,
-                splits=self.numtasks, parter=self.mod_partition)
+            out_data = job.reduce_data(self.last_data, self.pso_reduce, 
+                self.pso_map, splits=self.numtasks, parter=self.mod_partition)
             if (self.last_data not in self.datasets and
                     self.last_data not in self.out_datasets):
                 self.last_data.close()
-            data = job.map_data(out_data, self.pso_map, splits=self.numtasks,
-                parter=self.mod_partition)
+            data = job.map_data(out_data, self.pso_reduce,
+                self.pso_map, splits=self.numtasks, parter=self.mod_partition)
 
         else:
             out_data = None
