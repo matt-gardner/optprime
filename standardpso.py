@@ -168,8 +168,15 @@ class StandardPSO(mrs.IterativeMR):
 
         else:
             out_data = None
-            data = job.reducemap_data(self.last_data, self.pso_reduce,
-                self.pso_map, splits=self.numtasks, parter=self.mod_partition)
+            if self.opts.split_reducemap:
+                interm = job.reduce_data(self.last_data, self.pso_reduce,
+                        splits=self.numtasks, parter=self.mod_partition)
+                data = job.map_data(interm, self.pso_map,
+                        splits=self.numtasks, parter=self.mod_partition)
+            else:
+                data = job.reducemap_data(self.last_data, self.pso_reduce,
+                        self.pso_map, splits=self.numtasks,
+                        parter=self.mod_partition)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
@@ -485,6 +492,11 @@ def update_parser(parser):
     parser.add_option('--transitive-best',
             dest='transitive_best', action='store_true',
             help='Whether to send nbest to others instead of pbest',
+            default=False
+            )
+    parser.add_option('--split-reducemap',
+            dest='split_reducemap', action='store_true',
+            help='Split ReduceMap into two separate operations',
             default=False
             )
     parser.add_option('--hey-im-testing',
