@@ -1,8 +1,13 @@
 from __future__ import division
-from itertools import izip
 from operator import mul
 from math import cos, sqrt
-import _general
+from . import _general
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class Keane(_general._Base):
     def setup(self):
@@ -20,7 +25,7 @@ class Keane(_general._Base):
             s = 0
             sqs = 0
             p = 1
-            for i, (v,c) in enumerate(izip(vec,self.abscenter)):
+            for i, (v,c) in enumerate(zip(vec,self.abscenter)):
                 # This has a non-symmetric feasible space, so we fix that.
                 c -= 5
                 # Now calculate stuff

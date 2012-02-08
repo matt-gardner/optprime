@@ -1,6 +1,11 @@
 from __future__ import division
-from itertools import izip
-import _general
+from . import _general
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class DeJongF4(_general._Base):
     def setup(self):
@@ -9,6 +14,6 @@ class DeJongF4(_general._Base):
 
     def __call__(self, vec):
         s = 0
-        for i, (v,c) in enumerate(izip(vec,self.abscenter)):
+        for i, (v,c) in enumerate(zip(vec,self.abscenter)):
             s += (i+1) * (v-c)**4
         return s

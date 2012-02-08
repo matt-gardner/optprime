@@ -1,7 +1,12 @@
 from __future__ import division
-from itertools import izip
-import _general
+from . import _general
 from math import sqrt, cos
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class Griewank(_general._Base):
     def setup(self):
@@ -11,7 +16,7 @@ class Griewank(_general._Base):
     def __call__(self, vec):
         s = 0.0
         p = 1.0
-        for i, (v,c) in enumerate(izip(vec,self.abscenter)):
+        for i, (v,c) in enumerate(zip(vec,self.abscenter)):
             s += (v-c)**2
             p *= cos((v-c)/sqrt(i+1))
 

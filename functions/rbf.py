@@ -1,7 +1,11 @@
 from __future__ import division
-from itertools import izip, chain
 import math
-import _general
+from . import _general
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
 
 
 class RBF(_general._Base):
@@ -81,7 +85,7 @@ class RBF(_general._Base):
 
         # Sum over the dimensions of the data point.
         total = 0
-        for ((weight, center), x) in izip(param_iter, point):
+        for ((weight, center), x) in zip(param_iter, point):
             # Penalty for the [inverse] weight going to 0 or below.
             if weight < 0.01:
                 total += (weight - 0.01) ** 2

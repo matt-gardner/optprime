@@ -1,7 +1,8 @@
 from __future__ import division
-from itertools import izip
-import _general
 from math import cos, pi
+
+from . import _general
+
 
 class Bohachevsky(_general._Base):
     def setup(self):

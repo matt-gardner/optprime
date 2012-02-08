@@ -1,7 +1,9 @@
 from __future__ import division
-from itertools import izip, imap
-from math import exp, e, sqrt, cos, pi
-import _general
+from itertools import imap
+from math import exp, sqrt, cos, pi
+
+from . import _general
+
 
 class Ackley(_general._Base):
     def setup(self):

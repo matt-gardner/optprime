@@ -1,7 +1,12 @@
 from __future__ import division
-from itertools import izip
 from math import sqrt, exp, cos, sin, pi
-import _general
+from . import _general
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class TwoGaussians(_general._Base):
     def setup(self):
@@ -9,7 +14,7 @@ class TwoGaussians(_general._Base):
         self._set_constraints(((-50,50),) * self.dims)
 
     def __call__(self, vec):
-        magsq = sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
+        magsq = sum([(x-c)**2 for x,c in zip(vec,self.abscenter)])
         mag = sqrt(magsq)
         outersdev = 30
         innersdev = 1
@@ -17,7 +22,7 @@ class TwoGaussians(_general._Base):
         oogaussian = 1.0
         outergaussian = 1.0
         innergaussian = 1.0
-        for x, c in izip(vec, self.abscenter):
+        for x, c in zip(vec, self.abscenter):
             outergaussian *= exp((-(x-c)**2)/(2*outersdev**2))
             innergaussian *= exp((-(x-c)**2)/(2*innersdev**2))
             oogaussian *= exp((-(x-c)**2)/(2*oosdev**2))
@@ -30,7 +35,7 @@ class ValleyNeedle(_general._Base):
         self._set_constraints(((-50,50),) * self.dims)
 
     def __call__(self, vec):
-        magsq = sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
+        magsq = sum([(x-c)**2 for x,c in zip(vec,self.abscenter)])
         mag = sqrt(magsq)
         flatradius=30
         flatheight=5
@@ -40,7 +45,7 @@ class ValleyNeedle(_general._Base):
         else:
             sdev = flatradius / 100
             prod = 1.0
-            for x, c in izip(vec,self.abscenter):
+            for x, c in zip(vec,self.abscenter):
                 prod *= exp((-(x-c)**2)/(2*sdev**2))
             return flatheight*(1 - prod)
 
@@ -54,7 +59,7 @@ class AsymmetricCone(_general._Base):
 
         x = vec[0] - cvec[0]
 
-        const = sum([(v-c)**2 for v,c in izip(vec,cvec)]) - x**2
+        const = sum([(v-c)**2 for v,c in zip(vec,cvec)]) - x**2
         angle = pi/8
 
         ca = cos(2*angle)

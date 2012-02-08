@@ -1,5 +1,5 @@
 from __future__ import division
-import _general
+from . import _general
 from mrs.param import Param
 
 
@@ -7,12 +7,12 @@ class CommandLine(_general._Base):
     """A function that takes an executable file and uses that as the function
     to optimize.  So, if you already have a C or C++ executable, you can just
     give that to this function, and you don't have to translate the C code to
-    python.  It might run a lot slower than if you translate it, though, 
-    depending on the function - Popen is pretty slow.  
+    python.  It might run a lot slower than if you translate it, though,
+    depending on the function - Popen is pretty slow.
 
     The only requirements for the executable are that it takes as command line
     arguments the function parameters, and spits out to stdout the function
-    evaluation at that point.  Nothing else should go to stdout.  
+    evaluation at that point.  Nothing else should go to stdout.
     """
 
     _params = dict(
@@ -74,10 +74,10 @@ class CommandLine(_general._Base):
 
 
 class Stdin(CommandLine):
-    """ Like CommandLine, except the function must take arguments from stdin 
-    instead of as command line arguments.  The process is never closed, so 
+    """ Like CommandLine, except the function must take arguments from stdin
+    instead of as command line arguments.  The process is never closed, so
     execution should be faster.  The executable should be a loop that waits
-    on stdin and spits out to stdout.  That behavior can be overridden with 
+    on stdin and spits out to stdout.  That behavior can be overridden with
     restart, which opens the process every time, but still takes parameters
     from stdin.
     """

@@ -1,5 +1,5 @@
 #!/usr/bin/env python2.2
-import _general
+from . import _general
 
 class step2d(_general._Base):
     def setup(self):

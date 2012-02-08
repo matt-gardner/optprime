@@ -1,7 +1,7 @@
 """Outputter classes which determine the format of swarm status messages."""
 
+from __future__ import division, print_function
 
-from __future__ import division
 import sys
 from mrs.param import Param, ParamObj
 
@@ -49,7 +49,7 @@ class Output(ParamObj):
             except IOError:
                 self._tty_failed = True
         if self._tty:
-            print >>self._tty, string
+            print(string, file=self._tty)
 
     def __del__(self):
         if self._tty:
@@ -69,7 +69,7 @@ class Basic(Output):
         only outputs the globally best value in the swarm.
         """
         best = kwds['best']
-        print best.pbestval
+        print(best.pbestval)
         sys.stdout.flush()
 
 
@@ -80,7 +80,7 @@ class Pair(Output):
 
     def __call__(self, **kwds):
         best = kwds['best']
-        print best.iters, best.pbestval
+        print(best.iters, best.pbestval)
         sys.stdout.flush()
 
 
@@ -105,7 +105,7 @@ class Timer(Output):
                 + delta.microseconds / 1000000)
 
         time_per_iter = seconds / (iteration - self.last_iter)
-        print time_per_iter
+        print(time_per_iter)
         sys.stdout.flush()
 
         self.last_time = now
@@ -119,7 +119,7 @@ class Extended(Output):
 
     def __call__(self, **kwds):
         best = kwds['best']
-        print best.pbestval, " ".join([str(x) for x in best.pbestpos])
+        print(best.pbestval, " ".join([str(x) for x in best.pbestpos]))
         sys.stdout.flush()
 
 
@@ -145,9 +145,9 @@ class Everything(Output):
                 + delta.microseconds / 1000000)
 
         time_per_iter = seconds / (iteration - self.last_iter)
-        print iteration, best.pbestval, \
-                ",".join([str(x) for x in best.pbestpos]), \
-                "; Time:", time_per_iter
+        print(iteration, best.pbestval,
+                ",".join([str(x) for x in best.pbestpos]),
+                "; Time:", time_per_iter)
         sys.stdout.flush()
 
         self.last_time = now
@@ -161,11 +161,11 @@ class Swarm(Output):
 
     def __call__(self, **kwds):
         particles = kwds['particles']
-        print particles[0].iters, len(particles)
+        print(particles[0].iters, len(particles))
         for part in particles:
-            print part.value, ','.join(str(x) for x in part.pos), \
-                    part.pbestval, ','.join(str(x) for x in part.pbestpos)
-        print
+            print(part.value, ','.join(str(x) for x in part.pos),
+                    part.pbestval, ','.join(str(x) for x in part.pbestpos))
+        print()
 
 
 class SwarmRepr(Output):
@@ -175,11 +175,11 @@ class SwarmRepr(Output):
 
     def __call__(self, **kwds):
         particles = kwds['particles']
-        print particles[0].iters, len(particles)
+        print(particles[0].iters, len(particles))
         for part in particles:
-            print repr(part)
-            print
-        print
+            print(repr(part))
+            print()
+        print()
 
 
 class Stats(Output):
@@ -251,11 +251,14 @@ class Stats(Output):
             self.not_updated += 1
             if stagnant:
                 self.stagnant_iters += 1
-                print self.iters, best.pbestval, '\tStagnant!', '\tStagnant for more than '+\
-                        '30 iterations:',really_stagnant
+                print(self.iters, best.pbestval, '\tStagnant!',
+                        '\tStagnant for more than 30 iterations:',
+                        really_stagnant)
             else:
-                print self.iters, best.pbestval, '\tStagnant particles:',numstagnant, \
-                        '\tStagnant for more than 30 iterations:',really_stagnant
+                print(self.iters, best.pbestval,
+                        '\tStagnant particles:', numstagnant,
+                        '\tStagnant for more than 30 iterations:',
+                        really_stagnant)
         # gbest was updated
         else:
             self.last_val = best.pbestval
@@ -269,33 +272,33 @@ class Stats(Output):
             self.bestid = best.id
             self.counter[best.id] += 1
             self.changes += 1
-            print self.iters, best.pbestval, best.id, '\tStagnant particles:',\
-                    numstagnant, '\tStagnant for more than 30 iterations:',\
-                    really_stagnant
+            print(self.iters, best.pbestval, best.id, '\tStagnant particles:',
+                    numstagnant, '\tStagnant for more than 30 iterations:',
+                    really_stagnant)
 
     def finish(self):
-        print 'Stats:'
-        print 'Individual Particles: (Percent stagnant, percent particle'+\
-                ' was the gbest)'
+        print('Stats:')
+        print('Individual Particles: (Percent stagnant, percent particle'
+                ' was the gbest)')
         num_worthless = 0
         for id in self.stagnant_count:
             percentstag = self.stagnant_count[id]/self.iters
             if percentstag > .9 and self.counter[id] == 0:
                 num_worthless += 1
-            print id, percentstag, self.counter[id]/self.changes
-        print 'Percent of iterations that gbest was not updated:'
-        print self.not_updated/self.iters
-        print 'Number of stagnant iterations:'
-        print '%d (%f' % (self.stagnant_iters,
-                100*self.stagnant_iters/self.iters)+'%)'
-        print 'Pbest updates/possible pbest updates:'
-        print self.num_pbest_updates/self.num_pbest_possible_updates
-        print 'Percent of gbest updates that were by the same particle:'
-        print self.consistent_changes/self.changes
-        print 'Percent of gbest updates that were by recently seen particles:'
-        print self.recently_seen_changes/self.changes
-        print 'Percent of particles that updated pbest less than 10% of the time:'
-        print num_worthless/len(self.counter)
+            print(id, percentstag, self.counter[id]/self.changes)
+        print('Percent of iterations that gbest was not updated:')
+        print(self.not_updated/self.iters)
+        print('Number of stagnant iterations:')
+        print('%d (%f' % (self.stagnant_iters,
+                100*self.stagnant_iters/self.iters)+'%)')
+        print('Pbest updates/possible pbest updates:')
+        print(self.num_pbest_updates/self.num_pbest_possible_updates)
+        print('Percent of gbest updates that were by the same particle:')
+        print(self.consistent_changes/self.changes)
+        print('Percent of gbest updates that were by recently seen particles:')
+        print(self.recently_seen_changes/self.changes)
+        print('Percent of particles that updated pbest less than 10% of the time:')
+        print(num_worthless/len(self.counter))
 
 
 class BranchStats(Output):
@@ -358,11 +361,11 @@ class BranchStats(Output):
             self.prevpbest[particle.id] = particle.pbestval
             self.prevnbest[particle.id] = particle.nbestval
             self.prevnbestid[particle.id] = self.positions[particle.nbestpos]
-        print iteration, best.pbestval
+        print(iteration, best.pbestval)
 
     def finish(self):
-        print '\nStats:'
-        print '\nIndividual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        print('\nStats:')
+        print('\nIndividual Particles: (notPnotN, PnotN, PandNMe, notPbutN, PandN)')
         avenotpnotn = []
         avepnotn = []
         avepandnme = []
@@ -379,9 +382,9 @@ class BranchStats(Output):
             avenotpbutn.append(notpbutn)
             pandn = self.PandN[id]/self.iters
             avepandn.append(pandn)
-            print id,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
+            print(id,'%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn))
 
-        print '\nIndividual Particles: (notN, N)'
+        print('\nIndividual Particles: (notN, N)')
         avenotn = []
         aven = []
         for id in self.PnotN:
@@ -389,20 +392,20 @@ class BranchStats(Output):
             avenotn.append(notn)
             n = (self.notPbutN[id]+self.PandNMe[id]+self.PandN[id])/self.iters
             aven.append(n)
-            print id,'%.3f %.3f' % (notn,n)
+            print(id,'%.3f %.3f' % (notn,n))
 
-        print '\nAverages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)'
+        print('\nAverages: (notPnotN, PnotN, PandNMe, notPbutN, PandN)')
         notpnotn = sum(avenotpnotn)/len(avenotpnotn)
         pnotn = sum(avepnotn)/len(avepnotn)
         pandnme = sum(avepandnme)/len(avepandnme)
         notpbutn = sum(avenotpbutn)/len(avenotpbutn)
         pandn = sum(avepandn)/len(avepandn)
-        print '%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn)
+        print('%.3f %.3f %.3f %.3f %.3f' % (notpnotn,pnotn,pandnme,notpbutn,pandn))
 
-        print '\nAverages: (notN, N)'
+        print('\nAverages: (notN, N)')
         notp = sum(avenotn)/len(avenotn)
         p = sum(aven)/len(aven)
-        print '%.3f %.3f' % (notn,n)
+        print('%.3f %.3f' % (notn,n))
 
 
 # vim: et sw=4 sts=4

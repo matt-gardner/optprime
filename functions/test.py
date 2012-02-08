@@ -1,4 +1,4 @@
-import _general
+from . import _general
 
 class Test(_general._Base):
     def setup(self):

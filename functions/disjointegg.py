@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.2
 
 import math
-import _general
+from . import _general
 
 class DisjointEgg(_general._Base):
     __slots__ = 'constraints'

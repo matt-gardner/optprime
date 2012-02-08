@@ -9,10 +9,14 @@ are many!) can just assume access to a class of this kind.
 from __future__ import division
 from copy import deepcopy
 from math import sqrt
-from itertools import izip
 from math import floor, ceil
 import copy
 from amlpso.vector import Vector
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
 
 
 class Cube(object):
@@ -71,7 +75,7 @@ class Cube(object):
                 if v > r: vec[i] = r
 
     def wrap( self, vec ):
-        for i, (v, (l,r)) in enumerate(izip(vec,self.constraints)):
+        for i, (v, (l,r)) in enumerate(zip(vec,self.constraints)):
             span = r - l
             if v > r:
                 extra = v - r
@@ -204,7 +208,7 @@ class Vertex(list):
 
     def dot( self, other ):
         s = 0
-        for x1, x2 in izip( self, other ):
+        for x1, x2 in zip(self, other):
             s += x1 * x2
         return s
 
@@ -351,7 +355,7 @@ class Vertex(list):
             for i, x in enumerate(self):
                 newvert[i] = x / val
         else:
-            raise RuntimeError, "Can't divide a vertex by anything but a scalar"
+            raise RuntimeError("Can't divide a vertex by anything but a scalar")
         return newvert
 
     __truediv__ = __div__
@@ -361,7 +365,7 @@ class Vertex(list):
             for i, x in enumerate(self):
                 newvert[i] = x / val
         else:
-            raise RuntimeError, "Can't divide a vertex by anything but a scalar"
+            raise RuntimeError("Can't divide a vertex by anything but a scalar")
         return newvert
 
     __itruediv__ = __idiv__
@@ -372,7 +376,7 @@ class Vertex(list):
             for i, x in enumerate(self):
                 newvert[i] = pow(x,val,mval)
         else:
-            raise RuntimeError, "Can't use pow with anything but a scalar"
+            raise RuntimeError("Can't use pow with anything but a scalar")
         return newvert
 
     def __ipow__( self, mval ):
@@ -381,7 +385,7 @@ class Vertex(list):
             for i, x in enumerate(self):
                 newvert[i] = pow(x,val,mval)
         else:
-            raise RuntimeError, "Can't use pow with anything but a scalar"
+            raise RuntimeError("Can't use pow with anything but a scalar")
         return newvert
 
     def __mul__( self, val ):
@@ -390,7 +394,7 @@ class Vertex(list):
             for i, x in enumerate(self):
                 newvert[i] = x * val
         else:
-            raise RuntimeError, "Can't multiply a vertex by anything but a scalar"
+            raise RuntimeError("Can't multiply a vertex by anything but a scalar")
         return newvert
 
     def __imul__( self, val ):
@@ -399,7 +403,7 @@ class Vertex(list):
             for i, x in enumerate(self):
                 newvert[i] = x * val
         else:
-            raise RuntimeError, "Can't multiply a vertex by anything but a scalar"
+            raise RuntimeError("Can't multiply a vertex by anything but a scalar")
         return newvert
 
     __rmul__ = __mul__

@@ -1,6 +1,7 @@
 from __future__ import division
 from itertools import izip
-import _general
+from . import _general
+
 
 class Rosenbrock(_general._Base):
     """The Rosenbrock benchmark function

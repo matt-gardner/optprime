@@ -1,5 +1,5 @@
 from __future__ import division
-import _general
+from . import _general
 
 #------------------------------------------------------------------------------
 class NegBinomial(_general._Base):

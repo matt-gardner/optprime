@@ -1,7 +1,6 @@
 from __future__ import division
-from itertools import izip
 from math import exp
-import _general
+from . import _general
 
 class Quadratic(_general._Base):
     def setup(self):

@@ -1,7 +1,11 @@
 from __future__ import division
-from itertools import izip
-import _general
+from . import _general
 from math import sqrt, sin
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
 
 
 class Schwefel(_general._Base):
@@ -33,4 +37,4 @@ class Schwefel221(_general._Base):
         self._set_constraints(((-500,500),) * self.dims)
 
     def __call__(self, vec):
-        return max([abs(x-c) for x,c in izip(vec, self.abscenter)])
+        return max([abs(x-c) for x,c in zip(vec, self.abscenter)])

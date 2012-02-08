@@ -1,5 +1,5 @@
 from math import sin, cos
-import _general
+from . import _general
 
 class Egg(_general._Base):
     __slots__ = ['constraints']

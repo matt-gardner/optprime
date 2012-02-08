@@ -1,7 +1,12 @@
 from __future__ import division
-from itertools import izip
-import _general
+from . import _general
 from mrs.param import Param
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class Distance(_general._Base):
     _params = dict(
@@ -15,5 +20,5 @@ class Distance(_general._Base):
         #self._set_constraints( ((-2,2),) * self.dims )
 
     def __call__(self, vec):
-        s = sum([abs(x-c)**self.norm for x,c in izip(vec,self.abscenter)])
+        s = sum([abs(x-c)**self.norm for x,c in zip(vec,self.abscenter)])
         return s**(1/self.norm)

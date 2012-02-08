@@ -1,9 +1,14 @@
 from __future__ import division
 
-from itertools import izip
 import operator
 
 from mrs.param import ParamObj, Param
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class _Base(ParamObj):
     _params = dict(
@@ -56,7 +61,7 @@ class _Base(ParamObj):
         """Sets an absolute center from the relative center and constraints."""
         self.abscenter = [
             (c * (r - l) + l)
-            for c, (l, r) in izip(center, self.constraints)]
+            for c, (l, r) in zip(center, self.constraints)]
 
     def __call__(self, vec):
         return 0

@@ -1,7 +1,12 @@
 from __future__ import division
-from itertools import izip
-import _general
+from . import _general
 from mrs.param import Param
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class Sphere(_general._Base):
     def setup(self):
@@ -9,7 +14,7 @@ class Sphere(_general._Base):
         self._set_constraints(((-50,50),) * self.dims)
 
     def __call__(self, vec):
-        return sum([(x-c)**2 for x,c in izip(vec,self.abscenter)])
+        return sum([(x-c)**2 for x,c in zip(vec,self.abscenter)])
 
 
 class SleepSphere(Sphere):

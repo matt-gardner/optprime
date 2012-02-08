@@ -1,7 +1,12 @@
 from __future__ import division
-from itertools import izip
 from math import cos, pi
-import _general
+from . import _general
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
+
 
 class Rastrigin(_general._Base):
     def setup(self):
@@ -10,6 +15,6 @@ class Rastrigin(_general._Base):
 
     def __call__(self, vec):
         s= 0.0
-        for v, c in izip(vec, self.abscenter):
+        for v, c in zip(vec, self.abscenter):
             s += ((v-c)**2 - 10*cos(2*pi*(v-c)) + 10)
         return s

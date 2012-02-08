@@ -1,14 +1,13 @@
 from __future__ import division
-from itertools import izip
 from math import cos, pi
 from Numeric import array, dot
-import _general
 
-from sphere import Sphere
-from rastrigin import Rastrigin
-from rosenbrock import Rosenbrock
-from griewank import Griewank
-from quadratic import Quadratic
+from . import _general
+from .sphere import Sphere
+from .rastrigin import Rastrigin
+from .rosenbrock import Rosenbrock
+from .griewank import Griewank
+from .quadratic import Quadratic
 
 t_forward = array([
         [-5.84867764e-01,   4.01492785e-01,  -2.16722152e-01, 8.78739728e-02,

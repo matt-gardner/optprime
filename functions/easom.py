@@ -1,8 +1,7 @@
 from __future__ import division
-from itertools import izip, imap
 from math import exp, cos, pi
 from operator import mul
-import _general
+from . import _general
 
 class Easom(_general._Base):
     def setup(self):
