@@ -18,6 +18,11 @@ try:
 except ImportError:
     pass
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class Cube(object):
     def __init__( self, constraints, values=None ):
@@ -108,7 +113,7 @@ class Cube(object):
         vec = [cl for cl, cr in self.constraints]
         yield vec
         while True:
-            for d in xrange(self.dims):
+            for d in range(self.dims):
                 v[d] += 1
                 cl, cr = self.constraints[d]
                 if v[d] < resolution[d]:

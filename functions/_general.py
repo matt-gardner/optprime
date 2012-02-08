@@ -9,6 +9,11 @@ try:
 except ImportError:
     pass
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class _Base(ParamObj):
     _params = dict(
@@ -41,7 +46,7 @@ class _Base(ParamObj):
         parameter, then the center will _not_ be reset.
         """
         if not self.center:
-            center = [rand.uniform(0, 1) for i in xrange(self.dims)]
+            center = [rand.uniform(0, 1) for i in range(self.dims)]
             self._set_abscenter(center)
 
     def _set_constraints(self, constraints):

@@ -2,6 +2,11 @@ from __future__ import division
 from itertools import izip
 from . import _general
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class Rosenbrock(_general._Base):
     """The Rosenbrock benchmark function
@@ -15,7 +20,7 @@ class Rosenbrock(_general._Base):
 
     def __call__(self, vec):
         s=0
-        for i in xrange(self.dims-1):
+        for i in range(self.dims-1):
             v = vec[i]
             v1 = vec[i+1]
             c = self.abscenter[i]

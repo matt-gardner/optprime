@@ -8,6 +8,11 @@ import standardpso
 from mrs import param
 from particle import *
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class SpecExPSO(standardpso.StandardPSO):
 
@@ -72,7 +77,7 @@ class SpecExPSO(standardpso.StandardPSO):
         last_out_data = None
         next_out_data = None
         last_iteration = 0
-        for iteration in xrange(1, 1 + self.opts.iters):
+        for iteration in range(1, 1 + self.opts.iters):
             interm_data = job.map_data(last_swarm, self.sepso_map,
                     splits=numtasks, parter=self.mod_partition)
             if last_swarm != last_out_data:

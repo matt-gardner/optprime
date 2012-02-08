@@ -12,6 +12,10 @@ import mrs
 from mrs import param
 from particle import Particle, Message, PSOPickler
 
+try:
+    range = xrange
+except NameError:
+    pass
 
 # TODO: allow the initial set of particles to be given
 
@@ -49,7 +53,7 @@ class StandardPSO(mrs.IterativeMR):
 
         # Perform the simulation in batches
         try:
-            for batch in xrange(self.opts.batches):
+            for batch in range(self.opts.batches):
                 self.output = param.instantiate(self.opts, 'out')
                 self.output.start()
                 self.batch_header(batch)
@@ -72,7 +76,7 @@ class StandardPSO(mrs.IterativeMR):
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
         # particle by the end of the iteration.
-        for iteration in xrange(1, 1 + self.opts.iters):
+        for iteration in range(1, 1 + self.opts.iters):
             self.bypass_iteration(particles, batch)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
@@ -125,7 +129,7 @@ class StandardPSO(mrs.IterativeMR):
 
         # Perform the simulation in batches
         try:
-            for batch in xrange(self.opts.batches):
+            for batch in range(self.opts.batches):
                 self.current_batch = batch
                 self.batch_header(batch)
                 self.iteration = 0
@@ -353,7 +357,7 @@ class StandardPSO(mrs.IterativeMR):
             print('#   amlpso:', amlpso_status)
             print('#   mrs:', mrs_status)
             print("# Options:")
-            for key, value in sorted(vars(self.opts).iteritems()):
+            for key, value in sorted(vars(self.opts).items()):
                 print('#   %s = %s' % (key, value))
             self.function.master_log()
             sys.stdout.flush()

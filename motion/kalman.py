@@ -10,6 +10,11 @@ from particle import Particle
 
 import sys
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class Kalman(basic._Base):
     _params = dict(
@@ -58,31 +63,31 @@ class Kalman(basic._Base):
         # NOT CHANGE IT.
 
         pcov = identity(dims*2)
-        for i in xrange(dims):
+        for i in range(dims):
             pcov[i][i] = cfac * lengths[i]
             pcov[i+dims][i+dims] = pcov[i][i]
 
         trans = identity(dims*2)
-        for i in xrange(dims):
+        for i in range(dims):
             trans[i][i+dims] = self.velmultiplier # Add velocity to position
 
         tcov = identity(dims*2)
-        for i in xrange(dims):
+        for i in range(dims):
             tcov[i][i] = cfac * lengths[i]
             tcov[i+dims][i+dims] = tcov[i][i]
 
         if not self.usepbest:
             cchar = identity(dims)
             ccov = identity(dims)
-            for i in xrange(dims):
+            for i in range(dims):
                 ccov[i][i] = cfac * lengths[i]
         else:
             cchar = identity(dims*2)
-            for i in xrange(dims):
+            for i in range(dims):
                 cchar[i+dims][i] = 1
                 cchar[i+dims][i+dims] = 0
             ccov = identity(dims*2)
-            for i in xrange(dims):
+            for i in range(dims):
                 v = cfac * lengths[i]
                 ccov[i][i] = v
                 ccov[i+dims][i] = self.pgrelationship

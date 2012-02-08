@@ -1,7 +1,12 @@
 from __future__ import division
 from . import _general
 
-#------------------------------------------------------------------------------
+try:
+    range = xrange
+except NameError:
+    pass
+
+
 class NegBinomial(_general._Base):
     def dims(self, r=6, p=0.3):
         self.r = r
@@ -32,12 +37,12 @@ class NegBinomial(_general._Base):
 
         # Generate n! / k!
         numerator = long(n)
-        for i in xrange(k+1,n):
+        for i in range(k+1,n):
             numerator *= i
 
         # Generate (n-k)!
         denominator = long(n-k)
-        for i in xrange(2,n-k):
+        for i in range(2,n-k):
             denominator *= i
 
         return numerator // denominator

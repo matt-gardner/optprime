@@ -10,11 +10,12 @@ from __future__ import division
 from cubes.cube import Vertex
 from copy import deepcopy
 
-import sys
-if sys.version < '2.3':
-    raise RuntimeError("Wrong Python version: 2.3 required")
+try:
+    range = xrange
+except NameError:
+    pass
 
-#------------------------------------------------------------------------------
+
 class kdTrie(object):
     def __init__( self, constraints, cubecls, initvals ):
         """Initialize the kdTrie object
@@ -33,7 +34,7 @@ class kdTrie(object):
     def gridify( self, splits, node=None ):
         """Split to create a grid, given how many times to split each
         dimension.
-        
+
         arguments:
             splits -- either a scalar or an array of per-dim splits
             node=None -- defaults to root.  Defines which node to gridify
@@ -46,7 +47,7 @@ class kdTrie(object):
 
         # Now we have a node and some splits.  Pick the first dimension
         # in which we should do splits, and go (recursively)
-        for d in xrange(self.dims):
+        for d in range(self.dims):
             if splits[d] > 1:
                 dim = d
                 break

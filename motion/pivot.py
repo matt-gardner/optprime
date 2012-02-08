@@ -3,6 +3,12 @@ import basic
 from amlpso.vector import Vector
 from itertools import izip
 
+try:
+    range = xrange
+except NameError:
+    pass
+
+
 class Pivot(basic._Base):
     def hyperspherevariate(self, radius, uniformity=1):
         """Based on Clerc's sampling code.
@@ -16,7 +22,7 @@ class Pivot(basic._Base):
 
         # ---- Direction ----
         vec = Vector()
-        for i in xrange(dims):
+        for i in range(dims):
             vec.append(rand.gauss(0,1))
 
         # ---- Random Radius ----

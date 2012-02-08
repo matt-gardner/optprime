@@ -7,6 +7,11 @@ try:
 except ImportError:
     pass
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class RBF(_general._Base):
     """Radial Basis Function Network trainer
@@ -109,11 +114,11 @@ class RBF(_general._Base):
             raise NotImplementedError('The evenly_spaced option '
                     'only currently works with inputdims=1.')
         vec = []
-        for i in xrange(self.nbases):
+        for i in range(self.nbases):
             # Note: expected value of gamma is (alpha * beta)
             output_weight = rand.gammavariate(20, 2)
             vec.append(output_weight)
-            for j in xrange(self.inputdims):
+            for j in range(self.inputdims):
                 input_weight = rand.gammavariate(20, 2)
                 if self.evenly_spaced:
                     center = (i + .5) * (100 / self.nbases)
@@ -131,7 +136,7 @@ class RBF(_general._Base):
         vec = self.generating_vec
 
         datapoints = []
-        for i in xrange(self.npoints):
+        for i in range(self.npoints):
             point = inputs_cube.random_vec(rand)
             value = self.net_value(vec, point)
             if self.data_noise:

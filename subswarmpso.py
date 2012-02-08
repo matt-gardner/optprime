@@ -9,6 +9,10 @@ from mrs import param
 import standardpso
 from particle import Swarm, Particle, Message, PSOPickler
 
+try:
+    range = xrange
+except NameError:
+    pass
 
 # TODO: allow the initial set of particles to be given
 
@@ -38,7 +42,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         rand = self.initialization_rand(batch)
         top = self.topology
         subswarms = [Swarm(i, top.newparticles(batch, rand))
-                for i in xrange(self.link.num)]
+                for i in range(self.link.num)]
 
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
@@ -46,10 +50,10 @@ class SubswarmPSO(standardpso.StandardPSO):
         output = param.instantiate(self.opts, 'out')
         output.start()
         outer_iters = self.opts.iters // self.opts.subiters
-        for i in xrange(1, 1 + outer_iters):
+        for i in range(1, 1 + outer_iters):
             iteration = i * self.opts.subiters
             for swarm in subswarms:
-                for j in xrange(self.opts.subiters):
+                for j in range(self.opts.subiters):
                     self.bypass_iteration(swarm, swarm.id)
 
             # Communication phase.
@@ -99,7 +103,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         rand = self.initialization_rand(batch)
         top = self.topology
         subswarms = [Swarm(i, top.newparticles(batch, rand))
-                for i in xrange(self.link.num)]
+                for i in range(self.link.num)]
         kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
 
         numtasks = self.opts.numtasks
@@ -121,7 +125,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         next_out_data = None
         last_iteration = 0
         outer_iters = self.opts.iters // self.opts.subiters
-        for iteration in xrange(1, 1 + outer_iters):
+        for iteration in range(1, 1 + outer_iters):
             interm_data = job.map_data(last_pso_data, self.pso_map,
                     splits=numtasks, parter=self.mod_partition)
             next_pso_data = job.reduce_data(interm_data, self.pso_reduce,
@@ -205,7 +209,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     def pso_map(self, key, value):
         swarm = PSOPickler.loads(value)
         assert swarm.id == int(key)
-        for i in xrange(self.opts.subiters):
+        for i in range(self.opts.subiters):
             self.bypass_iteration(swarm, swarm.id)
 
         # Emit the swarm.

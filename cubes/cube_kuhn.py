@@ -11,13 +11,19 @@ from cube import Cube, Vertex, ConstantGradientExtremumMixin
 from itertools import izip
 from copy import deepcopy
 
+try:
+    range = xrange
+except NameError:
+    pass
+
+
 class CubeKuhn(Cube):
     def __init__( self, *args, **kargs ):
         super( CubeKuhn, self ).__init__( *args, **kargs )
         self.origin = Vertex([cl for cl, cr in self.constraints], cube=self)
 
     def iterdefaultvals( self ):
-        for x in xrange(2**self.dims):
+        for x in range(2**self.dims):
             yield 0
 
     def _init_vertices( self, values ):

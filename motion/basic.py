@@ -6,6 +6,11 @@ from mrs.param import ParamObj, Param
 from amlpso.vector import Vector
 from amlpso.cubes.cube import Cube
 
+try:
+    range = xrange
+except NameError:
+    pass
+
 
 class _Base(ParamObj):
     def setup(self, function, *args, **kargs):
@@ -50,8 +55,8 @@ class Constricted(_Base):
             s = kappa
 
         uniform = particle.rand.uniform
-        r1 = Vector(uniform(0, self.phi1) for x in xrange(self.dims))
-        r2 = Vector(uniform(0, self.phi2) for x in xrange(self.dims))
+        r1 = Vector(uniform(0, self.phi1) for x in range(self.dims))
+        r2 = Vector(uniform(0, self.phi2) for x in range(self.dims))
 
         grel = particle.nbestpos - particle.pos
         prel = particle.pbestpos - particle.pos
@@ -101,8 +106,8 @@ class BasicAdaptive(_Base):
 
         dims, k, c1, c2 = self.dims, self.k, self.c1, self.c2
 
-        r1 = Vector(particle.rand.uniform(0,c1) for x in xrange(dims))
-        r2 = Vector(particle.rand.uniform(0,c2) for x in xrange(dims))
+        r1 = Vector(particle.rand.uniform(0,c1) for x in range(dims))
+        r2 = Vector(particle.rand.uniform(0,c2) for x in range(dims))
 
         pos, vel, dt = particle.pos, particle.vel, particle.dt
 

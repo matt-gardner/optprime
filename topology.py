@@ -1,6 +1,12 @@
 from __future__ import division
 from mrs.param import ParamObj, Param
 
+try:
+    range = xrange
+except NameError:
+    pass
+
+
 # TODO: should initscale and initoffset be moved into Function??
 class _Topology(ParamObj):
     """Swarm Topology
@@ -50,7 +56,7 @@ class _Topology(ParamObj):
         generator stops after creating the configured number of particles.
         """
         from particle import Particle
-        for i in xrange(self.num):
+        for i in range(self.num):
             newpos = self.cube.random_vec(rand)
             newvel = self.vcube.random_vec(rand)
             p = Particle(id=i, pos=newpos, vel=newvel)
@@ -80,7 +86,7 @@ class Ring(_Topology):
     def iterneighbors(self, particle):
         if not self.noselflink:
             yield particle.id
-        for i in xrange(1,self.neighbors+1):
+        for i in range(1,self.neighbors+1):
             yield (particle.id + i) % self.num
             yield (particle.id - i) % self.num
 
@@ -90,7 +96,7 @@ class DRing(Ring):
     def iterneighbors(self, particle):
         if not self.noselflink:
             yield particle.id
-        for i in xrange(1,self.neighbors+1):
+        for i in range(1,self.neighbors+1):
             yield (particle.id + i) % self.num
 
 
@@ -99,7 +105,7 @@ class Complete(_Topology):
     def iterneighbors(self, particle):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
-        for i in xrange(self.num):
+        for i in range(self.num):
             if not (i == particle.id and self.noselflink):
                 yield i
 
@@ -119,7 +125,7 @@ class Rand(_Topology):
             neighbors = num
         else:
             neighbors = self.neighbors
-        for i in xrange(neighbors):
+        for i in range(neighbors):
             yield randrange(num)
         if not self.noselflink:
             yield id
