@@ -238,10 +238,10 @@ class Vertex(list):
         # Call the original constructor (try not to mess list up too much)
         val = None
         cube = None
-        if kargs.has_key('value'):
+        if 'value' in kargs:
             val = kargs['value']
             del kargs['value']
-        if kargs.has_key('cube'):
+        if 'cube' in kargs:
             cube = kargs['cube']
             del kargs['cube']
 
