@@ -1,20 +1,25 @@
 from __future__ import division
-from itertools import izip, imap
-import operator
+
 import math
-from math import sqrt
-from array import array
+import operator
+
+
+try:
+    from itertools import izip as zip
+except ImportError:
+    pass
 
 
 SEQUENCETYPES = (list,tuple)
-OVERRIDES = (
+OVERRIDES = [
     '__add__',
     '__sub__',
     '__mul__',
     '__div__',
     '__truediv__',
+    '__floordiv__',
     '__pow__',
-    )
+    ]
 
 
 class VectorSizeError(TypeError): pass
@@ -53,7 +58,7 @@ class Vector(tuple):
             ))
 
     def distance_to(self, other):
-        return sqrt(sum((o-x)**2 for x,o in izip(self, other)))
+        return math.sqrt(sum((o-x)**2 for x,o in zip(self, other)))
 
     def lnorm(self, l):
         s = 0
@@ -62,7 +67,7 @@ class Vector(tuple):
         return s**(1/l)
 
     def __abs__(self):
-        return sqrt(sum(x*x for x in self))
+        return math.sqrt(sum(x*x for x in self))
 
     def normalized(self, mag=None):
         if mag is None:
@@ -73,7 +78,7 @@ class Vector(tuple):
             return self
 
     def dot(self, other):
-        return sum(x * y for x, y in izip(self,other))
+        return sum(x * y for x, y in zip(self,other))
 
 
 def make_binary_op(opname):
@@ -82,7 +87,7 @@ def make_binary_op(opname):
         if isinstance(other, SEQUENCETYPES):
             if len(self) != len(other):
                 raise VectorSizeError
-            return Vector([op(*pair) for pair in izip(self, other)])
+            return Vector([op(*pair) for pair in zip(self, other)])
         else:
             return Vector([op(x,other) for x in self])
     return binary_op
@@ -94,7 +99,7 @@ def make_rbinary_op(opname):
         if isinstance(other, SEQUENCETYPES):
             if len(self) != len(other):
                 raise VectorSizeError
-            return Vector([op(o,x) for (x,o) in izip(self,other)])
+            return Vector([op(o,x) for (x,o) in zip(self,other)])
         else:
             return Vector([op(other,x) for x in self])
     return rbinary_op
@@ -102,9 +107,8 @@ def make_rbinary_op(opname):
 
 # Add element-wise operators to the Vector class.
 for opname in OVERRIDES:
-    binary_op = make_binary_op(opname)
-    rbinary_op = make_rbinary_op(opname)
-    setattr(Vector, opname, binary_op)
-    setattr(Vector, '__r' + opname[2:], rbinary_op)
-
-
+    if hasattr(operator, opname):
+        binary_op = make_binary_op(opname)
+        rbinary_op = make_rbinary_op(opname)
+        setattr(Vector, opname, binary_op)
+        setattr(Vector, '__r' + opname[2:], rbinary_op)
