@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import division
+from __future__ import print_function
+
 import datetime
 import operator
 import sys
@@ -34,10 +36,10 @@ class StandardPSO(mrs.IterativeMR):
 
     def batch_header(self, batch):
         # Separate by two blank lines and a header.
-        print
-        print
+        print()
+        print()
         if (self.opts.batches > 1):
-            print "# Batch %d" % batch
+            print("# Batch %d" % batch)
 
     def bypass(self):
         """Run a "native" version of PSO without MapReduce."""
@@ -53,9 +55,9 @@ class StandardPSO(mrs.IterativeMR):
                 self.batch_header(batch)
                 self.bypass_batch(batch)
                 self.output.finish()
-                print "# DONE"
-        except KeyboardInterrupt, e:
-            print "# INTERRUPTED"
+                print("# DONE")
+        except KeyboardInterrupt as e:
+            print("# INTERRUPTED")
 
     def bypass_batch(self, batch):
         """Performs a single batch of PSO without MapReduce.
@@ -131,10 +133,10 @@ class StandardPSO(mrs.IterativeMR):
                 self.output.start()
                 mrs.IterativeMR.run(self, job)
                 self.output.finish()
-                print "# DONE"
+                print("# DONE")
             return True
-        except KeyboardInterrupt, e:
-            print "# INTERRUPTED"
+        except KeyboardInterrupt as e:
+            print("# INTERRUPTED")
 
     def producer(self, job):
         if self.iteration > self.opts.iters:
@@ -331,28 +333,28 @@ class StandardPSO(mrs.IterativeMR):
         amlpso_status = cli.GitStatus(sys.modules[__name__])
         if not self.opts.hey_im_testing:
             if amlpso_status.dirty:
-                print >>sys.stderr, (('Repository amlpso (%s) is dirty!'
-                        '  Use --hey-im-testing if necessary.') %
-                        amlpso_status.directory)
+                print(('Repository amlpso (%s) is dirty!'
+                        '  Use --hey-im-testing if necessary.')
+                        % amlpso_status.directory, file=sys.stderr)
                 return False
             if mrs_status.dirty:
-                print >>sys.stderr, (('Repository mrs (%s) is dirty!'
-                        '  Use --hey-im-testing if necessary.') %
-                        mrs_status.directory)
+                print(('Repository mrs (%s) is dirty!'
+                        '  Use --hey-im-testing if necessary.')
+                        % mrs_status.directory, file=sys.stderr)
                 return False
 
         # Report command-line options.
         if not self.opts.quiet:
             now = time.localtime()
             date = time.strftime("%a, %d %b %Y %H:%M:%S +0000", now)
-            print '#', sys.argv[0]
-            print '# Date:', date
-            print '# Git Status:'
-            print '#   amlpso:', amlpso_status
-            print '#   mrs:', mrs_status
-            print "# Options:"
+            print('#', sys.argv[0])
+            print('# Date:', date)
+            print('# Git Status:')
+            print('#   amlpso:', amlpso_status)
+            print('#   mrs:', mrs_status)
+            print("# Options:")
             for key, value in sorted(vars(self.opts).iteritems()):
-                print '#   %s = %s' % (key, value)
+                print('#   %s = %s' % (key, value))
             self.function.master_log()
             sys.stdout.flush()
 
