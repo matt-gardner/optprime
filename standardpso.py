@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import datetime
 import operator
+from six import b
 import sys
 import time
 
@@ -152,8 +153,8 @@ class StandardPSO(mrs.IterativeMR):
             out_data = None
 
             rand = self.initialization_rand(self.current_batch)
-            init_particles = [(str(p.id), repr(p)) for p in
-                    self.topology.newparticles(self.current_batch, rand)]
+            init_particles = [(repr(p.id).encode('ascii'), p.__getstate__())
+                    for p in self.topology.newparticles(self.current_batch, rand)]
             self.numtasks = self.opts.numtasks
             if not self.numtasks:
                 self.numtasks = len(init_particles)
@@ -249,13 +250,13 @@ class StandardPSO(mrs.IterativeMR):
                 + delta.microseconds / 1000000)
 
         # Emit the particle without changing its id:
-        yield (key, repr(particle))
+        yield (key, particle.__getstate__())
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best, comparator)
         self.set_neighborhood_rand(particle, 0)
         for dep_id in self.topology.iterneighbors(particle):
-            yield (str(dep_id), repr(message))
+            yield (repr(dep_id).encode('ascii'), message.__getstate__())
 
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
@@ -275,18 +276,18 @@ class StandardPSO(mrs.IterativeMR):
         best = self.findbest(messages)
         if best:
             particle.nbest_cand(best.position, best.value, comparator)
-        yield repr(particle)
+        yield particle.__getstate__()
 
     ##########################################################################
     # MapReduce to Find the Best Particle
 
     def collapse_map(self, key, value):
-        yield '0', value
+        yield b('0'), value
 
     def findbest_reduce(self, key, value_iter):
         particles = [Particle.PSOPickler.loads(value) for value in value_iter]
         best = self.findbest(particles)
-        yield repr(best)
+        yield best.__getstate__()
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
