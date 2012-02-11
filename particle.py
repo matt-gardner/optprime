@@ -25,7 +25,6 @@ class Particle(object):
     Adding more detailed state to the particle shows what the full particle
     representation looks like.
 
-    >>> p.batches = 100
     >>> p.iters = 200
     >>> p.pbestpos = Vector((6.0, 7.0))
     >>> p.nbestpos = Vector((8.0, 9.0))
@@ -76,7 +75,6 @@ class Particle(object):
 
     def __init__(self, id, pos, vel, value=None):
         self.id = id
-        self.batches = 0
         self.iters = 0
 
         self.pos = pos
@@ -101,7 +99,6 @@ class Particle(object):
         p.nbestval = self.nbestval
         p.lastbranch = self.lastbranch
         p.tokens = self.tokens
-        p.batches = self.batches
         p.iters = self.iters
         return p
 
@@ -225,12 +222,11 @@ class Particle(object):
     def __getstate__(self):
         lastbranch = b','.join((ascii_repr(self.lastbranch[0]),
                 ascii_repr(self.lastbranch[1])))
-        fields = (ascii_repr(self.id), ascii_repr(self.batches),
-                ascii_repr(self.iters), self.pos.__getstate__(),
-                self.vel.__getstate__(), ascii_repr(self.value),
-                self.pbestpos.__getstate__(), ascii_repr(self.pbestval),
-                self.nbestpos.__getstate__(), ascii_repr(self.nbestval),
-                ascii_repr(self.tokens), lastbranch)
+        fields = (ascii_repr(self.id), ascii_repr(self.iters),
+                self.pos.__getstate__(), self.vel.__getstate__(),
+                ascii_repr(self.value), self.pbestpos.__getstate__(),
+                ascii_repr(self.pbestval), self.nbestpos.__getstate__(),
+                ascii_repr(self.nbestval), ascii_repr(self.tokens), lastbranch)
         return self.CLASS_ID + b':' + b';'.join(fields)
 
     def __setstate__(self, state):
@@ -242,7 +238,7 @@ class Particle(object):
         prefix = self.CLASS_ID + b':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (id, batches, iters, pos, vel, value, pbestpos, pbestval,
+        (id, iters, pos, vel, value, pbestpos, pbestval,
                 nbestpos, nbestval, tokens, lastbranch) = state.split(b';')
         id = int(id)
         pos = Vector.from_state(pos)
@@ -252,7 +248,6 @@ class Particle(object):
         else:
             value = None
         self.__init__(id, pos, vel, value)
-        self.batches = int(batches)
         self.iters = int(iters)
         self.pbestpos = Vector.from_state(pbestpos)
         if pbestval:
@@ -406,7 +401,6 @@ class SEParticle(Particle):
     >>> p = SEParticle(p, False, 4)
     >>> repr(p)
     'sep:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;;False;4'
-    >>> p.batches = 100
     >>> p.iters = 200
     >>> p.pbestpos = Vector((6.0, 7.0))
     >>> p.nbestpos = Vector((8.0, 9.0))
@@ -431,7 +425,6 @@ class SEParticle(Particle):
         self.pbestval = p.pbestval
         self.nbestpos = p.nbestpos
         self.nbestval = p.nbestval
-        self.batches = p.batches
         self.iters = p.iters
 
         self.specpbest = specpbest
@@ -442,7 +435,7 @@ class SEParticle(Particle):
         prefix = self.CLASS_ID + b':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (id, batches, iters, pos, vel, value, pbestpos, pbestval,
+        (id, iters, pos, vel, value, pbestpos, pbestval,
                 nbestpos, nbestval, specpbest, specnbestid) = state.split(b';')
         self.id = int(id)
         self.pos = Vector.from_state(pos)
@@ -452,7 +445,6 @@ class SEParticle(Particle):
         else:
             self.value = None
 
-        self.batches = int(batches)
         self.iters = int(iters)
         self.pbestpos = Vector.from_state(pbestpos)
         if pbestval:
@@ -481,7 +473,6 @@ class SEParticle(Particle):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
-        p.batches = self.batches
         p.iters = self.iters
         p.rand = None
         return p
@@ -493,12 +484,12 @@ class SEParticle(Particle):
                 self.specpbest, self.specnbestid)
 
     def __getstate__(self):
-        fields = (ascii_repr(self.id), ascii_repr(self.batches),
-                ascii_repr(self.iters), self.pos.__getstate__(),
-                self.vel.__getstate__(), ascii_repr(self.value),
-                self.pbestpos.__getstate__(), ascii_repr(self.pbestval),
-                self.nbestpos.__getstate__(), ascii_repr(self.nbestval),
-                ascii_repr(self.specpbest), ascii_repr(self.specnbestid))
+        fields = (ascii_repr(self.id), ascii_repr(self.iters),
+                self.pos.__getstate__(), self.vel.__getstate__(),
+                ascii_repr(self.value), self.pbestpos.__getstate__(),
+                ascii_repr(self.pbestval), self.nbestpos.__getstate__(),
+                ascii_repr(self.nbestval), ascii_repr(self.specpbest),
+                ascii_repr(self.specnbestid))
         return self.CLASS_ID + b':' + b';'.join(fields)
 
     def copy(self):
@@ -509,7 +500,6 @@ class SEParticle(Particle):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
-        p.batches = self.batches
         p.iters = self.iters
         sep = SEParticle(p, self.specpbest, self.specnbestid)
         return sep
@@ -519,10 +509,9 @@ class Dummy(Particle):
     """A dummy particle that just has an id and a rand, for use with SpecEx."""
     CLASS_ID = b'd'
 
-    def __init__(self, id, iters, batches):
+    def __init__(self, id, iters):
         self.id = id
         self.iters = iters
-        self.batches = batches
         self.rand = None
 
 
@@ -539,7 +528,6 @@ class MessageParticle(Particle):
         self.pbestval = p.pbestval
         self.nbestpos = p.nbestpos
         self.nbestval = p.nbestval
-        self.batches = p.batches
         self.iters = p.iters
 
     def __setstate__(self, state):
@@ -547,7 +535,7 @@ class MessageParticle(Particle):
         prefix = self.CLASS_ID + b':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (id, batches, iters, pos, vel, value, pbestpos, pbestval,
+        (id, iters, pos, vel, value, pbestpos, pbestval,
                 nbestpos, nbestval) = state.split(b';')
         self.id = int(id)
         self.pos = Vector.from_state(pos)
@@ -556,7 +544,6 @@ class MessageParticle(Particle):
             self.value = float(value)
         else:
             self.value = None
-        self.batches = int(batches)
         self.iters = int(iters)
         self.pbestpos = Vector.from_state(pbestpos)
         if pbestval:
@@ -578,17 +565,16 @@ class MessageParticle(Particle):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
-        p.batches = self.batches
         p.iters = self.iters
         mp = MessageParticle(p)
         return mp
 
     def __getstate__(self):
-        fields = (ascii_repr(self.id), ascii_repr(self.batches),
-                ascii_repr(self.iters), self.pos.__getstate__(),
-                self.vel.__getstate__(), ascii_repr(self.value),
-                self.pbestpos.__getstate__(), ascii_repr(self.pbestval),
-                self.nbestpos.__getstate__(), ascii_repr(self.nbestval))
+        fields = (ascii_repr(self.id), ascii_repr(self.iters),
+                self.pos.__getstate__(), self.vel.__getstate__(),
+                ascii_repr(self.value), self.pbestpos.__getstate__(),
+                ascii_repr(self.pbestval), self.nbestpos.__getstate__(),
+                ascii_repr(self.nbestval))
         return self.CLASS_ID + b':' + b';'.join(fields)
 
 
@@ -605,7 +591,6 @@ class SEMessageParticle(SEParticle):
         self.pbestval = p.pbestval
         self.nbestpos = p.nbestpos
         self.nbestval = p.nbestval
-        self.batches = p.batches
         self.iters = p.iters
         self.specpbest = p.specpbest
         self.specnbestid = p.specnbestid
@@ -615,7 +600,7 @@ class SEMessageParticle(SEParticle):
         prefix = self.CLASS_ID + b':'
         assert state.startswith(prefix)
         state = state[len(prefix):]
-        (id, batches, iters, pos, vel, value, pbestpos, pbestval,
+        (id, iters, pos, vel, value, pbestpos, pbestval,
                 nbestpos, nbestval, specpbest, specnbestid) = state.split(b';')
         self.id = int(id)
         self.pos = Vector.from_state(pos)
@@ -624,7 +609,6 @@ class SEMessageParticle(SEParticle):
             self.value = float(value)
         else:
             self.value = None
-        self.batches = int(batches)
         self.iters = int(iters)
         self.pbestpos = Vector.from_state(pbestpos)
         if pbestval:
@@ -651,7 +635,6 @@ class SEMessageParticle(SEParticle):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
-        p.batches = self.batches
         p.iters = self.iters
         sep = SEParticle(p, self.specpbest, self.specnbestid)
         semp = SEMessageParticle(sep)
@@ -692,9 +675,6 @@ class Swarm(object):
 
     def iters(self):
         return self.particles[0].iters
-
-    def batches(self):
-        return self.particles[0].batches
 
     def __setstate__(self, state):
         """Unpacks a state string, returning a new Swarm."""
