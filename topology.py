@@ -49,7 +49,7 @@ class _Topology(ParamObj):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
-    def newparticles(self, batch, rand):
+    def newparticles(self, rand):
         """Yields new particles.
 
         Particles are distributed uniformly within the constraints.  The
@@ -60,7 +60,6 @@ class _Topology(ParamObj):
             newpos = self.cube.random_vec(rand)
             newvel = self.vcube.random_vec(rand)
             p = Particle(id=i, pos=newpos, vel=newvel)
-            p.batches = batch
             yield p
 
     def iterneighbors(self, particle):

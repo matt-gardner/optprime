@@ -39,46 +39,36 @@ class StandardPSO(mrs.IterativeMR):
     ##########################################################################
     # Bypass Implementation
 
-    def batch_header(self, batch):
-        # Separate by two blank lines and a header.
-        print()
-        print()
-        if (self.opts.batches > 1):
-            print("# Batch %d" % batch)
-
     def bypass(self):
         """Run a "native" version of PSO without MapReduce."""
 
         if not self.cli_startup():
             return
 
-        # Perform the simulation in batches
+        # Perform simulation
         try:
-            for batch in range(self.opts.batches):
-                self.output = param.instantiate(self.opts, 'out')
-                self.output.start()
-                self.batch_header(batch)
-                self.bypass_batch(batch)
-                self.output.finish()
-                print("# DONE")
+            self.output = param.instantiate(self.opts, 'out')
+            self.output.start()
+            self.bypass_run()
+            self.output.finish()
         except KeyboardInterrupt as e:
             print("# INTERRUPTED")
 
-    def bypass_batch(self, batch):
-        """Performs a single batch of PSO without MapReduce.
+    def bypass_run(self):
+        """Performs PSO without MapReduce.
 
         Compare to the producer/consumer methods, which use MapReduce to do
         the same thing.
         """
         # Create the Population.
-        rand = self.initialization_rand(batch)
-        particles = list(self.topology.newparticles(batch, rand))
+        rand = self.initialization_rand()
+        particles = list(self.topology.newparticles(rand))
 
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
         # particle by the end of the iteration.
         for iteration in range(1, 1 + self.opts.iters):
-            self.bypass_iteration(particles, batch)
+            self.bypass_iteration(particles)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
             if not ((iteration-1) % self.output.freq):
@@ -94,13 +84,13 @@ class StandardPSO(mrs.IterativeMR):
                     self.output.success()
                     return
 
-    def bypass_iteration(self, particles, batchid, swarmid=0):
+    def bypass_iteration(self, particles, swarmid=0):
         """Runs one iteration of PSO.
 
         The swarmid is used for seed initialization when this is used in
         subswarms.
         """
-        self.randomize_function_center(batchid)
+        self.randomize_function_center()
 
         # Update position and value.
         for p in particles:
@@ -128,17 +118,13 @@ class StandardPSO(mrs.IterativeMR):
         if not self.cli_startup():
             return
 
-        # Perform the simulation in batches
+        # Perform the simulation
         try:
-            for batch in range(self.opts.batches):
-                self.current_batch = batch
-                self.batch_header(batch)
-                self.iteration = 0
-                self.output = param.instantiate(self.opts, 'out')
-                self.output.start()
-                mrs.IterativeMR.run(self, job)
-                self.output.finish()
-                print("# DONE")
+            self.iteration = 0
+            self.output = param.instantiate(self.opts, 'out')
+            self.output.start()
+            mrs.IterativeMR.run(self, job)
+            self.output.finish()
             return True
         except KeyboardInterrupt as e:
             print("# INTERRUPTED")
@@ -152,9 +138,9 @@ class StandardPSO(mrs.IterativeMR):
             self.datasets = {}
             out_data = None
 
-            rand = self.initialization_rand(self.current_batch)
+            rand = self.initialization_rand()
             init_particles = [(repr(p.id).encode('ascii'), p.__getstate__())
-                    for p in self.topology.newparticles(self.current_batch, rand)]
+                    for p in self.topology.newparticles(rand)]
             self.numtasks = self.opts.numtasks
             if not self.numtasks:
                 self.numtasks = len(init_particles)
@@ -242,7 +228,7 @@ class StandardPSO(mrs.IterativeMR):
 
         before = datetime.datetime.now()
 
-        self.randomize_function_center(particle.batches)
+        self.randomize_function_center()
         self.move_and_evaluate(particle)
         after = datetime.datetime.now()
         delta = after - before
@@ -299,7 +285,7 @@ class StandardPSO(mrs.IterativeMR):
             newpos, newvel = self.motion(p)
         else:
             newpos, newvel = p.pos, p.vel
-        self.randomize_function_center(p.batches)
+        self.randomize_function_center()
         # TODO(?): value = self.function(newpos, p.rand)
         value = self.function(newpos)
         p.update(newpos, newvel, value, self.function.comparator)
@@ -382,7 +368,7 @@ class StandardPSO(mrs.IterativeMR):
 
         This should be used just before performing motion on the particle.
 
-        Note that the Random depends on the particle id, iteration, batch, and
+        Note that the Random depends on the particle id, iteration, and
         swarmid.  The swarmid is only needed in the subswarms case (to make
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
@@ -390,7 +376,7 @@ class StandardPSO(mrs.IterativeMR):
         from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
         offset = self.MOTION_OFFSET + base * (p.id + base * (p.iters + base *
-            (p.batches + base * swarmid)))
+            (base * swarmid)))
         p.rand = self.random(offset)
 
     def set_neighborhood_rand(self, n, swarmid=0):
@@ -400,7 +386,7 @@ class StandardPSO(mrs.IterativeMR):
         depending on the PSO variant, node might be a particle, subswarm, or
         other object.
 
-        Note that the Random depends on the particle id, iteration, batch, and
+        Note that the Random depends on the particle id, iteration, and
         swarmid.  The swarmid is only needed in the subswarms case (to make
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
@@ -408,37 +394,37 @@ class StandardPSO(mrs.IterativeMR):
         from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
         offset = self.NEIGHBORHOOD_OFFSET + base * (n.id + base * (n.iters +
-            base * (n.batches + base * swarmid)))
+            base * (base * swarmid)))
         n.rand = self.random(offset)
 
-    def initialization_rand(self, batch):
-        """Returns a new Random for the given batch number.
+    def initialization_rand(self):
+        """Returns a new Random number.
 
-        This ensures that each batch will have a unique initial swarm state.
+        This ensures that each run will have a unique initial swarm state.
         """
         from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = self.INITIALIZATION_OFFSET + base * batch
+        offset = self.INITIALIZATION_OFFSET + base
         return self.random(offset)
 
-    def function_rand(self, batch):
-        """Returns a new Random for the given batch number.
+    def function_rand(self):
+        """Returns a new Random number.
 
         This should be used just before performing motion on the particle.
 
-        Note that the Random depends on the particle id, iteration, batch, and
+        Note that the Random depends on the particle id, iteration, and
         swarmid.  The swarmid is only needed in the subswarms case (to make
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
         from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = self.FUNCTION_OFFSET + base * batch
+        offset = self.FUNCTION_OFFSET + base
         return self.random(offset)
 
-    def randomize_function_center(self, batch):
-        """Sets the random function center for the given batch number."""
-        rand = self.function_rand(batch)
+    def randomize_function_center(self):
+        """Sets a random function center."""
+        rand = self.function_rand()
         self.function.randomize_center(rand)
 
 
@@ -461,14 +447,9 @@ def update_parser(parser):
             help="Print out verbose error messages",
             default=False,
             )
-    parser.add_option('-b','--batches',
-            dest='batches', type='int',
-            help='Number of complete experiments to run',
-            default=1,
-            )
     parser.add_option('-i','--iters',
             dest='iters', type='int',
-            help='Number of iterations per batch',
+            help='Number of iterations',
             default=100,
             )
     parser.add_option('-f','--func', metavar='FUNCTION',
