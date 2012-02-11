@@ -292,8 +292,8 @@ class StandardPSO(mrs.IterativeMR):
 
     def findbest(self, candidates):
         """Returns the best particle or message from the given candidates."""
-        if len(candidates) == 1:
-            return candidates[0]
+#        if len(candidates) == 1:
+#            return candidates[0]
         comparator = self.function.comparator
         best = None
         for cand in candidates:

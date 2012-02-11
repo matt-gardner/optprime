@@ -35,7 +35,6 @@ class SubswarmPSO(standardpso.StandardPSO):
         Compare to the run_batch method, which uses MapReduce to do the same
         thing.
         """
-        #self.setup()
         comp = self.function.comparator
 
         # Create the Population.
@@ -82,10 +81,9 @@ class SubswarmPSO(standardpso.StandardPSO):
                 if 'best' in output.args:
                     kwds['best'] = self.findbest(chain(*subswarms))
                 output(**kwds)
-                if self.stop_condition(particles):
-                    output.finish(True)
+                if self.stop_condition(chain(*subswarms)):
+                    output.finish()
                     return
-        output.finish(False)
 
 
     ##########################################################################
@@ -201,7 +199,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             last_pso_data = next_pso_data
             last_out_data = next_out_data
 
-        output.finish(False)
+        output.finish()
 
     ##########################################################################
     # Primary MapReduce
