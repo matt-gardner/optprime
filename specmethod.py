@@ -126,12 +126,12 @@ class ReproducePSO(_SpecMethod):
         self.specex.set_neighborhood_rand(particle)
         for n in self.specex.topology.iterneighbors(particle):
             ids.add(n)
-            ndummy = Dummy(n, particle.iters+1, particle.batches)
+            ndummy = Dummy(n, particle.iters+1)
             self.specex.set_neighborhood_rand(ndummy)
             for n2 in self.specex.topology.iterneighbors(ndummy):
                 ids.add(n2)
                 if type(particle) == Particle:
-                    n2dummy = Dummy(n2, particle.iters+2, particle.batches)
+                    n2dummy = Dummy(n2, particle.iters+2)
                     self.specex.set_neighborhood_rand(n2dummy)
                     for n3 in self.specex.topology.iterneighbors(n2dummy):
                         ids.add(n3)

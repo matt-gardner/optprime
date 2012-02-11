@@ -33,12 +33,12 @@ class SpecExPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce Implementation
 
-    def run_batch(self, job, batch, tty):
-        """Performs a single batch of Speculative Execution PSO using MapReduce.
+    def run_mrs(self, job, tty):
+        """Performs Speculative Execution PSO using MapReduce.
         """
-        rand = self.initialization_rand(batch)
+        rand = self.initialization_rand()
 
-        particles = list(self.topology.newparticles(batch, rand))
+        particles = list(self.topology.newparticles(rand))
         self.move_all(particles)
         for particle in particles:
             particle.tokens = self.opts.min_tokens

@@ -29,19 +29,19 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Bypass Implementation
 
-    def bypass_batch(self, batch):
-        """Performs a single batch of PSO without MapReduce.
+    def bypass_run(self):
+        """Performs PSO without MapReduce.
 
-        Compare to the run_batch method, which uses MapReduce to do the same
+        Compare to the run_mrs method, which uses MapReduce to do the same
         thing.
         """
         self.setup()
         comp = self.function.comparator
 
         # Create the Population.
-        rand = self.initialization_rand(batch)
+        rand = self.initialization_rand()
         top = self.topology
-        subswarms = [Swarm(i, top.newparticles(batch, rand))
+        subswarms = [Swarm(i, top.newparticles(rand))
                 for i in range(self.link.num)]
 
         # Perform PSO Iterations.  The iteration number represents the total
@@ -91,18 +91,18 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce Implementation
 
-    def run_batch(self, job, batch, tty):
-        """Performs a single batch of PSO using MapReduce.
+    def run_mrs(self, job tty):
+        """Performs PSO using MapReduce.
 
-        Compare to the bypass_batch method, which does the same thing without
+        Compare to the bypass_run method, which does the same thing without
         using MapReduce.
         """
         self.setup()
 
         # Create the Population.
-        rand = self.initialization_rand(batch)
+        rand = self.initialization_rand()
         top = self.topology
-        subswarms = [Swarm(i, top.newparticles(batch, rand))
+        subswarms = [Swarm(i, top.newparticles(rand))
                 for i in range(self.link.num)]
         kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
 
@@ -266,12 +266,11 @@ class SubswarmPSO(standardpso.StandardPSO):
     def set_swarm_rand(self, s):
         """Makes a Random for the given particle and saves it to `p.rand`.
 
-        Note that the Random depends on the particle id, iteration, and batch.
+        Note that the Random depends on the particle id, and iteration.
         """
         from mrs.impl import SEED_BITS
         base = 2 ** SEED_BITS
-        offset = self.SUBSWARM_OFFSET + base * (s.id + base * (s.iters() +
-            base * s.batches()))
+        offset = self.SUBSWARM_OFFSET + base * (s.id + base * (s.iters() + base))
         s.rand = self.random(offset)
 
 
