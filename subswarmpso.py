@@ -32,10 +32,10 @@ class SubswarmPSO(standardpso.StandardPSO):
     def bypass_run(self):
         """Performs PSO without MapReduce.
 
-        Compare to the run_mrs method, which uses MapReduce to do the same
+        Compare to the run_batch method, which uses MapReduce to do the same
         thing.
         """
-        self.setup()
+        #self.setup()
         comp = self.function.comparator
 
         # Create the Population.
@@ -91,7 +91,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce Implementation
 
-    def run_mrs(self, job tty):
+    def run_batch(self, job, tty):
         """Performs PSO using MapReduce.
 
         Compare to the bypass_run method, which does the same thing without
@@ -268,7 +268,7 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         Note that the Random depends on the particle id, and iteration.
         """
-        from mrs.impl import SEED_BITS
+        from mrs.main import SEED_BITS
         base = 2 ** SEED_BITS
         offset = self.SUBSWARM_OFFSET + base * (s.id + base * (s.iters() + base))
         s.rand = self.random(offset)

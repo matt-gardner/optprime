@@ -33,7 +33,7 @@ class SpecExPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce Implementation
 
-    def run_mrs(self, job, tty):
+    def run_batch(self, job, tty):
         """Performs Speculative Execution PSO using MapReduce.
         """
         rand = self.initialization_rand()
