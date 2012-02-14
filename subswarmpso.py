@@ -85,122 +85,101 @@ class SubswarmPSO(standardpso.StandardPSO):
                     output.finish()
                     return
 
-
     ##########################################################################
     # MapReduce Implementation
 
-    def run_batch(self, job, tty):
-        """Performs PSO using MapReduce.
+    def producer(self, job):
+        if self.iteration > self.opts.iters:
+            return []
 
-        Compare to the bypass_run method, which does the same thing without
-        using MapReduce.
-        """
-        self.setup()
+        elif self.iteration == 0:
+            self.out_datasets = {}
+            self.datasets = {}
+            out_data = None
 
-        # Create the Population.
-        rand = self.initialization_rand()
-        top = self.topology
-        subswarms = [Swarm(i, top.newparticles(rand))
-                for i in range(self.link.num)]
-        kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
+            rand = self.initialization_rand()
+            subswarms = [Swarm(i, self.topology.newparticles(rand))
+                    for i in range(self.link.num)]
+            kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
+            
+            self.numtasks = self.opts.numtasks
+            if not self.numtasks:
+                self.numtasks = len(subswarms)
+                
+            start_swarm = job.local_data(kvpairs, splits=self.numtasks,
+                    parter=self.mod_partition)
+            data = job.map_data(start_swarm, self.pso_map, splits=self.numtasks,
+                    parter=self.mod_partition)
+            start_swarm.close()                              
 
-        numtasks = self.opts.numtasks
-        if not numtasks:
-            numtasks = len(subswarms)
-        new_data = job.local_data(kvpairs, parter=self.mod_partition,
-                splits=numtasks)
+        elif (self.iteration - 1) % self.output.freq == 0:
+            out_data = job.reduce_data(self.last_data, self.pso_reduce, 
+                splits=self.numtasks, parter=self.mod_partition)
+            if (self.last_data not in self.datasets and
+                    self.last_data not in self.out_datasets):
+                self.last_data.close()
+            data = job.map_data(out_data, self.pso_map, splits=self.numtasks,
+                    parter=self.mod_partition)
 
-        output = param.instantiate(self.opts, 'out')
-        output.start()
+        else:
+            out_data = None
+            if self.opts.split_reducemap:
+                interm = job.reduce_data(self.last_data, self.pso_reduce,
+                        splits=self.numtasks, parter=self.mod_partition)
+                data = job.map_data(interm, self.pso_map,
+                        splits=self.numtasks, parter=self.mod_partition)
+            else:
+                data = job.reducemap_data(self.last_data, self.pso_reduce,
+                        self.pso_map, splits=self.numtasks,
+                        parter=self.mod_partition)
 
-        # Perform iterations.  Note: we submit the next iteration while the
-        # previous is being computed.  Also, the next PSO iteration depends on
-        # the same data as the output phase, so they can run concurrently.
-        last_pso_data = new_data
-        last_interm_data = None
-        old_pso_data = None
-        last_out_data = None
-        next_out_data = None
-        last_iteration = 0
-        outer_iters = self.opts.iters // self.opts.subiters
-        for iteration in range(1, 1 + outer_iters):
-            interm_data = job.map_data(last_pso_data, self.pso_map,
-                    splits=numtasks, parter=self.mod_partition)
-            next_pso_data = job.reduce_data(interm_data, self.pso_reduce,
-                    splits=numtasks, parter=self.mod_partition)
+        self.iteration += 1
+        self.datasets[data] = self.iteration
+        self.last_data = data
+        if out_data:
+            self.out_datasets[out_data] = self.iteration
+            return [out_data, data]
+        else:
+            return [data]
 
-            next_out_data = None
-            if not ((iteration - 1) % output.freq):
-                if 'particles' in output.args:
-                    next_out_data = next_pso_data
-                elif 'best' in output.args:
-                    # Create a new output_data MapReduce phase to find the
-                    # best particle in the population.
-                    collapsed_data = job.map_data(next_pso_data,
-                            self.collapse_map, splits=1)
-                    next_out_data = job.reduce_data(collapsed_data,
-                            self.findbest_reduce, splits=1)
+    def consumer(self, dataset):
+        # Note that depending on the output class, a dataset could be both
+        # in out_datasets and datasets.
 
-            waitset = set()
-            if iteration > 1:
-                waitset.add(last_pso_data)
-            if last_out_data:
-                waitset.add(last_out_data)
-            while waitset:
-                if tty:
-                    ready = job.wait(timeout=1.0, *waitset)
-                    if last_pso_data in ready:
-                        print >>tty, "Finished iteration", last_iteration
-                else:
-                    ready = job.wait(*waitset)
+        if dataset in self.datasets:
+            iteration = self.datasets[dataset]
+            del self.datasets[dataset]
 
-                # Download output data and store as `particles`.
-                if last_out_data in ready:
-                    if 'best' in output.args or 'particles' in output.args:
-                        last_out_data.fetchall()
-                        particles = []
-                        for bucket in last_out_data:
-                            for reduce_id, particle in bucket:
-                                particles.append(Particle.unpack(particle))
+            #self.output.print_to_tty("Finished iteration %s" % iteration)
+            if dataset not in self.out_datasets and dataset != self.last_data:
+                dataset.close()
 
-                waitset -= set(ready)
+        if dataset in self.out_datasets:
+            iteration = self.out_datasets[dataset]
+            del self.out_datasets[dataset]
 
-            # Print out the results.
-            if last_iteration > 0 and not ((last_iteration - 1) % output.freq):
-                kwds = {}
-                if 'iteration' in output.args:
-                    kwds['iteration'] = last_iteration
-                if 'particles' in output.args:
-                    kwds['particles'] = particles
-                if 'best' in output.args:
-                    if len(particles) == 1:
-                        best = particles[0]
-                    else:
-                        best = self.findbest(particles)
-                    kwds['best'] = best
-                output(**kwds)
-                if self.stop_condition(particles):
-                    output.finish(True)
-                    return
+            if 'best' in self.output.args or 'particles' in self.output.args:
+                dataset.fetchall()
+                particles = []
+                for bucket in dataset:
+                    for reduce_id, particle in bucket:
+                        particles.append(Particle.unpack(particle))
+            if dataset != self.last_data:
+                dataset.close()
+            kwds = {}
+            if 'iteration' in self.output.args:
+                kwds['iteration'] = last_iteration
+            if 'particles' in self.output.args:
+                kwds['particles'] = particles
+            if 'best' in self.output.args:
+                kwds['best'] = self.findbest(particles)
+            self.output(**kwds)
+            if self.stop_condition(particles):
+                self.output.success()
+                return False
 
-            # Now that last_pso_data is ready, last_interm_data and
-            # old_pso_data can be deleted:
-            if old_pso_data:
-                old_pso_data.close()
-                old_pso_data = None
-            if last_interm_data:
-                last_interm_data.close()
-                last_interm_data = None
-
-            # Set up for the next iteration.
-            last_iteration = iteration
-            old_pso_data = last_pso_data
-            last_interm_data = interm_data
-            last_pso_data = next_pso_data
-            last_out_data = next_out_data
-
-        output.finish()
-
+        return True
+        
     ##########################################################################
     # Primary MapReduce
 
@@ -270,7 +249,6 @@ class SubswarmPSO(standardpso.StandardPSO):
         base = 2 ** SEED_BITS
         offset = self.SUBSWARM_OFFSET + base * (s.id + base * (s.iters() + base))
         s.rand = self.random(offset)
-
 
 ##############################################################################
 # Busywork
