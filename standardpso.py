@@ -213,9 +213,8 @@ class StandardPSO(mrs.IterativeMR):
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
                 particles = []
-                for bucket in dataset:
-                    for reduce_id, particle in bucket:
-                        particles.append(Particle.unpack(particle))
+                for reduce_id, particle in dataset.iterdata():
+                    particles.append(Particle.unpack(particle))
             if dataset != self.last_data:
                 dataset.close()
             kwds = {}
