@@ -160,10 +160,9 @@ class SubswarmPSO(standardpso.StandardPSO):
 
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
-                particles = []
-                for bucket in dataset:
-                    for reduce_id, particle in bucket:
-                        particles.append(Particle.unpack(particle))
+                swarms = []
+                for reduce_id, swarm in dataset.iterdata():
+                    swarms.append(Swarm.unpack(swarm))
             if dataset != self.last_data:
                 dataset.close()
             kwds = {}
@@ -172,9 +171,9 @@ class SubswarmPSO(standardpso.StandardPSO):
             if 'particles' in self.output.args:
                 kwds['particles'] = particles
             if 'best' in self.output.args:
-                kwds['best'] = self.findbest(particles)
+                kwds['best'] = self.findbest(chain(*swarms))
             self.output(**kwds)
-            if self.stop_condition(particles):
+            if self.stop_condition(chain(*swarms)):
                 self.output.success()
                 return False
 

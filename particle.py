@@ -689,7 +689,7 @@ class Swarm(object):
     def __getstate__(self):
         encoded = [b'%s:%s' % (self.CLASS_ID, self.id)]
         encoded += [p.__getstate__() for p in self.particles]
-        return b'&'.join(strings)
+        return b'&'.join(encoded)
 
     def __repr__(self):
         return self.__getstate__()
