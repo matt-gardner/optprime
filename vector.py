@@ -29,20 +29,20 @@ class Vector(tuple):
     """Immutable vector object."""
 
     @classmethod
-    def from_state(cls, bytes):
-        """Creates a new Vector from a bytes representing the state.
+    def from_state(cls, string):
+        """Creates a new Vector from a string representing the state.
 
         Note that subclasses of tuple can't provide custom pickle protocol
         methods.
         """
         try:
-            return cls(float(field) for field in bytes.split(b','))
+            return cls(float(field) for field in string.split(','))
         except ValueError:
-            import sys
-            raise RuntimeError('Vector could not unpack "%s".' % repr(bytes))
+            raise RuntimeError('Vector could not unpack "%s".' % repr(string))
 
     def __getstate__(self):
-        return b','.join(repr(x).encode('ascii') for x in self)
+        #return ','.join(repr(x) for x in self).encode('ascii')
+        return ','.join(repr(x) for x in self)
 
     def __repr__(self):
         return 'Vector(%s)' % ','.join(repr(x) for x in self)
