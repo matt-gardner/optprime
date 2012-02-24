@@ -41,8 +41,7 @@ class Vector(tuple):
             raise RuntimeError('Vector could not unpack "%s".' % repr(string))
 
     def __getstate__(self):
-        #return ','.join(repr(x) for x in self).encode('ascii')
-        return ','.join(repr(x) for x in self)
+        return ','.join(('%r' % x) for x in self)
 
     def __repr__(self):
         return 'Vector(%s)' % ','.join(repr(x) for x in self)

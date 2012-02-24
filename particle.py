@@ -224,9 +224,9 @@ class Particle(object):
                 repr(self.lastbranch[1])))
         fields = (repr(self.id), repr(self.iters),
                 self.pos.__getstate__(), self.vel.__getstate__(),
-                short_repr(self.value), self.pbestpos.__getstate__(),
-                short_repr(self.pbestval), self.nbestpos.__getstate__(),
-                short_repr(self.nbestval), repr(self.tokens), lastbranch)
+                float_repr(self.value), self.pbestpos.__getstate__(),
+                float_repr(self.pbestval), self.nbestpos.__getstate__(),
+                float_repr(self.nbestval), repr(self.tokens), lastbranch)
         return self.CLASS_ID + ':' + ';'.join(fields)
 
     def __setstate__(self, state):
@@ -355,7 +355,7 @@ class Message(object):
 
     def __getstate__(self):
         fields = (repr(self.sender), self.position.__getstate__(),
-                short_repr(self.value))
+                float_repr(self.value))
         return self.CLASS_ID + ':' + ';'.join(fields)
 
     @classmethod
@@ -486,9 +486,9 @@ class SEParticle(Particle):
     def __getstate__(self):
         fields = (repr(self.id), repr(self.iters),
                 self.pos.__getstate__(), self.vel.__getstate__(),
-                short_repr(self.value), self.pbestpos.__getstate__(),
-                short_repr(self.pbestval), self.nbestpos.__getstate__(),
-                short_repr(self.nbestval), repr(self.specpbest),
+                float_repr(self.value), self.pbestpos.__getstate__(),
+                float_repr(self.pbestval), self.nbestpos.__getstate__(),
+                float_repr(self.nbestval), repr(self.specpbest),
                 repr(self.specnbestid))
         return self.CLASS_ID + ':' + ';'.join(fields)
 
@@ -572,9 +572,9 @@ class MessageParticle(Particle):
     def __getstate__(self):
         fields = (repr(self.id), repr(self.iters),
                 self.pos.__getstate__(), self.vel.__getstate__(),
-                short_repr(self.value), self.pbestpos.__getstate__(),
-                short_repr(self.pbestval), self.nbestpos.__getstate__(),
-                short_repr(self.nbestval))
+                float_repr(self.value), self.pbestpos.__getstate__(),
+                float_repr(self.pbestval), self.nbestpos.__getstate__(),
+                float_repr(self.nbestval))
         return self.CLASS_ID + ':' + ';'.join(fields)
 
 
@@ -734,10 +734,10 @@ class PSOPickler(object):
                     % (state, str(e)))
         return p
 
-def short_repr(x):
-    """Variant of repr that returns an empty string for None."""
+def float_repr(x):
+    """Faster variant of repr for floats (returns an empty string for None)."""
     if x is not None:
-        return repr(x)
+        return '%r' % x
     else:
         return ''
 
