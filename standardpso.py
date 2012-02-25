@@ -124,6 +124,7 @@ class StandardPSO(mrs.IterativeMR):
         # Perform the simulation
         try:
             self.iteration = 0
+            self.last_data = None
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
 
@@ -171,17 +172,22 @@ class StandardPSO(mrs.IterativeMR):
                         splits=num_reduce_tasks)
                 out_data = job.reduce_data(interm, self.findbest_reduce,
                         splits=1)
+                interm.close()
             else:
                 out_data = swarm_data
 
         else:
             out_data = None
             if self.opts.split_reducemap:
-                swarm = job.reduce_data(self.last_data, self.pso_reduce)
-                data = job.map_data(swarm, self.pso_map)
+                swarm = job.reduce_data(self.last_data, self.pso_reduce,
+                        async_start=True)
+                data = job.map_data(swarm, self.pso_map,
+                        blocking_percent=0.5, backlink=self.last_data)
+                swarm.close()
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map)
+                        self.pso_map, async_start=True, blocking_percent=0.5,
+                        backlink=self.last_data)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
@@ -276,12 +282,14 @@ class StandardPSO(mrs.IterativeMR):
             else:
                 raise ValueError
 
-        assert particle, 'Missing particle %s in the reduce step' % key
-
         best = self.findbest(messages)
-        if best:
+        if particle is not None and best is not None:
             particle.nbest_cand(best.position, best.value, comparator)
-        yield particle.__getstate__()
+
+        if particle is not None:
+            yield particle.__getstate__()
+        else:
+            yield best.__getstate__()
 
     ##########################################################################
     # MapReduce to Find the Best Particle
@@ -292,6 +300,9 @@ class StandardPSO(mrs.IterativeMR):
 
     def findbest_reduce(self, key, value_iter):
         particles = [PSOPickler.loads(value) for value in value_iter]
+        assert len(particles) == self.topology.num, (
+            'Only %s particles in findbest_reduce' % len(particles))
+
         best = self.findbest(particles)
         yield best.__getstate__()
 

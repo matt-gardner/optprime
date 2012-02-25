@@ -151,6 +151,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                         splits=num_reduce_tasks)
                 out_data = job.reduce_data(interm, self.findbest_reduce,
                         splits=1)
+                interm.close()
             else:
                 out_data = swarm_data
 
@@ -158,12 +159,14 @@ class SubswarmPSO(standardpso.StandardPSO):
             out_data = None
             if self.opts.split_reducemap:
                 interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        format=mrs.ZipWriter)
-                data = job.map_data(interm, self.pso_map,
-                        format=mrs.ZipWriter)
+                        async_start=True, format=mrs.ZipWriter)
+                data = job.map_data(interm, self.pso_map, blocking_percent=0.5,
+                        backlink=self.last_data, format=mrs.ZipWriter)
+                interm.close()
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, format=mrs.ZipWriter)
+                        self.pso_map, async_start=True, blocking_percent=0.5,
+                        backlink=self.last_data, format=mrs.ZipWriter)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
@@ -255,10 +258,8 @@ class SubswarmPSO(standardpso.StandardPSO):
             else:
                 raise ValueError
 
-        assert swarm, 'Missing swarm %s in the reduce step' % key
-
         best = self.findbest(messages)
-        if best:
+        if swarm is not None and best is not None:
             swarm_head = swarm[0]
             # TODO: Think about whether we're setting the particle's random
             # seed correctly.  Note that we normally take some random values
@@ -267,7 +268,11 @@ class SubswarmPSO(standardpso.StandardPSO):
             for dep_id in self.topology.iterneighbors(swarm_head):
                 neighbor = swarm[dep_id]
                 neighbor.nbest_cand(best.position, best.value, comparator)
-        yield swarm.__getstate__()
+
+        if swarm is not None:
+            yield swarm.__getstate__()
+        else:
+            yield best.__getstate__()
 
     ##########################################################################
     # MapReduce to Find the Best Particle
@@ -277,6 +282,14 @@ class SubswarmPSO(standardpso.StandardPSO):
         swarm = PSOPickler.loads(value)
         best = self.findbest(swarm)
         yield '0', best.__getstate__()
+
+    def findbest_reduce(self, key, value_iter):
+        particles = [PSOPickler.loads(value) for value in value_iter]
+        assert len(particles) == self.link.num, (
+            'Only %s particles in findbest_reduce' % len(particles))
+
+        best = self.findbest(particles)
+        yield best.__getstate__()
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)
