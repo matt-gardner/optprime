@@ -123,6 +123,7 @@ class StandardPSO(mrs.IterativeMR):
             self.iteration = 0
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
+            job.set_default_parter(self.mod_partition)
             mrs.IterativeMR.run(self, job)
             self.output.finish()
             return True
@@ -141,35 +142,29 @@ class StandardPSO(mrs.IterativeMR):
             rand = self.initialization_rand()
             init_particles = [(repr(p.id).encode('ascii'), p.__getstate__())
                     for p in self.topology.newparticles(rand)]
-            self.numtasks = self.opts.numtasks
-            if not self.numtasks:
-                self.numtasks = len(init_particles)
-            start_swarm = job.local_data(init_particles, splits=self.numtasks,
-                    parter=self.mod_partition)
-            data = job.map_data(start_swarm, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            if self.opts.numtasks:
+                job.set_default_splits(self.opts.numtasks)
+            else:
+                job.set_default_splits(len(init_particles))        
+            
+            start_swarm = job.local_data(init_particles)
+            data = job.map_data(start_swarm, self.pso_map)
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
-            out_data = job.reduce_data(self.last_data, self.pso_reduce, 
-                splits=self.numtasks, parter=self.mod_partition)
-            if (self.last_data not in self.datasets and
+            out_data = job.reduce_data(self.last_data, self.pso_reduce)
+            if (self.last_data not in self.datasets and 
                     self.last_data not in self.out_datasets):
                 self.last_data.close()
-            data = job.map_data(out_data, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            data = job.map_data(out_data, self.pso_map)
 
         else:
             out_data = None
             if self.opts.split_reducemap:
-                interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        splits=self.numtasks, parter=self.mod_partition)
-                data = job.map_data(interm, self.pso_map,
-                        splits=self.numtasks, parter=self.mod_partition)
+                interm = job.reduce_data(self.last_data, self.pso_reduce)
+                data = job.map_data(interm, self.pso_map)
             else:
-                data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, splits=self.numtasks,
-                        parter=self.mod_partition)
+                data = job.reducemap_data(self.last_data, self.pso_reduce, self.pso_map)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
