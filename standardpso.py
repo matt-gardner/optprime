@@ -199,7 +199,7 @@ class StandardPSO(mrs.IterativeMR):
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
                 particles = []
-                for reduce_id, particle in dataset.iterdata():
+                for reduce_id, particle in dataset.data():
                     particles.append(Particle.unpack(particle))
             if dataset != self.last_data:
                 dataset.close()

@@ -161,7 +161,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
                 swarms = []
-                for reduce_id, swarm in dataset.iterdata():
+                for reduce_id, swarm in dataset.data():
                     swarms.append(Swarm.unpack(swarm))
             if dataset != self.last_data:
                 dataset.close()
