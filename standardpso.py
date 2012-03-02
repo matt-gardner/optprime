@@ -5,7 +5,6 @@ from __future__ import print_function
 
 import datetime
 from six import b
-import sys
 import time
 
 import mrs

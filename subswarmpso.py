@@ -72,7 +72,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                     # FIXME: communication
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
-            if not ((i-1) % output.freq):
+            if not ((i - 1) % output.freq):
                 kwds = {}
                 if 'iteration' in output.args:
                     kwds['iteration'] = iteration
@@ -101,31 +101,26 @@ class SubswarmPSO(standardpso.StandardPSO):
             subswarms = [Swarm(i, self.topology.newparticles(rand))
                     for i in range(self.link.num)]
             kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
-                
+
             start_swarm = job.local_data(kvpairs)
             data = job.map_data(start_swarm, self.pso_map)
-            start_swarm.close()                              
+            start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
-            out_data = job.reduce_data(self.last_data, self.pso_reduce, 
-                splits=self.numtasks, parter=self.mod_partition)
+            out_data = job.reduce_data(self.last_data, self.pso_reduce)
             if (self.last_data not in self.datasets and
                     self.last_data not in self.out_datasets):
                 self.last_data.close()
-            data = job.map_data(out_data, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            data = job.map_data(out_data, self.pso_map)
 
         else:
             out_data = None
             if self.opts.split_reducemap:
-                interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        splits=self.numtasks, parter=self.mod_partition)
-                data = job.map_data(interm, self.pso_map,
-                        splits=self.numtasks, parter=self.mod_partition)
+                interm = job.reduce_data(self.last_data, self.pso_reduce)
+                data = job.map_data(interm, self.pso_map)
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, splits=self.numtasks,
-                        parter=self.mod_partition)
+                        self.pso_map)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
@@ -161,7 +156,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                 dataset.close()
             kwds = {}
             if 'iteration' in self.output.args:
-                kwds['iteration'] = last_iteration
+                kwds['iteration'] = iteration
             if 'particles' in self.output.args:
                 kwds['particles'] = particles
             if 'best' in self.output.args:
@@ -172,7 +167,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                 return False
 
         return True
-        
+
     ##########################################################################
     # Primary MapReduce
 
@@ -249,12 +244,12 @@ class SubswarmPSO(standardpso.StandardPSO):
 def update_parser(parser):
     """Adds PSO options to an OptionParser instance."""
     parser = standardpso.update_parser(parser)
-    parser.add_option('-l','--link', metavar='TOPOLOGY',
+    parser.add_option('-l', '--link', metavar='TOPOLOGY',
             dest='link', action='extend', search=['topology'],
             help='Topology/sociometry for linking subswarms',
             default='Complete',
             )
-    parser.add_option('-s','--subiters',
+    parser.add_option('-s', '--subiters',
             dest='subiters', type='int',
             help='Number of iterations per subswarm between iterations',
             default=10,
