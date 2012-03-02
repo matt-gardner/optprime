@@ -32,133 +32,121 @@ class SpecExPSO(standardpso.StandardPSO):
 
     ##########################################################################
     # MapReduce Implementation
+    def producer(self, job):
+        if self.iteration > self.opts.iters:
+            return []
 
-    def run_batch(self, job, tty):
-        """Performs Speculative Execution PSO using MapReduce.
-        """
-        rand = self.initialization_rand()
+        elif self.iteration == 0:
+            self.out_datasets = {}
+            self.datasets = {}
+            out_data = None
 
-        particles = list(self.topology.newparticles(rand))
-        self.move_all(particles)
-        for particle in particles:
-            particle.tokens = self.opts.min_tokens
-        available_tokens = self.opts.tokens - (self.opts.min_tokens *
-                len(particles))
-        for i in range(available_tokens):
-            particles[rand.randrange(len(particles))].tokens += 1
-        init_particles = []
-        for p in particles:
-            init_particles.append((str(p.id),repr(p)))
-            neighbors = []
-            for n in particles:
-                self.set_neighborhood_rand(n)
-                if p.id in self.topology.iterneighbors(n):
-                    neighbors.append(particles[n.id])
-            children = self.specmethod.generate_children(p, neighbors)
-            for i, child in enumerate(children):
-                key = (i+1)*self.topology.num+p.id
-                init_particles.append((str(key), repr(child)))
+            rand = self.initialization_rand()
+            particles = list(self.topology.newparticles(rand))
+            self.move_all(particles)
+            for particle in particles:
+                particle.tokens = self.opts.min_tokens
+            available_tokens = self.opts.tokens - (self.opts.min_tokens *
+                    len(particles))
+            for i in range(available_tokens):
+                particles[rand.randrange(len(particles))].tokens += 1
+            init_particles = []
+            for p in particles:
+                init_particles.append((str(p.id),repr(p)))
+                neighbors = []
+                for n in particles:
+                    self.set_neighborhood_rand(n)
+                    if p.id in self.topology.iterneighbors(n):
+                        neighbors.append(particles[n.id])
+                children = self.specmethod.generate_children(p, neighbors)
+                for i, child in enumerate(children):
+                    key = (i+1)*self.topology.num+p.id
+                    init_particles.append((str(key), repr(child)))
+            self.numtasks = self.opts.numtasks
+            if not self.numtasks:
+                self.numtasks = len(init_particles)
+            start_swarm = job.local_data(init_particles, splits=self.numtasks,
+                    parter=self.mod_partition)
+            data = job.map_data(start_swarm, self.sepso_map, splits=self.numtasks,
+                    parter=self.mod_partition)
+            start_swarm.close()  
 
-        numtasks = self.opts.numtasks
-        if not numtasks:
-            numtasks = len(init_particles)
-        last_swarm = job.local_data(init_particles, parter=self.mod_partition,
-                splits=numtasks)
+            del init_particles
+            del neighbors
+            
+        elif (self.iteration - 1) % self.output.freq == 0:
+            out_data = job.reduce_data(self.last_data, self.sepso_reduce, 
+                splits=self.numtasks, parter=self.mod_partition)
+            if (self.last_data not in self.datasets and
+                    self.last_data not in self.out_datasets):
+                self.last_data.close()
+            data = job.map_data(out_data, self.sepso_map, splits=self.numtasks,
+                    parter=self.mod_partition)
 
-        del init_particles
-        del neighbors
+        else:
+            out_data = None
+            if self.opts.split_reducemap:
+                interm = job.reduce_data(self.last_data, self.sepso_reduce,
+                        splits=self.numtasks, parter=self.mod_partition)
+                data = job.map_data(interm, self.sepso_map,
+                        splits=self.numtasks, parter=self.mod_partition)
+            else:
+                data = job.reducemap_data(self.last_data, self.sepso_reduce,
+                        self.pso_map, splits=self.numtasks,
+                        parter=self.mod_partition)
 
-        output = param.instantiate(self.opts, 'out')
-        output.start()
+        self.iteration += 1
+        self.datasets[data] = self.iteration
+        self.last_data = data
+        if out_data:
+            self.out_datasets[out_data] = self.iteration
+            return [out_data, data]
+        else:
+            return [data]
 
-        # Perform iterations.  Note: we submit the next iteration while the
-        # previous is being computed.  Also, the next PSO iteration depends on
-        # the same data as the output phase, so they can run concurrently.
-        last_out_data = None
-        next_out_data = None
-        last_iteration = 0
-        for iteration in range(1, 1 + self.opts.iters):
-            interm_data = job.map_data(last_swarm, self.sepso_map,
-                    splits=numtasks, parter=self.mod_partition)
-            if last_swarm != last_out_data:
-                last_swarm.close()
-            tmp_swarm = job.reduce_data(interm_data, self.sepso_reduce,
-                    splits=numtasks, parter=self.mod_partition)
-            interm_data.close()
-            next_swarm = job.map_data(tmp_swarm, self.sepso_tmp_map,
-                    splits=numtasks, parter=self.mod_partition)
-            tmp_swarm.close()
+    def consumer(self, dataset):
+        # Note that depending on the output class, a dataset could be both
+        # in out_datasets and datasets.
 
-            next_out_data = None
-            if not ((iteration - 1) % output.freq):
-                if 'particles' in output.args:
-                    next_out_data = next_swarm
-                elif 'best' in output.args:
-                    # Create a new output_data MapReduce phase to find the
-                    # best particle in the population.
-                    collapsed_data = job.map_data(next_swarm,
-                            self.collapse_map, splits=1)
-                    next_out_data = job.reduce_data(collapsed_data,
-                            self.findbest_reduce, splits=1)
-                    collapsed_data.close()
+        if dataset in self.datasets:
+            iteration = self.datasets[dataset]
+            del self.datasets[dataset]
 
-            waitset = set()
-            if iteration > 1:
-                waitset.add(last_swarm)
-            if last_out_data is not None:
-                waitset.add(last_out_data)
-            while waitset:
-                if tty:
-                    ready = job.wait(timeout=1.0, *waitset)
-                    if last_swarm in ready:
-                        print >>tty, "Finished iteration", last_iteration*2
-                else:
-                    ready = job.wait(*waitset)
+            #self.output.print_to_tty("Finished iteration %s" % iteration)
+            if dataset not in self.out_datasets and dataset != self.last_data:
+                dataset.close()
 
-                # Download output data and store as `particles`.
-                if last_out_data in ready:
-                    if 'best' in output.args or 'particles' in output.args:
-                        last_out_data.fetchall()
-                        particles = []
-                        for bucket in last_out_data:
-                            for reduce_id, particle in bucket:
-                                # Only output real particles, not SEParticles.
-                                # Also, outputs that use current particle
-                                # position and value will be off on the value,
-                                # because it hasn't been evaluated yet.
-                                record = PSOPickler.loads(particle)
-                                if type(record) == Particle:
-                                    particles.append(record)
-                    last_out_data.close()
-                    last_out_data = None
+        if dataset in self.out_datasets:
+            iteration = self.out_datasets[dataset]
+            del self.out_datasets[dataset]
 
-                waitset -= set(ready)
+            if 'best' in self.output.args or 'particles' in self.output.args:
+                dataset.fetchall()
+                particles = []
+                for reduce_id, particle in dataset.iterdata():
+                    # Only output real particles, not SEParticles.
+                    # Also, outputs that use current particle
+                    # position and value will be off on the value,
+                    # because it hasn't been evaluated yet.
+                    record = PSOPickler.loads(particle)
+                    if type(record) == Particle:
+                        particles.append(record)
+            if dataset != self.last_data:
+                dataset.close()
+            kwds = {}
+            if 'iteration' in self.output.args:
+                kwds['iteration'] = last_iteration
+            if 'particles' in self.output.args:
+                kwds['particles'] = particles
+            if 'best' in self.output.args:
+                print "len=", len(particles)
+                kwds['best'] = self.findbest(particles)
+            self.output(**kwds)
+            if self.stop_condition(particles):
+                self.output.success()
+                return False
 
-            # Print out the results.
-            if last_iteration > 0 and not ((last_iteration - 1) % output.freq):
-                kwds = {}
-                if 'iteration' in output.args:
-                    kwds['iteration'] = last_iteration
-                if 'particles' in output.args:
-                    kwds['particles'] = particles
-                if 'best' in output.args:
-                    if len(particles) == 1:
-                        best = particles[0]
-                    else:
-                        best = self.findbest(particles)
-                    kwds['best'] = best
-                output(**kwds)
-                if self.stop_condition(particles):
-                    output.finish(True)
-                    return
-                del kwds
-
-            # Set up for the next iteration.
-            last_iteration = iteration
-            last_swarm = next_swarm
-            last_out_data = next_out_data
-
-        output.finish(False)
+        return True
 
     ##########################################################################
     # Primary MapReduce

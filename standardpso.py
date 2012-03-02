@@ -4,7 +4,6 @@ from __future__ import division
 from __future__ import print_function
 
 import datetime
-import operator
 from six import b
 import sys
 import time
@@ -71,7 +70,7 @@ class StandardPSO(mrs.IterativeMR):
             self.bypass_iteration(particles)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
-            if not ((iteration-1) % self.output.freq):
+            if not ((iteration - 1) % self.output.freq):
                 kwds = {}
                 if 'iteration' in self.output.args:
                     kwds['iteration'] = iteration
@@ -123,6 +122,13 @@ class StandardPSO(mrs.IterativeMR):
             self.iteration = 0
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
+
+            job.default_partition = self.mod_partition
+            if self.opts.numtasks:
+                job.default_reduce_tasks = self.opts.numtasks
+            else:
+                job.default_reduce_tasks = self.topology.num
+
             mrs.IterativeMR.run(self, job)
             self.output.finish()
             return True
@@ -141,35 +147,25 @@ class StandardPSO(mrs.IterativeMR):
             rand = self.initialization_rand()
             init_particles = [(repr(p.id).encode('ascii'), p.__getstate__())
                     for p in self.topology.newparticles(rand)]
-            self.numtasks = self.opts.numtasks
-            if not self.numtasks:
-                self.numtasks = len(init_particles)
-            start_swarm = job.local_data(init_particles, splits=self.numtasks,
-                    parter=self.mod_partition)
-            data = job.map_data(start_swarm, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            start_swarm = job.local_data(init_particles)
+            data = job.map_data(start_swarm, self.pso_map)
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
-            out_data = job.reduce_data(self.last_data, self.pso_reduce, 
-                splits=self.numtasks, parter=self.mod_partition)
+            out_data = job.reduce_data(self.last_data, self.pso_reduce)
             if (self.last_data not in self.datasets and
                     self.last_data not in self.out_datasets):
                 self.last_data.close()
-            data = job.map_data(out_data, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            data = job.map_data(out_data, self.pso_map)
 
         else:
             out_data = None
             if self.opts.split_reducemap:
-                interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        splits=self.numtasks, parter=self.mod_partition)
-                data = job.map_data(interm, self.pso_map,
-                        splits=self.numtasks, parter=self.mod_partition)
+                interm = job.reduce_data(self.last_data, self.pso_reduce)
+                data = job.map_data(interm, self.pso_map)
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, splits=self.numtasks,
-                        parter=self.mod_partition)
+                        self.pso_map)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
@@ -205,7 +201,7 @@ class StandardPSO(mrs.IterativeMR):
                 dataset.close()
             kwds = {}
             if 'iteration' in self.output.args:
-                kwds['iteration'] = last_iteration
+                kwds['iteration'] = iteration
             if 'particles' in self.output.args:
                 kwds['particles'] = particles
             if 'best' in self.output.args:
@@ -291,8 +287,6 @@ class StandardPSO(mrs.IterativeMR):
 
     def findbest(self, candidates):
         """Returns the best particle or message from the given candidates."""
-#        if len(candidates) == 1:
-#            return candidates[0]
         comparator = self.function.comparator
         best = None
         for cand in candidates:
@@ -441,27 +435,27 @@ def update_parser(parser):
             help='Refrain from printing version and option information',
             default=False,
             )
-    parser.add_option('-v','--verbose',
+    parser.add_option('-v', '--verbose',
             dest='verbose', action='store_true',
             help="Print out verbose error messages",
             default=False,
             )
-    parser.add_option('-i','--iters',
+    parser.add_option('-i', '--iters',
             dest='iters', type='int',
             help='Number of iterations',
             default=100,
             )
-    parser.add_option('-f','--func', metavar='FUNCTION',
+    parser.add_option('-f', '--func', metavar='FUNCTION',
             dest='func', action='extend', search=['functions'],
             help='Function to optimize',
             default='sphere.Sphere',
             )
-    parser.add_option('-m','--motion',
+    parser.add_option('-m', '--motion',
             dest='motion', action='extend', search=['motion.basic', 'motion'],
             help='Particle motion type',
             default='Constricted',
             )
-    parser.add_option('-t','--top', metavar='TOPOLOGY',
+    parser.add_option('-t', '--top', metavar='TOPOLOGY',
             dest='top', action='extend', search=['topology'],
             help='Particle topology/sociometry',
             default='Complete',
