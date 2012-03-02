@@ -101,15 +101,9 @@ class SubswarmPSO(standardpso.StandardPSO):
             subswarms = [Swarm(i, self.topology.newparticles(rand))
                     for i in range(self.link.num)]
             kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
-            
-            self.numtasks = self.opts.numtasks
-            if not self.numtasks:
-                self.numtasks = len(subswarms)
                 
-            start_swarm = job.local_data(kvpairs, splits=self.numtasks,
-                    parter=self.mod_partition)
-            data = job.map_data(start_swarm, self.pso_map, splits=self.numtasks,
-                    parter=self.mod_partition)
+            start_swarm = job.local_data(kvpairs)
+            data = job.map_data(start_swarm, self.pso_map)
             start_swarm.close()                              
 
         elif (self.iteration - 1) % self.output.freq == 0:
