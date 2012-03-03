@@ -132,10 +132,10 @@ class StandardPSO(mrs.IterativeMR):
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()
-            return True
+            return 0
         except KeyboardInterrupt as e:
             print("# INTERRUPTED")
-        return 0
+            return 1
 
     def producer(self, job):
         if self.iteration > self.opts.iters:
