@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import datetime
 from six import b
+import sys
 import time
 
 import mrs
@@ -41,7 +42,7 @@ class StandardPSO(mrs.IterativeMR):
         """Run a "native" version of PSO without MapReduce."""
 
         if not self.cli_startup():
-            return
+            return 1
 
         # Perform simulation
         try:
@@ -51,6 +52,7 @@ class StandardPSO(mrs.IterativeMR):
             self.output.finish()
         except KeyboardInterrupt as e:
             print("# INTERRUPTED")
+        return 0
 
     def bypass_run(self):
         """Performs PSO without MapReduce.
@@ -114,7 +116,7 @@ class StandardPSO(mrs.IterativeMR):
         This is run on the master.
         """
         if not self.cli_startup():
-            return
+            return 1
 
         # Perform the simulation
         try:
@@ -133,6 +135,7 @@ class StandardPSO(mrs.IterativeMR):
             return True
         except KeyboardInterrupt as e:
             print("# INTERRUPTED")
+        return 0
 
     def producer(self, job):
         if self.iteration > self.opts.iters:
@@ -309,7 +312,6 @@ class StandardPSO(mrs.IterativeMR):
         Returns True if startup succeeded, otherwise False.
         """
         import cli
-        import sys
 
         # Check whether the repository is dirty.
         mrs_status = cli.GitStatus(mrs)
@@ -445,22 +447,23 @@ def update_parser(parser):
             default=100,
             )
     parser.add_option('-f', '--func', metavar='FUNCTION',
-            dest='func', action='extend', search=['functions'],
+            dest='func', action='extend', search=['amlpso.functions'],
             help='Function to optimize',
             default='sphere.Sphere',
             )
     parser.add_option('-m', '--motion',
-            dest='motion', action='extend', search=['motion.basic', 'motion'],
+            dest='motion', action='extend',
+            search=['amlpso.motion.basic', 'amlpso.motion'],
             help='Particle motion type',
             default='Constricted',
             )
     parser.add_option('-t', '--top', metavar='TOPOLOGY',
-            dest='top', action='extend', search=['topology'],
+            dest='top', action='extend', search=['amlpso.topology'],
             help='Particle topology/sociometry',
             default='Complete',
             )
     parser.add_option('-o', '--out', metavar='OUTPUTTER',
-            dest='out', action='extend', search=['output'],
+            dest='out', action='extend', search=['amlpso.output'],
             help='Style of output',
             default='Basic',
             )
