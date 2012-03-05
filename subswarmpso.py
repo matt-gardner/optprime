@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 from __future__ import division
-import sys, operator
 from itertools import chain
+import operator
+import sys
 
 import mrs
 from mrs import param
