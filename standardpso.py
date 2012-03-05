@@ -367,11 +367,7 @@ class StandardPSO(mrs.IterativeMR):
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
-        from mrs.main import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = self.MOTION_OFFSET + base * (p.id + base * (p.iters + base *
-            (base * swarmid)))
-        p.rand = self.random(offset)
+        p.rand = self.random(self.MOTION_OFFSET, p.id, p.iters, swarmid)
 
     def set_neighborhood_rand(self, n, swarmid=0):
         """Makes a Random for the given node and saves it to `n.rand`.
@@ -385,40 +381,18 @@ class StandardPSO(mrs.IterativeMR):
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
-        from mrs.main import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = self.NEIGHBORHOOD_OFFSET + base * (n.id + base * (n.iters +
-            base * (base * swarmid)))
-        n.rand = self.random(offset)
+        n.rand = self.random(self.NEIGHBORHOOD_OFFSET, n.id, n.iters, swarmid)
 
     def initialization_rand(self):
         """Returns a new Random number.
 
         This ensures that each run will have a unique initial swarm state.
         """
-        from mrs.main import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = self.INITIALIZATION_OFFSET + base
-        return self.random(offset)
-
-    def function_rand(self):
-        """Returns a new Random number.
-
-        This should be used just before performing motion on the particle.
-
-        Note that the Random depends on the particle id, iteration, and
-        swarmid.  The swarmid is only needed in the subswarms case (to make
-        sure that the particles in different subswarms have unique seeds), but
-        it doesn't hurt the standardpso case to include it.
-        """
-        from mrs.main import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = self.FUNCTION_OFFSET + base
-        return self.random(offset)
+        return self.random(self.INITIALIZATION_OFFSET)
 
     def randomize_function_center(self):
         """Sets a random function center."""
-        rand = self.function_rand()
+        rand = self.random(self.FUNCTION_OFFSET)
         self.function.randomize_center(rand)
 
 
