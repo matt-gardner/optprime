@@ -154,17 +154,28 @@ class StandardPSO(mrs.IterativeMR):
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
-            out_data = job.reduce_data(self.last_data, self.pso_reduce)
+            num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
+            swarm_data = job.reduce_data(self.last_data, self.pso_reduce)
             if (self.last_data not in self.datasets and
                     self.last_data not in self.out_datasets):
                 self.last_data.close()
-            data = job.map_data(out_data, self.pso_map)
+            data = job.map_data(swarm_data, self.pso_map)
+            if ('particles' not in self.output.args and
+                    'best' not in self.output.args):
+                out_data = None
+            elif ('best' in self.output.args and num_reduce_tasks > 1):
+                interm = job.map_data(swarm_data, self.collapse_map,
+                        splits=num_reduce_tasks)
+                out_data = job.reduce_data(interm, self.findbest_reduce,
+                        splits=1)
+            else:
+                out_data = swarm_data
 
         else:
             out_data = None
             if self.opts.split_reducemap:
-                interm = job.reduce_data(self.last_data, self.pso_reduce)
-                data = job.map_data(interm, self.pso_map)
+                swarm = job.reduce_data(self.last_data, self.pso_reduce)
+                data = job.map_data(swarm, self.pso_map)
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
                         self.pso_map)
@@ -265,7 +276,8 @@ class StandardPSO(mrs.IterativeMR):
     # MapReduce to Find the Best Particle
 
     def collapse_map(self, key, value):
-        yield b('0'), value
+        new_key = str(int(key) % self.opts.mrs__reduce_tasks)
+        yield new_key.encode('ascii'), value
 
     def findbest_reduce(self, key, value_iter):
         particles = [Particle.PSOPickler.loads(value) for value in value_iter]
