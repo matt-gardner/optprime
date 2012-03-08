@@ -49,18 +49,27 @@ class _Topology(ParamObj):
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)
 
+    def newparticle(self, i, rand):
+        """Returns a new particle with the given id.
+
+        Particles are distributed uniformly within the constraints.
+        """
+        from particle import Particle
+        newpos = self.cube.random_vec(rand)
+        newvel = self.vcube.random_vec(rand)
+        p = Particle(id=i, pos=newpos, vel=newvel)
+        return p
+
     def newparticles(self, rand):
         """Yields new particles.
 
         Particles are distributed uniformly within the constraints.  The
         generator stops after creating the configured number of particles.
+
+        Note that the same rand instance is used for all of the particles.
         """
-        from particle import Particle
         for i in range(self.num):
-            newpos = self.cube.random_vec(rand)
-            newvel = self.vcube.random_vec(rand)
-            p = Particle(id=i, pos=newpos, vel=newvel)
-            yield p
+            yield self.newparticle(i, rand)
 
     def iterneighbors(self, particle):
         """Yields the particle ids of the neighbors of the give particle."""

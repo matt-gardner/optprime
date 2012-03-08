@@ -39,10 +39,11 @@ class SubswarmPSO(standardpso.StandardPSO):
         comp = self.function.comparator
 
         # Create the Population.
-        rand = self.initialization_rand()
-        top = self.topology
-        subswarms = [Swarm(i, top.newparticles(rand))
-                for i in range(self.link.num)]
+        subswarms = []
+        for swarm_id in range(self.link.num):
+            rand = self.initialization_rand(swarm_id)
+            swarm = Swarm(swarm_id, self.topology.newparticles(rand))
+            subswarms.append(swarm)
 
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
@@ -98,13 +99,9 @@ class SubswarmPSO(standardpso.StandardPSO):
             self.datasets = {}
             out_data = None
 
-            rand = self.initialization_rand()
-            subswarms = [Swarm(i, self.topology.newparticles(rand))
-                    for i in range(self.link.num)]
-            kvpairs = ((str(i), repr(swarm)) for i, swarm in enumerate(subswarms))
-
+            kvpairs = ((str(i), '') for i in range(self.link.num))
             start_swarm = job.local_data(kvpairs)
-            data = job.map_data(start_swarm, self.pso_map)
+            data = job.map_data(start_swarm, self.init_map)
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
@@ -183,6 +180,14 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
+    def init_map(self, key, value):
+        swarm_id = int(key)
+        rand = self.initialization_rand(swarm_id)
+        swarm = Swarm(swarm_id, self.topology.newparticles(rand))
+
+        for kvpair in self.pso_map(key, swarm.__getstate__()):
+            yield kvpair
+
     def pso_map(self, key, value):
         swarm = PSOPickler.loads(value)
         assert swarm.id == int(key)
@@ -190,7 +195,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             self.bypass_iteration(swarm, swarm.id)
 
         # Emit the swarm.
-        yield (key, repr(swarm))
+        yield (key, swarm.__getstate__())
 
         # Emit a message for each dependent swarm:
         self.set_swarm_rand(swarm)
@@ -199,7 +204,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         comparator = self.function.comparator
         message = particle.make_message(self.opts.transitive_best, comparator)
         for dep_id in self.link.iterneighbors(swarm):
-            yield (str(dep_id), repr(message))
+            yield (str(dep_id), message.__getstate__())
 
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
@@ -226,7 +231,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             for dep_id in self.topology.iterneighbors(swarm_head):
                 neighbor = swarm[dep_id]
                 neighbor.nbest_cand(best.position, best.value, comparator)
-        yield repr(swarm)
+        yield swarm.__getstate__()
 
     ##########################################################################
     # MapReduce to Find the Best Particle
@@ -235,7 +240,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         """Finds the best particle in the swarm and yields it with id 0."""
         swarm = Swarm.PSOPickler.loads(value)
         best = self.findbest(swarm)
-        yield '0', repr(best)
+        yield '0', best.__getstate__()
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)

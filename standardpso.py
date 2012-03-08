@@ -61,8 +61,11 @@ class StandardPSO(mrs.IterativeMR):
         the same thing.
         """
         # Create the Population.
-        rand = self.initialization_rand()
-        particles = list(self.topology.newparticles(rand))
+        particles = []
+        for i in range(self.topology.num):
+            rand = self.initialization_rand(i)
+            p = self.topology.newparticle(i, rand)
+            particles.append(p)
 
         # Perform PSO Iterations.  The iteration number represents the total
         # number of function evaluations that have been performed for each
@@ -146,11 +149,9 @@ class StandardPSO(mrs.IterativeMR):
             self.datasets = {}
             out_data = None
 
-            rand = self.initialization_rand()
-            init_particles = [(repr(p.id).encode('ascii'), p.__getstate__())
-                    for p in self.topology.newparticles(rand)]
-            start_swarm = job.local_data(init_particles)
-            data = job.map_data(start_swarm, self.pso_map)
+            kvpairs = ((str(i), '') for i in range(self.topology.num))
+            start_swarm = job.local_data(kvpairs)
+            data = job.map_data(start_swarm, self.init_map)
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
@@ -228,6 +229,14 @@ class StandardPSO(mrs.IterativeMR):
 
     ##########################################################################
     # Primary MapReduce
+
+    def init_map(self, key, value):
+        particle_id = int(key)
+        rand = self.initialization_rand(particle_id)
+        p = self.topology.newparticle(particle_id, rand)
+
+        for kvpair in self.pso_map(key, p.__getstate__()):
+            yield kvpair
 
     def pso_map(self, key, value):
         comparator = self.function.comparator
@@ -395,12 +404,12 @@ class StandardPSO(mrs.IterativeMR):
         """
         n.rand = self.random(self.NEIGHBORHOOD_OFFSET, n.id, n.iters, swarmid)
 
-    def initialization_rand(self):
-        """Returns a new Random number.
+    def initialization_rand(self, i):
+        """Returns a Random for the given particle id.
 
         This ensures that each run will have a unique initial swarm state.
         """
-        return self.random(self.INITIALIZATION_OFFSET)
+        return self.random(self.INITIALIZATION_OFFSET, i)
 
     def randomize_function_center(self):
         """Sets a random function center."""
