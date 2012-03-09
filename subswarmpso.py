@@ -114,7 +114,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             if ('particles' not in self.output.args and
                     'best' not in self.output.args):
                 out_data = None
-            elif ('best' in self.output.args and num_reduce_tasks > 1):
+            elif ('best' in self.output.args):
                 interm = job.map_data(swarm_data, self.collapse_map,
                         splits=num_reduce_tasks)
                 out_data = job.reduce_data(interm, self.findbest_reduce,
