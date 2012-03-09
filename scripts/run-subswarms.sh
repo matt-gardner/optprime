@@ -1,6 +1,6 @@
 JOBNAME="ring-subring6"
 ../mrs/examples/clusterrun.py -n "$JOBNAME" \
-    -h /admin/potatoes/all4 \
+    -h /admin/potatoes/all6 \
     ./subswarmpso.py -f rastrigin.Rastrigin -d 50 \
     -t Ring -l Ring --link-num 100 \
     --top-num 1000 \

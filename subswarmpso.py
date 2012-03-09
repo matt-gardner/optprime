@@ -90,6 +90,35 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce Implementation
 
+    def run(self, job):
+        """Run Mrs PSO function
+
+        This is run on the master.
+        """
+        if not self.cli_startup():
+            return 1
+
+        # Perform the simulation
+        try:
+            self.iteration = 0
+            self.output = param.instantiate(self.opts, 'out')
+            self.output.start()
+
+            job.default_partition = self.mod_partition
+            if self.opts.numtasks:
+                numtasks = self.opts.numtasks
+            else:
+                numtasks = self.link.num
+            job.default_reduce_tasks = numtasks
+            job.default_reduce_splits = numtasks
+
+            mrs.IterativeMR.run(self, job)
+            self.output.finish()
+            return 0
+        except KeyboardInterrupt as e:
+            print("# INTERRUPTED")
+            return 1
+
     def producer(self, job):
         if self.iteration > self.opts.iters:
             return []
@@ -158,9 +187,11 @@ class SubswarmPSO(standardpso.StandardPSO):
 
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
-                swarms = []
-                for reduce_id, swarm in dataset.data():
-                    swarms.append(Swarm.unpack(swarm))
+                particles = []
+                for key, value in dataset.data():
+                    particles.append(PSOPickler.loads(value))
+                if 'particles' in self.output.args:
+                    particles = list(chain(*particles))
             if dataset != self.last_data:
                 dataset.close()
             kwds = {}
@@ -169,9 +200,9 @@ class SubswarmPSO(standardpso.StandardPSO):
             if 'particles' in self.output.args:
                 kwds['particles'] = particles
             if 'best' in self.output.args:
-                kwds['best'] = self.findbest(chain(*swarms))
+                kwds['best'] = self.findbest(particles)
             self.output(**kwds)
-            if self.stop_condition(chain(*swarms)):
+            if self.stop_condition(particles):
                 self.output.success()
                 return False
 

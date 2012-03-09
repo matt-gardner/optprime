@@ -129,9 +129,11 @@ class StandardPSO(mrs.IterativeMR):
 
             job.default_partition = self.mod_partition
             if self.opts.numtasks:
-                job.default_reduce_tasks = self.opts.numtasks
+                numtasks = self.opts.numtasks
             else:
-                job.default_reduce_tasks = self.topology.num
+                numtasks = self.topology.num
+            job.default_reduce_tasks = numtasks
+            job.default_reduce_splits = numtasks
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()
