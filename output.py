@@ -166,6 +166,7 @@ class Swarm(Output):
             print(part.value, ','.join(str(x) for x in part.pos),
                     part.pbestval, ','.join(str(x) for x in part.pbestpos))
         print()
+        sys.stdout.flush()
 
 
 class SwarmRepr(Output):
@@ -180,6 +181,7 @@ class SwarmRepr(Output):
             print(repr(part))
             print()
         print()
+        sys.stdout.flush()
 
 
 class Stats(Output):
@@ -275,6 +277,7 @@ class Stats(Output):
             print(self.iters, best.pbestval, best.id, '\tStagnant particles:',
                     numstagnant, '\tStagnant for more than 30 iterations:',
                     really_stagnant)
+        sys.stdout.flush()
 
     def finish(self):
         print('Stats:')
@@ -299,6 +302,7 @@ class Stats(Output):
         print(self.recently_seen_changes/self.changes)
         print('Percent of particles that updated pbest less than 10% of the time:')
         print(num_worthless/len(self.counter))
+        sys.stdout.flush()
 
 
 class BranchStats(Output):
@@ -362,6 +366,7 @@ class BranchStats(Output):
             self.prevnbest[particle.id] = particle.nbestval
             self.prevnbestid[particle.id] = self.positions[particle.nbestpos]
         print(iteration, best.pbestval)
+        sys.stdout.flush()
 
     def finish(self):
         print('\nStats:')
@@ -406,6 +411,7 @@ class BranchStats(Output):
         notp = sum(avenotn)/len(avenotn)
         p = sum(aven)/len(aven)
         print('%.3f %.3f' % (notn,n))
+        sys.stdout.flush()
 
 
 # vim: et sw=4 sts=4
