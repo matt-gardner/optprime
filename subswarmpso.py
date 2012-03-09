@@ -120,7 +120,8 @@ class SubswarmPSO(standardpso.StandardPSO):
             return 1
 
     def producer(self, job):
-        if self.iteration > self.opts.iters:
+        outer_iters = self.opts.iters // self.opts.subiters
+        if self.iteration > outer_iters:
             return []
 
         elif self.iteration == 0:
