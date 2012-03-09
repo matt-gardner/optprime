@@ -289,7 +289,7 @@ class StandardPSO(mrs.IterativeMR):
         yield new_key.encode('ascii'), value
 
     def findbest_reduce(self, key, value_iter):
-        particles = [Particle.PSOPickler.loads(value) for value in value_iter]
+        particles = [PSOPickler.loads(value) for value in value_iter]
         best = self.findbest(particles)
         yield best.__getstate__()
 

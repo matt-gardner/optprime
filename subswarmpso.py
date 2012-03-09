@@ -238,7 +238,7 @@ class SubswarmPSO(standardpso.StandardPSO):
 
     def collapse_map(self, key, value):
         """Finds the best particle in the swarm and yields it with id 0."""
-        swarm = Swarm.PSOPickler.loads(value)
+        swarm = PSOPickler.loads(value)
         best = self.findbest(swarm)
         yield '0', best.__getstate__()
 
