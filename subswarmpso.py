@@ -131,16 +131,18 @@ class SubswarmPSO(standardpso.StandardPSO):
 
             kvpairs = ((str(i), '') for i in range(self.link.num))
             start_swarm = job.local_data(kvpairs)
-            data = job.map_data(start_swarm, self.init_map)
+            data = job.map_data(start_swarm, self.init_map,
+                    format=mrs.ZipWriter)
             start_swarm.close()
 
         elif (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
-            swarm_data = job.reduce_data(self.last_data, self.pso_reduce)
+            swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
+                    format=mrs.ZipWriter)
             if (self.last_data not in self.datasets and
                     self.last_data not in self.out_datasets):
                 self.last_data.close()
-            data = job.map_data(swarm_data, self.pso_map)
+            data = job.map_data(swarm_data, self.pso_map, format=mrs.ZipWriter)
             if ('particles' not in self.output.args and
                     'best' not in self.output.args):
                 out_data = None
@@ -155,11 +157,13 @@ class SubswarmPSO(standardpso.StandardPSO):
         else:
             out_data = None
             if self.opts.split_reducemap:
-                interm = job.reduce_data(self.last_data, self.pso_reduce)
-                data = job.map_data(interm, self.pso_map)
+                interm = job.reduce_data(self.last_data, self.pso_reduce,
+                        format=mrs.ZipWriter)
+                data = job.map_data(interm, self.pso_map,
+                        format=mrs.ZipWriter)
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map)
+                        self.pso_map, format=mrs.ZipWriter)
 
         self.iteration += 1
         self.datasets[data] = self.iteration
