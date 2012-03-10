@@ -84,6 +84,38 @@ class Pair(Output):
         sys.stdout.flush()
 
 
+class TimedBasic(Output):
+    """Outputs the elapsed time and best value for each iteration."""
+
+    args = frozenset(('iteration', 'best'))
+
+    def __call__(self, **kwds):
+        sys.stdout.flush()
+
+    def start(self):
+        from datetime import datetime
+        self.last_iter = 0
+        self.last_time = datetime.now()
+
+    def __call__(self, **kwds):
+        iteration = kwds['iteration']
+        if iteration <= 0: return
+        # Find time difference
+        from datetime import datetime
+        now = datetime.now()
+        delta = now - self.last_time
+        seconds = (delta.days * 86400 + delta.seconds
+                + delta.microseconds / 1000000)
+
+        time_per_iter = seconds / (iteration - self.last_iter)
+        best = kwds['best']
+        print(time_per_iter, best.pbestval)
+        sys.stdout.flush()
+
+        self.last_time = now
+        self.last_iter = iteration
+
+
 class Timer(Output):
     """Outputs the elapsed time for each iteration."""
 
