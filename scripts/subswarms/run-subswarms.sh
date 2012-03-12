@@ -1,6 +1,7 @@
 JOBNAME="ring-subring4"
 ../mrs/examples/clusterrun.py -n "$JOBNAME" \
     --interpreter='PYTHONPATH="$PYTHONPATH:/usr/lib/python2.7/site-packages" pypy' \
+    --mrs-tmpdir=/local/tmp \
     -h /admin/potatoes/russet6 \
     -h /admin/potatoes/sweet6 \
     -h /admin/potatoes/yukon6 \
@@ -10,4 +11,4 @@ JOBNAME="ring-subring4"
     -t Ring --top-num 50000 --top-neighbors 25 \
     -s 100 -i 10000 \
     -o TimedBasic \
-    --mrs-tmpdir=/local/tmp --hey-im-testing
+    --hey-im-testing
