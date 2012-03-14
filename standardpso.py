@@ -305,7 +305,6 @@ class StandardPSO(mrs.IterativeMR):
             newpos, newvel = self.motion(p)
         else:
             newpos, newvel = p.pos, p.vel
-        self.randomize_function_center()
         # TODO(?): value = self.function(newpos, p.rand)
         value = self.function(newpos)
         p.update(newpos, newvel, value, self.function.comparator)
