@@ -1,6 +1,6 @@
 from __future__ import division
 from itertools import imap
-from math import exp, sqrt, cos, pi
+from math import e, exp, sqrt, cos, pi
 
 from . import _general
 
