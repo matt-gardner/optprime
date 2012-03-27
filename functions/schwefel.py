@@ -38,3 +38,17 @@ class Schwefel221(_general._Base):
 
     def __call__(self, vec):
         return max([abs(x-c) for x,c in zip(vec, self.abscenter)])
+
+
+class Schwefel12(_general._Base):
+    """The Schwefel 1.2 benchmark function.
+
+    Schwefel's Problem 1.2 is a naturally nonseparable function.  This
+    function is part of the CEC 2010 benchmark suite.
+    """
+    def setup(self):
+        super(Schwefel12, self).setup()
+        self._set_constraints(((-100, 100),) * self.dims)
+
+    def __call__(self, vec):
+        return sum((sum(vec[:i]) ** 2) for i in xrange(self.dims))
