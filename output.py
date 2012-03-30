@@ -2,6 +2,7 @@
 
 from __future__ import division, print_function
 
+import datetime
 import sys
 from mrs.param import Param, ParamObj
 
@@ -85,7 +86,7 @@ class Pair(Output):
 
 
 class TimedBasic(Output):
-    """Outputs the elapsed time and best value for each iteration."""
+    """Outputs the average elapsed time per iteration and best value."""
 
     args = frozenset(('iteration', 'best'))
 
@@ -93,16 +94,14 @@ class TimedBasic(Output):
         sys.stdout.flush()
 
     def start(self):
-        from datetime import datetime
         self.last_iter = 0
-        self.last_time = datetime.now()
+        self.last_time = datetime.datetime.now()
 
     def __call__(self, **kwds):
         iteration = kwds['iteration']
         if iteration <= 0: return
         # Find time difference
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.datetime.now()
         delta = now - self.last_time
         seconds = (delta.days * 86400 + delta.seconds
                 + delta.microseconds / 1000000)
@@ -116,22 +115,47 @@ class TimedBasic(Output):
         self.last_iter = iteration
 
 
+class WallTimeBasic(Output):
+    """Outputs the total elapsed time and the corresponding best value."""
+
+    args = frozenset(('iteration', 'best'))
+
+    def __call__(self, **kwds):
+        sys.stdout.flush()
+
+    def start(self):
+        self.last_time = datetime.datetime.now()
+
+    def __call__(self, **kwds):
+        iteration = kwds['iteration']
+        if iteration <= 0: return
+        # Find time difference
+        now = datetime.datetime.now()
+        delta = now - self.last_time
+        seconds = (delta.days * 86400 + delta.seconds
+                + delta.microseconds / 1000000)
+
+        best = kwds['best']
+        print(seconds, best.pbestval)
+        sys.stdout.flush()
+
+        self.last_time = now
+
+
 class Timer(Output):
     """Outputs the elapsed time for each iteration."""
 
     args = frozenset(('iteration',))
 
     def start(self):
-        from datetime import datetime
         self.last_iter = 0
-        self.last_time = datetime.now()
+        self.last_time = datetime.datetime.now()
 
     def __call__(self, **kwds):
         iteration = kwds['iteration']
         if iteration <= 0: return
         # Find time difference
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.datetime.now()
         delta = now - self.last_time
         seconds = (delta.days * 86400 + delta.seconds
                 + delta.microseconds / 1000000)
@@ -161,17 +185,15 @@ class Everything(Output):
     args = frozenset(('best', 'iteration'))
 
     def start(self):
-        from datetime import datetime
         self.last_iter = 0
-        self.last_time = datetime.now()
+        self.last_time = datetime.datetime.now()
 
     def __call__(self, **kwds):
         best = kwds['best']
         iteration = kwds['iteration']
 
         if iteration <= 0: return
-        from datetime import datetime
-        now = datetime.now()
+        now = datetime.datetime.now()
         delta = now - self.last_time
         seconds = (delta.days * 86400 + delta.seconds
                 + delta.microseconds / 1000000)
