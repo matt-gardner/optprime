@@ -128,6 +128,9 @@ class StandardPSO(mrs.IterativeMR):
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
 
+            # Ensure that we submit enough tasks at a time.
+            self.iterative_qmax = 2 * self.output.freq
+
             job.default_partition = self.mod_partition
             if self.opts.numtasks:
                 numtasks = self.opts.numtasks
@@ -160,16 +163,17 @@ class StandardPSO(mrs.IterativeMR):
         elif (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
             swarm_data = job.reduce_data(self.last_data, self.pso_reduce)
-            if (self.last_data not in self.datasets and
-                    self.last_data not in self.out_datasets):
+            if self.last_data not in self.out_datasets:
                 self.last_data.close()
             data = job.map_data(swarm_data, self.pso_map)
             if ('particles' not in self.output.args and
                     'best' not in self.output.args):
                 out_data = None
+                swarm_data.close()
             elif ('best' in self.output.args and num_reduce_tasks > 1):
                 interm = job.map_data(swarm_data, self.collapse_map,
                         splits=num_reduce_tasks)
+                swarm_data.close()
                 out_data = job.reduce_data(interm, self.findbest_reduce,
                         splits=1)
                 interm.close()
@@ -181,6 +185,8 @@ class StandardPSO(mrs.IterativeMR):
             if self.opts.split_reducemap:
                 swarm = job.reduce_data(self.last_data, self.pso_reduce,
                         async_start=True)
+                if self.last_data not in self.out_datasets:
+                    self.last_data.close()
                 data = job.map_data(swarm, self.pso_map,
                         blocking_percent=0.5, backlink=self.last_data)
                 swarm.close()
@@ -188,6 +194,8 @@ class StandardPSO(mrs.IterativeMR):
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
                         self.pso_map, async_start=True, blocking_percent=0.5,
                         backlink=self.last_data)
+                if self.last_data not in self.out_datasets:
+                    self.last_data.close()
 
         self.iteration += 1
         self.datasets[data] = self.iteration
@@ -207,8 +215,6 @@ class StandardPSO(mrs.IterativeMR):
             del self.datasets[dataset]
 
             #self.output.print_to_tty("Finished iteration %s" % iteration)
-            if dataset not in self.out_datasets and dataset != self.last_data:
-                dataset.close()
 
         if dataset in self.out_datasets:
             iteration = self.out_datasets[dataset]
