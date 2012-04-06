@@ -142,7 +142,7 @@ class StandardPSO(mrs.IterativeMR):
             self.async_r = {} 
             self.async_m = {}
             self.async_rm = {}
-            if self.opts.async_on:
+            if self.opts.async:
                 self.async_r = {"async_start": True} 
                 self.async_m = {"blocking_percent": 0.5,
                                 "backlink": self.last_data}
@@ -504,8 +504,8 @@ def update_parser(parser):
             help='Split ReduceMap into two separate operations',
             default=False
             )
-    parser.add_option('--async-on',
-            dest='async_on', action='store_true',
+    parser.add_option('--async',
+            dest='async', action='store_true',
             help='Run in asynchronous mode',
             default=False
             )

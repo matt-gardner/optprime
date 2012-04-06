@@ -118,7 +118,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             self.async_r = {} 
             self.async_m = {}
             self.async_rm = {}
-            if self.opts.async_on:
+            if self.opts.async:
                 self.async_r = {"async_start": True} 
                 self.async_m = {"blocking_percent": 0.5,
                                 "backlink": self.last_data}
