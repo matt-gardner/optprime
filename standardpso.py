@@ -138,6 +138,17 @@ class StandardPSO(mrs.IterativeMR):
                 numtasks = self.topology.num
             job.default_reduce_tasks = numtasks
             job.default_reduce_splits = numtasks
+            
+            self.async_r = {} 
+            self.async_m = {}
+            self.async_rm = {}
+            if self.opts.async_on:
+                self.async_r = {"async_start": True} 
+                self.async_m = {"blocking_percent": 0.5,
+                                "backlink": self.last_data}
+                self.async_rm = {"async_start": True,
+                                 "blocking_percent": 0.5,
+                                 "backlink": self.last_data}
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()
@@ -154,7 +165,7 @@ class StandardPSO(mrs.IterativeMR):
             self.out_datasets = {}
             self.datasets = {}
             out_data = None
-
+            
             kvpairs = ((str(i), '') for i in range(self.topology.num))
             start_swarm = job.local_data(kvpairs)
             data = job.map_data(start_swarm, self.init_map)
@@ -184,16 +195,14 @@ class StandardPSO(mrs.IterativeMR):
             out_data = None
             if self.opts.split_reducemap:
                 swarm = job.reduce_data(self.last_data, self.pso_reduce,
-                        async_start=True)
+                        **self.async_r)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
-                data = job.map_data(swarm, self.pso_map,
-                        blocking_percent=0.5, backlink=self.last_data)
+                data = job.map_data(swarm, self.pso_map, **self.async_m)
                 swarm.close()
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, async_start=True, blocking_percent=0.5,
-                        backlink=self.last_data)
+                        self.pso_map, **self.async_rm)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 
@@ -493,6 +502,11 @@ def update_parser(parser):
     parser.add_option('--split-reducemap',
             dest='split_reducemap', action='store_true',
             help='Split ReduceMap into two separate operations',
+            default=False
+            )
+    parser.add_option('--async-on',
+            dest='async_on', action='store_true',
+            help='Run in asynchronous mode',
             default=False
             )
     parser.add_option('--hey-im-testing',
