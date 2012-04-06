@@ -114,6 +114,17 @@ class SubswarmPSO(standardpso.StandardPSO):
                 numtasks = self.link.num
             job.default_reduce_tasks = numtasks
             job.default_reduce_splits = numtasks
+            
+            self.async_r = {} 
+            self.async_m = {}
+            self.async_rm = {}
+            if self.opts.async_on:
+                self.async_r = {"async_start": True} 
+                self.async_m = {"blocking_percent": 0.5,
+                                "backlink": self.last_data}
+                self.async_rm = {"async_start": True,
+                                 "blocking_percent": 0.5,
+                                 "backlink": self.last_data}
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()
@@ -163,16 +174,15 @@ class SubswarmPSO(standardpso.StandardPSO):
             out_data = None
             if self.opts.split_reducemap:
                 interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        async_start=True, format=mrs.ZipWriter)
+                        **self.async_r, format=mrs.ZipWriter)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
-                data = job.map_data(interm, self.pso_map, blocking_percent=0.5,
-                        backlink=self.last_data, format=mrs.ZipWriter)
+                data = job.map_data(interm, self.pso_map, **self.async_m,
+                        format=mrs.ZipWriter)
                 interm.close()
             else:
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, async_start=True, blocking_percent=0.5,
-                        backlink=self.last_data, format=mrs.ZipWriter)
+                        self.pso_map, **self.async_rm, format=mrs.ZipWriter)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 
