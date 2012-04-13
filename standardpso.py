@@ -138,17 +138,6 @@ class StandardPSO(mrs.IterativeMR):
                 numtasks = self.topology.num
             job.default_reduce_tasks = numtasks
             job.default_reduce_splits = numtasks
-            
-            self.async_r = {} 
-            self.async_m = {}
-            self.async_rm = {}
-            if self.opts.async:
-                self.async_r = {"async_start": True} 
-                self.async_m = {"blocking_percent": 0.5,
-                                "backlink": self.last_data}
-                self.async_rm = {"async_start": True,
-                                 "blocking_percent": 0.5,
-                                 "backlink": self.last_data}
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()
@@ -193,16 +182,27 @@ class StandardPSO(mrs.IterativeMR):
 
         else:
             out_data = None
+            if self.opts.async:
+                async_r = {"async_start": True}
+                async_m = {"blocking_percent": 0.5, "backlink": self.last_data}
+            else:
+                async_r = {}
+                async_m = {}
             if self.opts.split_reducemap:
                 swarm = job.reduce_data(self.last_data, self.pso_reduce,
-                        **self.async_r)
+                        **async_r)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
-                data = job.map_data(swarm, self.pso_map, **self.async_m)
+                data = job.map_data(swarm, self.pso_map, **async_m)
                 swarm.close()
             else:
+                if self.opts.async:
+                    async_rm = {"async_start": True, "blocking_percent": 0.5,
+                                "backlink": self.last_data}
+                else:
+                    async_rm = {}
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, **self.async_rm)
+                        self.pso_map, **async_rm)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 
