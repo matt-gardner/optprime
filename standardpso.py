@@ -404,6 +404,7 @@ class StandardPSO(mrs.IterativeMR):
     SUBSWARM_OFFSET = 3
     NEIGHBORHOOD_OFFSET = 4
     FUNCTION_OFFSET = 5
+    SUBITERS_OFFSET = 6
 
     def set_motion_rand(self, p, swarmid=0):
         """Makes a Random for the given particle and saves it to `p.rand`.

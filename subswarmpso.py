@@ -54,7 +54,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         for i in range(1, 1 + outer_iters):
             iteration = i * self.opts.subiters
             for swarm in subswarms:
-                for j in range(self.opts.subiters):
+                subiters = self.subiters(swarm.id, i)
+                for j in range(subiters):
                     self.bypass_iteration(swarm, swarm.id)
 
             # Communication phase.
@@ -115,7 +116,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                 numtasks = self.link.num
             job.default_reduce_tasks = numtasks
             job.default_reduce_splits = numtasks
- 
+
             mrs.IterativeMR.run(self, job)
             self.output.finish()
             return 0
@@ -248,7 +249,8 @@ class SubswarmPSO(standardpso.StandardPSO):
     def pso_map(self, key, value):
         swarm = PSOPickler.loads(value)
         assert swarm.id == int(key)
-        for i in range(self.opts.subiters):
+        subiters = self.subiters(swarm.id, swarm.iters())
+        for i in range(subiters):
             self.bypass_iteration(swarm, swarm.id)
 
         # Emit the swarm.
@@ -317,10 +319,27 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         Note that the Random depends on the particle id, and iteration.
         """
-        from mrs.main import SEED_BITS
-        base = 2 ** SEED_BITS
-        offset = self.SUBSWARM_OFFSET + base * (s.id + base * (s.iters() + base))
-        s.rand = self.random(offset)
+        s.rand = self.random(self.SUBSWARM_OFFSET, s.id, s.iters())
+
+    def subiters_rand(self, swarmid, iteration):
+        """Makes a Random for the given particle and saves it to `p.rand`.
+
+        Note that the Random depends on the particle id, and iteration.
+        """
+        return self.random(self.SUBITERS_OFFSET, swarmid, iteration)
+
+    def subiters(self, swarmid, iteration):
+        """Return the number of subiterations to be performed."""
+        if self.opts.subiters_stddev == 0:
+            subiters = self.opts.subiters
+        else:
+            subiters_rand = self.subiters_rand(swarmid, iteration)
+            sample = subiters_rand.normalvariate(self.opts.subiters,
+                    self.opts.subiters_stddev)
+            subiters = int(round(sample))
+            if subiters <= 0:
+                subiters = 1
+        return subiters
 
 ##############################################################################
 # Busywork
@@ -337,6 +356,11 @@ def update_parser(parser):
             dest='subiters', type='int',
             help='Number of iterations per subswarm between iterations',
             default=10,
+            )
+    parser.add_option('--subiters-stddev',
+            dest='subiters_stddev', type='float',
+            help='Variation in the number of subiters per subswarm',
+            default=0,
             )
     return parser
 
