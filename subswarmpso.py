@@ -75,7 +75,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                     # FIXME: communication
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
-            if not ((i - 1) % output.freq):
+            if output.freq and not ((i - 1) % output.freq):
                 kwds = {}
                 if 'iteration' in output.args:
                     kwds['iteration'] = iteration
@@ -106,9 +106,6 @@ class SubswarmPSO(standardpso.StandardPSO):
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
 
-            # Ensure that we submit enough tasks at a time.
-            self.iterative_qmax = 2 * self.output.freq
-
             job.default_partition = self.mod_partition
             if self.opts.numtasks:
                 numtasks = self.opts.numtasks
@@ -116,6 +113,12 @@ class SubswarmPSO(standardpso.StandardPSO):
                 numtasks = self.link.num
             job.default_reduce_tasks = numtasks
             job.default_reduce_splits = numtasks
+
+            # Ensure that we submit enough tasks at a time.
+            if self.output.freq:
+                self.iterative_qmax = 2 * self.output.freq
+            else:
+                self.iterative_qmax = 2 * numtasks
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()

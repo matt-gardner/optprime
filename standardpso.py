@@ -74,7 +74,7 @@ class StandardPSO(mrs.IterativeMR):
             self.bypass_iteration(particles)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
-            if not ((iteration - 1) % self.output.freq):
+            if self.output.freq and not ((iteration - 1) % self.output.freq):
                 kwds = {}
                 if 'iteration' in self.output.args:
                     kwds['iteration'] = iteration
@@ -128,9 +128,6 @@ class StandardPSO(mrs.IterativeMR):
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
 
-            # Ensure that we submit enough tasks at a time.
-            self.iterative_qmax = 2 * self.output.freq
-
             job.default_partition = self.mod_partition
             if self.opts.numtasks:
                 numtasks = self.opts.numtasks
@@ -138,6 +135,12 @@ class StandardPSO(mrs.IterativeMR):
                 numtasks = self.topology.num
             job.default_reduce_tasks = numtasks
             job.default_reduce_splits = numtasks
+
+            # Ensure that we submit enough tasks at a time.
+            if self.output.freq:
+                self.iterative_qmax = 2 * self.output.freq
+            else:
+                self.iterative_qmax = 2 * numtasks
 
             mrs.IterativeMR.run(self, job)
             self.output.finish()
@@ -154,13 +157,13 @@ class StandardPSO(mrs.IterativeMR):
             self.out_datasets = {}
             self.datasets = {}
             out_data = None
-            
+
             kvpairs = ((str(i), '') for i in range(self.topology.num))
             start_swarm = job.local_data(kvpairs)
             data = job.map_data(start_swarm, self.init_map)
             start_swarm.close()
 
-        elif (self.iteration - 1) % self.output.freq == 0:
+        elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
             swarm_data = job.reduce_data(self.last_data, self.pso_reduce)
             if self.last_data not in self.out_datasets:
