@@ -90,11 +90,7 @@ class TimedBasic(Output):
 
     args = frozenset(('iteration', 'best'))
 
-    def __call__(self, **kwds):
-        sys.stdout.flush()
-
     def start(self):
-        self.last_iter = 0
         self.last_time = datetime.datetime.now()
 
     def __call__(self, **kwds):
@@ -103,16 +99,12 @@ class TimedBasic(Output):
         # Find time difference
         now = datetime.datetime.now()
         delta = now - self.last_time
-        seconds = (delta.days * 86400 + delta.seconds
-                + delta.microseconds / 1000000)
 
-        time_per_iter = seconds / (iteration - self.last_iter)
         best = kwds['best']
-        print(time_per_iter, best.pbestval)
+        print(delta.total_seconds(), best.pbestval)
         sys.stdout.flush()
 
         self.last_time = now
-        self.last_iter = iteration
 
 
 class WallTimeBasic(Output):
