@@ -143,7 +143,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                     format=mrs.ZipWriter)
             start_swarm.close()
 
-        elif (self.iteration - 1) % self.output.freq == 0:
+        elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
             swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
                     format=mrs.ZipWriter)
