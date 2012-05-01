@@ -3,8 +3,10 @@ SUBITERS=100
 # Set to 100*$SUBITERS:
 ITERS=10000
 JOBNAME="a$PROCS-$SUBITERS"
+NODESPEC="nehalem"
 $HOME/c/mrs/examples/fulton.py -N "$JOBNAME" \
     -n $PROCS -o "$HOME/out/$JOBNAME" -t 0.5 -m 0.5 \
+    --nodespec "$NODESPEC" \
     $HOME/c/amlpso/subswarmpso.py \
     -f rosenbrock.Rosenbrock -d 250 \
     -l Ring --link-num $PROCS --link-neighbors 1 \
