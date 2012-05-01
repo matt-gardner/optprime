@@ -168,7 +168,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             out_data = None
             if self.opts.async:
                 async_r = {"async_start": True}
-                async_m = {"blocking_percent": 0.5, "backlink": self.last_data}
+                async_m = {"blocking_percent": 0.75, "backlink": self.last_data}
             else:
                 async_r = {}
                 async_m = {}
@@ -177,7 +177,7 @@ class SubswarmPSO(standardpso.StandardPSO):
                         format=mrs.ZipWriter, **async_r)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
-                
+
                 data = job.map_data(interm, self.pso_map, format=mrs.ZipWriter,
                         **async_m)
                 interm.close()
