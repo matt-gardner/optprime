@@ -3,6 +3,7 @@
 from __future__ import division
 from __future__ import print_function
 
+import copy
 import datetime
 from six import b
 import sys
@@ -101,9 +102,16 @@ class StandardPSO(mrs.IterativeMR):
 
         # Communication phase.
         comp = self.function.comparator
+        # With shuffled subswarms, the individual topology may be dynamic,
+        # so adapt the swarm size of the topology if necessary.
+        if len(particles) == self.topology.num:
+            topology = self.topology
+        else:
+            topology = copy.copy(self.topology)
+            topology.num = len(particles)
         for p in particles:
             self.set_neighborhood_rand(p, swarmid)
-            for i in self.topology.iterneighbors(p):
+            for i in topology.iterneighbors(p):
                 # Send p's information to neighbor i.
                 neighbor = particles[i]
                 neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)

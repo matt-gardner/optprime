@@ -59,20 +59,39 @@ class SubswarmPSO(standardpso.StandardPSO):
                     self.bypass_iteration(swarm, swarm.id)
 
             # Communication phase.
-            for swarm in subswarms:
-                self.set_swarm_rand(swarm)
-                # TODO: try "best in swarm" as an alternative approach.
-                p = swarm[0]
-                for s_dep_id in self.link.iterneighbors(swarm):
-                    neighbor_swarm = subswarms[s_dep_id]
-                    swarm_head = neighbor_swarm[0]
-                    self.set_neighborhood_rand(swarm_head, swarm.id)
-                    for p_dep_id in self.topology.iterneighbors(swarm_head):
-                        neighbor = neighbor_swarm[p_dep_id]
-                        neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
-                        if self.opts.transitive_best:
-                            neighbor.nbest_cand(p.nbestpos, p.nbestval, comp)
-                    # FIXME: communication
+            if self.opts.shuffle:
+                newswarms = [[] for _ in xrange(self.link.num)]
+                for swarm in subswarms:
+                    self.set_swarm_rand(swarm)
+                    neighbors = list(self.link.iterneighbors(swarm))
+                    for particle in swarm:
+                        # Convert to a global particle id to ensure determinism.
+                        particle.id += swarm.id * self.link.num
+                        index = swarm.rand.randrange(0, len(neighbors))
+                        dest_swarm = neighbors[index]
+                        newswarms[dest_swarm].append(particle)
+                subswarms = []
+                for sid, particles in enumerate(newswarms):
+                    particles.sort(key=lambda p: p.id)
+                    for pid, particle in enumerate(particles):
+                        particle.id = pid
+                    swarm = Swarm(sid, particles)
+                    subswarms.append(swarm)
+            else:
+                for swarm in subswarms:
+                    self.set_swarm_rand(swarm)
+                    # TODO: try "best in swarm" as an alternative approach.
+                    p = swarm[0]
+                    for s_dep_id in self.link.iterneighbors(swarm):
+                        neighbor_swarm = subswarms[s_dep_id]
+                        swarm_head = neighbor_swarm[0]
+                        self.set_neighborhood_rand(swarm_head, swarm.id)
+                        for p_dep_id in self.topology.iterneighbors(swarm_head):
+                            neighbor = neighbor_swarm[p_dep_id]
+                            neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
+                            if self.opts.transitive_best:
+                                neighbor.nbest_cand(p.nbestpos, p.nbestval,
+                                        comp)
 
             # Output phase.  (If freq is 5, output after iters 1, 6, 11, etc.)
             if output.freq and not ((i - 1) % output.freq):
@@ -256,46 +275,73 @@ class SubswarmPSO(standardpso.StandardPSO):
         for i in range(subiters):
             self.bypass_iteration(swarm, swarm.id)
 
-        # Emit the swarm.
-        yield (key, swarm.__getstate__())
-
-        # Emit a message for each dependent swarm:
         self.set_swarm_rand(swarm)
-        # TODO: try "best in swarm" as an alternative approach.
-        particle = swarm[0]
-        comparator = self.function.comparator
-        message = particle.make_message(self.opts.transitive_best, comparator)
-        for dep_id in self.link.iterneighbors(swarm):
-            yield (str(dep_id), message.__getstate__())
+
+        if self.opts.shuffle:
+            neighbors = list(self.link.iterneighbors(swarm))
+            for particle in swarm:
+                # Convert to a global particle id to ensure determinism.
+                particle.id += swarm.id * self.link.num
+                index = swarm.rand.randrange(0, len(neighbors))
+                dest_swarm = neighbors[index]
+                yield(str(dest_swarm), particle.__getstate__())
+        else:
+            # Emit the swarm.
+            yield (key, swarm.__getstate__())
+
+            # Emit a message for each dependent swarm.
+            # TODO: try "best in swarm" as an alternative approach.
+            particle = swarm[0]
+            message = particle.make_message(self.opts.transitive_best,
+                    self.function.comparator)
+            for dep_id in self.link.iterneighbors(swarm):
+                yield (str(dep_id), message.__getstate__())
 
     def pso_reduce(self, key, value_iter):
-        comparator = self.function.comparator
-        swarm = None
-        messages = []
-        for value in value_iter:
-            record = PSOPickler.loads(value)
-            if isinstance(record, Swarm):
-                swarm = record
-            elif isinstance(record, Message):
-                messages.append(record)
-            else:
-                raise ValueError
-
-        best = self.findbest(messages)
-        if swarm is not None and best is not None:
-            swarm_head = swarm[0]
-            # TODO: Think about whether we're setting the particle's random
-            # seed correctly.  Note that we normally take some random values
-            # doing motion before we take random values for neighbors.
-            self.set_neighborhood_rand(swarm_head, swarm.id)
-            for dep_id in self.topology.iterneighbors(swarm_head):
-                neighbor = swarm[dep_id]
-                neighbor.nbest_cand(best.position, best.value, comparator)
-
-        if swarm is not None:
+        if self.opts.shuffle:
+            particles = []
+            for value in value_iter:
+                record = PSOPickler.loads(value)
+                if isinstance(record, Particle):
+                    particles.append(record)
+                elif isinstance(record, Swarm):
+                    for particle in record:
+                        particles.append(particle)
+                else:
+                    raise ValueError
+            particles.sort(key=lambda p: p.id)
+            for i, particle in enumerate(particles):
+                particle.id = i
+            swarm = Swarm(int(key), particles)
             yield swarm.__getstate__()
         else:
-            yield best.__getstate__()
+            swarm = None
+            messages = []
+            for value in value_iter:
+                record = PSOPickler.loads(value)
+                if isinstance(record, Swarm):
+                    swarm = record
+                elif isinstance(record, Message):
+                    messages.append(record)
+                else:
+                    raise ValueError
+
+            best = self.findbest(messages)
+            if swarm is not None and best is not None:
+                swarm_head = swarm[0]
+                # TODO: Think about whether we're setting the particle's random
+                # seed correctly.  Note that we normally take some random values
+                # doing motion before we take random values for neighbors.
+                self.set_neighborhood_rand(swarm_head, swarm.id)
+                for dep_id in self.topology.iterneighbors(swarm_head):
+                    neighbor = swarm[dep_id]
+                    neighbor.nbest_cand(best.position, best.value,
+                            self.function.comparator)
+
+            if swarm is not None:
+                yield swarm.__getstate__()
+            else:
+                yield best.__getstate__()
 
     ##########################################################################
     # MapReduce to Find the Best Particle
@@ -318,9 +364,9 @@ class SubswarmPSO(standardpso.StandardPSO):
     # Helper Functions (shared by bypass and mrs implementations)
 
     def set_swarm_rand(self, s):
-        """Makes a Random for the given particle and saves it to `p.rand`.
+        """Makes a Random for the given particle and saves it to `s.rand`.
 
-        Note that the Random depends on the particle id, and iteration.
+        Note that the Random depends on the swarm id and iteration.
         """
         s.rand = self.random(self.SUBSWARM_OFFSET, s.id, s.iters())
 
@@ -364,6 +410,10 @@ def update_parser(parser):
             dest='subiters_stddev', type='float',
             help='Variation in the number of subiters per subswarm',
             default=0,
+            )
+    parser.add_option('--shuffle',
+            dest='shuffle', action='store_true',
+            help='Shuffle particles between swarms (Dynamic Multi Swarm PSO)',
             )
     return parser
 
