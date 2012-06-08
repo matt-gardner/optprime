@@ -676,6 +676,12 @@ class Swarm(object):
     def iters(self):
         return self.particles[0].iters
 
+    def shuffled(self):
+        """Return the list of particles in shuffled order."""
+        shuffled = list(self.particles)
+        self.rand.shuffle(shuffled)
+        return shuffled
+
     def __setstate__(self, state):
         """Unpacks a state string, returning a new Swarm."""
         strings = state.split('&')

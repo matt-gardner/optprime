@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import division
+import collections
 from itertools import chain
 import operator
 import sys
@@ -60,18 +61,18 @@ class SubswarmPSO(standardpso.StandardPSO):
 
             # Communication phase.
             if self.opts.shuffle:
-                newswarms = [[] for _ in xrange(self.link.num)]
+                newswarms = collections.defaultdict(list)
                 for swarm in subswarms:
                     self.set_swarm_rand(swarm)
                     neighbors = list(self.link.iterneighbors(swarm))
-                    for particle in swarm:
+                    for shift, particle in enumerate(swarm.shuffled()):
                         # Convert to a global particle id to ensure determinism.
                         particle.id += swarm.id * self.link.num
-                        index = swarm.rand.randrange(0, len(neighbors))
-                        dest_swarm = neighbors[index]
+                        # Pick a destination swarm.
+                        dest_swarm = neighbors[shift % self.link.num]
                         newswarms[dest_swarm].append(particle)
                 subswarms = []
-                for sid, particles in enumerate(newswarms):
+                for sid, particles in newswarms.items():
                     particles.sort(key=lambda p: p.id)
                     for pid, particle in enumerate(particles):
                         particle.id = pid
@@ -279,11 +280,11 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         if self.opts.shuffle:
             neighbors = list(self.link.iterneighbors(swarm))
-            for particle in swarm:
+            for shift, particle in enumerate(swarm.shuffled()):
                 # Convert to a global particle id to ensure determinism.
                 particle.id += swarm.id * self.link.num
-                index = swarm.rand.randrange(0, len(neighbors))
-                dest_swarm = neighbors[index]
+                # Pick a destination swarm.
+                dest_swarm = neighbors[shift % self.link.num]
                 yield(str(dest_swarm), particle.__getstate__())
         else:
             # Emit the swarm.
