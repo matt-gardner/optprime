@@ -81,8 +81,10 @@ class SubswarmPSO(standardpso.StandardPSO):
             else:
                 for swarm in subswarms:
                     self.set_swarm_rand(swarm)
-                    # TODO: try "best in swarm" as an alternative approach.
-                    p = swarm[0]
+                    if self.opts.send_best:
+                        p = self.findbest(swarm)
+                    else:
+                        p = swarm[0]
                     for s_dep_id in self.link.iterneighbors(swarm):
                         neighbor_swarm = subswarms[s_dep_id]
                         swarm_head = neighbor_swarm[0]
@@ -291,8 +293,10 @@ class SubswarmPSO(standardpso.StandardPSO):
             yield (key, swarm.__getstate__())
 
             # Emit a message for each dependent swarm.
-            # TODO: try "best in swarm" as an alternative approach.
-            particle = swarm[0]
+            if self.opts.send_best:
+                particle = self.findbest(swarm)
+            else:
+                particle = swarm[0]
             message = particle.make_message(self.opts.transitive_best,
                     self.function.comparator)
             for dep_id in self.link.iterneighbors(swarm):
@@ -415,6 +419,10 @@ def update_parser(parser):
     parser.add_option('--shuffle',
             dest='shuffle', action='store_true',
             help='Shuffle particles between swarms (Dynamic Multi Swarm PSO)',
+            )
+    parser.add_option('--send-best',
+            dest='send_best', action='store_true',
+            help='Send the best particle from the swarm instead of the first',
             )
     return parser
 
