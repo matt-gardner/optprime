@@ -58,7 +58,7 @@ class _Base(ParamObj):
             if self.center:
                 val = float(self.center)
             else:
-                val = 0.0
+                val = 0.5
             center = [val] * self.dims
         self._set_abscenter(center)
 

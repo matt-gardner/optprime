@@ -65,6 +65,8 @@ class PI(mrs.IterativeMR):
         Compare to the producer/consumer methods, which use MapReduce to do
         the same thing.
         """
+        self.randomize_function_center()
+
         self.sample = []
 
         for iteration in range(1, 1 + self.opts.iters):
@@ -129,7 +131,7 @@ class PI(mrs.IterativeMR):
 
                 # For now, only use a limited number of closer points.
                 bisect.insort(points, (dist, x, y))
-                del points[40:]
+                del points[100:]
 
             # Weighted Least Squares Regression.
             # In the future, use something more robust, like kriging.
@@ -140,7 +142,7 @@ class PI(mrs.IterativeMR):
                 # Set the weight (this may not be the best scheme, but at
                 # least it avoids division by 0).
                 if max_dist > 0:
-                    w = 1 / (1 + 3 * dist / max_dist)
+                    w = 1 / (1 + 2 * dist / max_dist)
                 else:
                     w = 1
                 #print('w:', w, dist, max_dist)
@@ -221,6 +223,7 @@ class PI(mrs.IterativeMR):
     # them all in one place.
     PIVOT_OFFSET = 1
     INITIALIZATION_OFFSET = 2
+    FUNCTION_OFFSET = 5
 
     def pivot_rand(self, i):
         """Returns a Random for the given particle id.
@@ -235,6 +238,11 @@ class PI(mrs.IterativeMR):
         This ensures that each run will have a unique initial swarm state.
         """
         return self.random(self.INITIALIZATION_OFFSET, i)
+
+    def randomize_function_center(self):
+        """Sets a random function center."""
+        rand = self.random(self.FUNCTION_OFFSET)
+        self.function.randomize_center(rand)
 
 
 ##############################################################################
