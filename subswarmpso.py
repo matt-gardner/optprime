@@ -168,10 +168,11 @@ class SubswarmPSO(standardpso.StandardPSO):
         elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
             swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
-                    format=mrs.ZipWriter)
+                    affinity=True, format=mrs.ZipWriter)
             if self.last_data not in self.out_datasets:
                 self.last_data.close()
-            data = job.map_data(swarm_data, self.pso_map, format=mrs.ZipWriter)
+            data = job.map_data(swarm_data, self.pso_map, affinity=True,
+                    format=mrs.ZipWriter)
             if ('particles' not in self.output.args and
                     'best' not in self.output.args):
                 out_data = None
@@ -196,12 +197,12 @@ class SubswarmPSO(standardpso.StandardPSO):
                 async_m = {}
             if self.opts.split_reducemap:
                 interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        format=mrs.ZipWriter, **async_r)
+                        affinity=True, format=mrs.ZipWriter, **async_r)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 
-                data = job.map_data(interm, self.pso_map, format=mrs.ZipWriter,
-                        **async_m)
+                data = job.map_data(interm, self.pso_map, affinity=True,
+                        format=mrs.ZipWriter, **async_m)
                 interm.close()
             else:
                 if self.opts.async:
@@ -210,7 +211,8 @@ class SubswarmPSO(standardpso.StandardPSO):
                 else:
                     async_rm = {}
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, format=mrs.ZipWriter, **async_rm)
+                        self.pso_map, affinity=True, format=mrs.ZipWriter,
+                        **async_rm)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 

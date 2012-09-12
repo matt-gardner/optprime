@@ -173,10 +173,11 @@ class StandardPSO(mrs.IterativeMR):
 
         elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
-            swarm_data = job.reduce_data(self.last_data, self.pso_reduce)
+            swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
+                    affinity=True)
             if self.last_data not in self.out_datasets:
                 self.last_data.close()
-            data = job.map_data(swarm_data, self.pso_map)
+            data = job.map_data(swarm_data, self.pso_map, affinity=True)
             if ('particles' not in self.output.args and
                     'best' not in self.output.args):
                 out_data = None
@@ -194,26 +195,27 @@ class StandardPSO(mrs.IterativeMR):
         else:
             out_data = None
             if self.opts.async:
-                async_r = {"async_start": True}
-                async_m = {"blocking_percent": 0.75, "backlink": self.last_data}
+                async_r = {'async_start': True}
+                async_m = {'blocking_percent': 0.75, 'backlink': self.last_data}
             else:
                 async_r = {}
                 async_m = {}
             if self.opts.split_reducemap:
                 swarm = job.reduce_data(self.last_data, self.pso_reduce,
-                        **async_r)
+                        affinity=True, **async_r)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
-                data = job.map_data(swarm, self.pso_map, **async_m)
+                data = job.map_data(swarm, self.pso_map, affinity=True,
+                        **async_m)
                 swarm.close()
             else:
                 if self.opts.async:
-                    async_rm = {"async_start": True, "blocking_percent": 0.5,
-                                "backlink": self.last_data}
+                    async_rm = {'async_start': True, 'blocking_percent': 0.5,
+                                'backlink': self.last_data}
                 else:
                     async_rm = {}
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, **async_rm)
+                        self.pso_map, affinity=True, **async_rm)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 
