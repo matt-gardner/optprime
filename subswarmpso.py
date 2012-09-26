@@ -419,11 +419,11 @@ def update_parser(parser):
             default=0,
             )
     parser.add_option('--shuffle',
-            dest='shuffle', action='store_true',
+            dest='shuffle', action='store_true', default=False,
             help='Shuffle particles between swarms (Dynamic Multi Swarm PSO)',
             )
     parser.add_option('--send-best',
-            dest='send_best', action='store_true',
+            dest='send_best', action='store_true', default=False,
             help='Send the best particle from the swarm instead of the first',
             )
     return parser
