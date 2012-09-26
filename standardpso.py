@@ -11,7 +11,7 @@ import time
 
 import mrs
 from mrs import param
-from particle import Particle, Message, PSOPickler
+from amlpso.particle import Particle, Message, pso_serializer
 
 try:
     range = xrange

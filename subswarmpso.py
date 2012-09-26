@@ -8,8 +8,8 @@ import sys
 
 import mrs
 from mrs import param
-import standardpso
-from particle import Swarm, Particle, Message, PSOPickler
+from amlpso import standardpso
+from amlpso.particle import Swarm, Particle, Message, PSOPickler
 
 try:
     range = xrange
