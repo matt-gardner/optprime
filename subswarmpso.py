@@ -159,8 +159,9 @@ class SubswarmPSO(standardpso.StandardPSO):
             self.datasets = {}
             out_data = None
 
-            kvpairs = ((str(i), '') for i in range(self.link.num))
-            start_swarm = job.local_data(kvpairs)
+            kvpairs = ((i, b'') for i in range(self.link.num))
+            start_swarm = job.local_data(kvpairs, key_serializer='int',
+                    value_serializer=None)
             data = job.map_data(start_swarm, self.init_map,
                     format=mrs.ZipWriter)
             start_swarm.close()
@@ -265,17 +266,19 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    def init_map(self, key, value):
-        swarm_id = int(key)
+    @mrs.key_serializer('int')
+    @mrs.value_serializer('pso')
+    def init_map(self, swarm_id, value):
         rand = self.initialization_rand(swarm_id)
         swarm = Swarm(swarm_id, self.topology.newparticles(rand))
 
-        for kvpair in self.pso_map(key, swarm.__getstate__()):
+        for kvpair in self.pso_map(swarm_id, swarm):
             yield kvpair
 
-    def pso_map(self, key, value):
-        swarm = PSOPickler.loads(value)
-        assert swarm.id == int(key)
+    @mrs.key_serializer('int')
+    @mrs.value_serializer('pso')
+    def pso_map(self, swarm_id, swarm):
+        assert swarm.id == swarm_id
         subiters = self.subiters(swarm.id, swarm.iters())
         for i in range(subiters):
             self.bypass_iteration(swarm, swarm.id)
@@ -289,10 +292,10 @@ class SubswarmPSO(standardpso.StandardPSO):
                 particle.id += swarm.id * self.link.num
                 # Pick a destination swarm.
                 dest_swarm = neighbors[shift % self.link.num]
-                yield(str(dest_swarm), particle.__getstate__())
+                yield(dest_swarm, particle)
         else:
             # Emit the swarm.
-            yield (key, swarm.__getstate__())
+            yield (swarm_id, swarm)
 
             # Emit a message for each dependent swarm.
             if self.opts.send_best:
@@ -302,13 +305,12 @@ class SubswarmPSO(standardpso.StandardPSO):
             message = particle.make_message(self.opts.transitive_best,
                     self.function.comparator)
             for dep_id in self.link.iterneighbors(swarm):
-                yield (str(dep_id), message.__getstate__())
+                yield (dep_id, message)
 
-    def pso_reduce(self, key, value_iter):
+    def pso_reduce(self, swarm_id, value_iter):
         if self.opts.shuffle:
             particles = []
-            for value in value_iter:
-                record = PSOPickler.loads(value)
+            for record in value_iter:
                 if isinstance(record, Particle):
                     particles.append(record)
                 elif isinstance(record, Swarm):
@@ -319,13 +321,12 @@ class SubswarmPSO(standardpso.StandardPSO):
             particles.sort(key=lambda p: p.id)
             for i, particle in enumerate(particles):
                 particle.id = i
-            swarm = Swarm(int(key), particles)
-            yield swarm.__getstate__()
+            swarm = Swarm(swarm_id, particles)
+            yield swarm
         else:
             swarm = None
             messages = []
-            for value in value_iter:
-                record = PSOPickler.loads(value)
+            for record in value_iter:
                 if isinstance(record, Swarm):
                     swarm = record
                 elif isinstance(record, Message):
@@ -346,26 +347,28 @@ class SubswarmPSO(standardpso.StandardPSO):
                             self.function.comparator)
 
             if swarm is not None:
-                yield swarm.__getstate__()
+                yield swarm
             else:
-                yield best.__getstate__()
+                yield best
 
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    def collapse_map(self, key, value):
+    @mrs.key_serializer('int')
+    @mrs.value_serializer('pso')
+    def collapse_map(self, key, swarm):
         """Finds the best particle in the swarm and yields it with id 0."""
-        swarm = PSOPickler.loads(value)
+        new_key = key % self.opts.mrs__reduce_tasks
         best = self.findbest(swarm)
-        yield '0', best.__getstate__()
+        yield new_key, best
 
     def findbest_reduce(self, key, value_iter):
-        particles = [PSOPickler.loads(value) for value in value_iter]
+        particles = list(value_iter)
         assert len(particles) == self.link.num, (
             'Only %s particles in findbest_reduce' % len(particles))
 
         best = self.findbest(particles)
-        yield best.__getstate__()
+        yield best
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)

@@ -1,5 +1,6 @@
 from __future__ import division
 
+import mrs
 import operator
 import sys
 
@@ -707,38 +708,27 @@ class Swarm(object):
         return p
 
 
-class PSOPickler(object):
-    """A Pickler-like implementation that is just for particle-like objects."""
+def pso_dumps(p):
+    return p.__getstate__()
 
-    @staticmethod
-    def dump(p, f):
-        f.write(self.dumps(p))
+def pso_loads(state):
+    """Unpacks a state string, returning a Particle or Message."""
+    start, _ = state.split(':', 1)
+    try:
+        cls = CLASS_IDS[start]
+    except KeyError:
+        raise ValueError('Cannot unpack a state string of class "%s".'
+                % start)
 
-    @staticmethod
-    def dumps(p):
-        return p.__getstate__()
+    p = cls.__new__(cls)
+    try:
+        p.__setstate__(state)
+    except ValueError as e:
+        raise RuntimeError('Could not unpack the state "%s". Error: %s'
+                % (state, str(e)))
+    return p
 
-    @classmethod
-    def load(cls, f):
-        return cls.loads(f.read())
-
-    @staticmethod
-    def loads(state):
-        """Unpacks a state string, returning a Particle or Message."""
-        start, _ = state.split(':', 1)
-        try:
-            cls = CLASS_IDS[start]
-        except KeyError:
-            raise ValueError('Cannot unpack a state string of class "%s".'
-                    % start)
-
-        p = cls.__new__(cls)
-        try:
-            p.__setstate__(state)
-        except ValueError as e:
-            raise RuntimeError('Could not unpack the state "%s". Error: %s'
-                    % (state, str(e)))
-        return p
+pso_serializer = mrs.Serializer(pso_dumps, pso_loads)
 
 def float_repr(x):
     """Faster variant of repr for floats (returns an empty string for None)."""
