@@ -9,7 +9,7 @@ import sys
 import mrs
 from mrs import param
 from amlpso import standardpso
-from amlpso.particle import Swarm, Particle, Message, PSOPickler
+from amlpso.particle import Swarm, Particle, Message
 
 try:
     range = xrange
@@ -243,8 +243,7 @@ class SubswarmPSO(standardpso.StandardPSO):
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
                 particles = []
-                for key, value in dataset.data():
-                    particles.append(PSOPickler.loads(value))
+                particles = [particle for _, particle in dataset.data()]
                 if 'particles' in self.output.args:
                     particles = list(chain(*particles))
             if dataset != self.last_data:
