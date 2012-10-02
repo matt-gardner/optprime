@@ -5,13 +5,12 @@ from __future__ import print_function
 
 import copy
 import datetime
-from six import b
 import sys
 import time
 
 import mrs
 from mrs import param
-from particle import Particle, Message, PSOPickler
+from amlpso.particle import Particle, Message, pso_serializer
 
 try:
     range = xrange
@@ -166,17 +165,19 @@ class StandardPSO(mrs.IterativeMR):
             self.datasets = {}
             out_data = None
 
-            kvpairs = ((str(i), '') for i in range(self.topology.num))
-            start_swarm = job.local_data(kvpairs)
+            kvpairs = ((i, b'') for i in range(self.topology.num))
+            start_swarm = job.local_data(kvpairs, key_serializer='int',
+                    value_serializer=None)
             data = job.map_data(start_swarm, self.init_map)
             start_swarm.close()
 
         elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
             num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
-            swarm_data = job.reduce_data(self.last_data, self.pso_reduce)
+            swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
+                    affinity=True)
             if self.last_data not in self.out_datasets:
                 self.last_data.close()
-            data = job.map_data(swarm_data, self.pso_map)
+            data = job.map_data(swarm_data, self.pso_map, affinity=True)
             if ('particles' not in self.output.args and
                     'best' not in self.output.args):
                 out_data = None
@@ -201,10 +202,11 @@ class StandardPSO(mrs.IterativeMR):
                 async_m = {}
             if self.opts.split_reducemap:
                 swarm = job.reduce_data(self.last_data, self.pso_reduce,
-                        **async_r)
+                        affinity=True, **async_r)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
-                data = job.map_data(swarm, self.pso_map, **async_m)
+                data = job.map_data(swarm, self.pso_map, affinity=True,
+                        **async_m)
                 swarm.close()
             else:
                 if self.opts.async:
@@ -213,7 +215,7 @@ class StandardPSO(mrs.IterativeMR):
                 else:
                     async_rm = {}
                 data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, **async_rm)
+                        self.pso_map, affinity=True, **async_rm)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
 
@@ -242,9 +244,7 @@ class StandardPSO(mrs.IterativeMR):
 
             if 'best' in self.output.args or 'particles' in self.output.args:
                 dataset.fetchall()
-                particles = []
-                for reduce_id, particle in dataset.data():
-                    particles.append(Particle.unpack(particle))
+                particles = [particle for _, particle in dataset.data()]
             if dataset != self.last_data:
                 dataset.close()
             kwds = {}
@@ -261,21 +261,30 @@ class StandardPSO(mrs.IterativeMR):
 
         return True
 
+    def serializer(self, key):
+        if key == 'pso':
+            return pso_serializer
+        else:
+            return super(StandardPSO, self).serializer(key)
+
     ##########################################################################
     # Primary MapReduce
 
-    def init_map(self, key, value):
-        particle_id = int(key)
+    @mrs.key_serializer('int')
+    @mrs.value_serializer('pso')
+    def init_map(self, particle_id, value):
+        particle_id = int(particle_id)
         rand = self.initialization_rand(particle_id)
         p = self.topology.newparticle(particle_id, rand)
 
-        for kvpair in self.pso_map(key, p.__getstate__()):
+        for kvpair in self.pso_map(particle_id, p):
             yield kvpair
 
-    def pso_map(self, key, value):
+    @mrs.key_serializer('int')
+    @mrs.value_serializer('pso')
+    def pso_map(self, particle_id, particle):
         comparator = self.function.comparator
-        particle = PSOPickler.loads(value)
-        assert particle.id == int(key)
+        assert particle.id == particle_id
 
         before = datetime.datetime.now()
 
@@ -287,50 +296,52 @@ class StandardPSO(mrs.IterativeMR):
                 + delta.microseconds / 1000000)
 
         # Emit the particle without changing its id:
-        yield (key, particle.__getstate__())
+        yield (particle_id, particle)
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best, comparator)
         self.set_neighborhood_rand(particle, 0)
         for dep_id in self.topology.iterneighbors(particle):
-            yield (repr(dep_id).encode('ascii'), message.__getstate__())
+            yield (dep_id, message)
 
     def pso_reduce(self, key, value_iter):
         comparator = self.function.comparator
         particle = None
         messages = []
-        for value in value_iter:
-            record = PSOPickler.loads(value)
+        for record in value_iter:
             if isinstance(record, Particle):
                 particle = record
             elif isinstance(record, Message):
                 messages.append(record)
             else:
-                raise ValueError
+                raise ValueError('Expected Particle or Message but got %s' %
+                        type(record))
 
         best = self.findbest(messages)
         if particle is not None and best is not None:
             particle.nbest_cand(best.position, best.value, comparator)
 
         if particle is not None:
-            yield particle.__getstate__()
+            yield particle
         else:
-            yield best.__getstate__()
+            yield best
 
     ##########################################################################
     # MapReduce to Find the Best Particle
 
+    @mrs.key_serializer('int')
+    @mrs.value_serializer('pso')
     def collapse_map(self, key, value):
-        new_key = str(int(key) % self.opts.mrs__reduce_tasks)
-        yield new_key.encode('ascii'), value
+        new_key = key % self.opts.mrs__reduce_tasks
+        yield new_key, value
 
     def findbest_reduce(self, key, value_iter):
-        particles = [PSOPickler.loads(value) for value in value_iter]
+        particles = list(value_iter)
         assert len(particles) == self.topology.num, (
             'Only %s particles in findbest_reduce' % len(particles))
 
         best = self.findbest(particles)
-        yield best.__getstate__()
+        yield best
 
     ##########################################################################
     # Helper Functions (shared by bypass and mrs implementations)

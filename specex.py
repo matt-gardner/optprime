@@ -4,9 +4,10 @@ from __future__ import division
 import sys, operator
 
 import mrs
-import standardpso
 from mrs import param
-from particle import *
+
+from amlpso import standardpso
+from amlpso.particle import *
 
 try:
     range = xrange

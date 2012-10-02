@@ -101,7 +101,11 @@ class TimedBasic(Output):
         delta = now - self.last_time
 
         best = kwds['best']
-        print(delta.total_seconds(), best.pbestval)
+        # Note: total_seconds was introduced in Python 2.7. :(
+        #print(delta.total_seconds(), best.pbestval)
+        seconds = (delta.days * 86400 + delta.seconds
+                + delta.microseconds / 1000000)
+        print(seconds, best.pbestval)
         sys.stdout.flush()
 
         self.last_time = now
