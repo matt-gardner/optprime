@@ -167,7 +167,7 @@ class StandardPSO(mrs.IterativeMR):
 
             kvpairs = ((i, b'') for i in range(self.topology.num))
             start_swarm = job.local_data(kvpairs, key_serializer='int',
-                    value_serializer=None)
+                    value_serializer='raw')
             data = job.map_data(start_swarm, self.init_map)
             start_swarm.close()
 
