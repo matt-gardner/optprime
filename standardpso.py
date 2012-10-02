@@ -195,7 +195,7 @@ class StandardPSO(mrs.IterativeMR):
             out_data = None
             if self.opts.async:
                 async_r = {"async_start": True}
-                async_m = {"blocking_percent": 0.75, "backlink": self.last_data}
+                async_m = {"blocking_ratio": 0.75, "backlink": self.last_data}
             else:
                 async_r = {}
                 async_m = {}
@@ -208,7 +208,7 @@ class StandardPSO(mrs.IterativeMR):
                 swarm.close()
             else:
                 if self.opts.async:
-                    async_rm = {"async_start": True, "blocking_percent": 0.5,
+                    async_rm = {"async_start": True, "blocking_ratio": 0.5,
                                 "backlink": self.last_data}
                 else:
                     async_rm = {}
