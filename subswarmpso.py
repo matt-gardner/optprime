@@ -160,8 +160,9 @@ class SubswarmPSO(standardpso.StandardPSO):
             out_data = None
 
             kvpairs = ((i, b'') for i in range(self.link.num))
-            start_swarm = job.local_data(kvpairs, key_serializer='int',
-                    value_serializer=None)
+            start_swarm = job.local_data(kvpairs,
+                    key_serializer=self.int_serializer,
+                    value_serializer=self.raw_serializer)
             data = job.map_data(start_swarm, self.init_map,
                     format=mrs.ZipWriter)
             start_swarm.close()
@@ -265,8 +266,8 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.key_serializer('int')
-    @mrs.value_serializer('pso')
+    @mrs.key_serializer(mrs.MapReduce.int_serializer)
+    @mrs.value_serializer(pso_serializer)
     def init_map(self, swarm_id, value):
         rand = self.initialization_rand(swarm_id)
         swarm = Swarm(swarm_id, self.topology.newparticles(rand))
@@ -274,8 +275,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         for kvpair in self.pso_map(swarm_id, swarm):
             yield kvpair
 
-    @mrs.key_serializer('int')
-    @mrs.value_serializer('pso')
+    @mrs.key_serializer(mrs.MapReduce.int_serializer)
+    @mrs.value_serializer(pso_serializer)
     def pso_map(self, swarm_id, swarm):
         assert swarm.id == swarm_id
         subiters = self.subiters(swarm.id, swarm.iters())
@@ -353,8 +354,8 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    @mrs.key_serializer('int')
-    @mrs.value_serializer('pso')
+    @mrs.key_serializer(mrs.MapReduce.int_serializer)
+    @mrs.value_serializer(pso_serializer)
     def collapse_map(self, key, swarm):
         """Finds the best particle in the swarm and yields it with id 0."""
         new_key = key % self.opts.mrs__reduce_tasks
@@ -399,39 +400,39 @@ class SubswarmPSO(standardpso.StandardPSO):
                 subiters = 1
         return subiters
 
-##############################################################################
-# Busywork
-
-def update_parser(parser):
-    """Adds PSO options to an OptionParser instance."""
-    parser = standardpso.update_parser(parser)
-    parser.add_option('-l', '--link', metavar='TOPOLOGY',
-            dest='link', action='extend', search=['topology'],
-            help='Topology/sociometry for linking subswarms',
-            default='Complete',
-            )
-    parser.add_option('-s', '--subiters',
-            dest='subiters', type='int',
-            help='Number of iterations per subswarm between iterations',
-            default=10,
-            )
-    parser.add_option('--subiters-stddev',
-            dest='subiters_stddev', type='float',
-            help='Variation in the number of subiters per subswarm',
-            default=0,
-            )
-    parser.add_option('--shuffle',
-            dest='shuffle', action='store_true', default=False,
-            help='Shuffle particles between swarms (Dynamic Multi Swarm PSO)',
-            )
-    parser.add_option('--send-best',
-            dest='send_best', action='store_true', default=False,
-            help='Send the best particle from the swarm instead of the first',
-            )
-    return parser
+    @classmethod
+    def update_parser(cls, parser):
+        """Adds PSO options to an OptionParser instance."""
+        parser = standardpso.StandardPSO.update_parser(parser)
+        parser.add_option('-l', '--link', metavar='TOPOLOGY',
+                dest='link', action='extend', search=['topology'],
+                help='Topology/sociometry for linking subswarms',
+                default='Complete',
+                )
+        parser.add_option('-s', '--subiters',
+                dest='subiters', type='int',
+                help='Number of iterations per subswarm between iterations',
+                default=10,
+                )
+        parser.add_option('--subiters-stddev',
+                dest='subiters_stddev', type='float',
+                help='Variation in the number of subiters per subswarm',
+                default=0,
+                )
+        parser.add_option('--shuffle',
+                dest='shuffle', action='store_true', default=False,
+                help='Shuffle particles between swarms '
+                    '(Dynamic Multi Swarm PSO)',
+                )
+        parser.add_option('--send-best',
+                dest='send_best', action='store_true', default=False,
+                help='Send the best particle from the swarm '
+                    'instead of the first',
+                )
+        return parser
 
 
 if __name__ == '__main__':
-    mrs.main(SubswarmPSO, update_parser)
+    mrs.main(SubswarmPSO)
 
 # vim: et sw=4 sts=4

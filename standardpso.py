@@ -166,8 +166,9 @@ class StandardPSO(mrs.IterativeMR):
             out_data = None
 
             kvpairs = ((i, b'') for i in range(self.topology.num))
-            start_swarm = job.local_data(kvpairs, key_serializer='int',
-                    value_serializer=None)
+            start_swarm = job.local_data(kvpairs,
+                    key_serializer=self.int_serializer,
+                    value_serializer=self.raw_serializer)
             data = job.map_data(start_swarm, self.init_map)
             start_swarm.close()
 
@@ -261,17 +262,11 @@ class StandardPSO(mrs.IterativeMR):
 
         return True
 
-    def serializer(self, key):
-        if key == 'pso':
-            return pso_serializer
-        else:
-            return super(StandardPSO, self).serializer(key)
-
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.key_serializer('int')
-    @mrs.value_serializer('pso')
+    @mrs.key_serializer(mrs.MapReduce.int_serializer)
+    @mrs.value_serializer(pso_serializer)
     def init_map(self, particle_id, value):
         particle_id = int(particle_id)
         rand = self.initialization_rand(particle_id)
@@ -280,8 +275,8 @@ class StandardPSO(mrs.IterativeMR):
         for kvpair in self.pso_map(particle_id, p):
             yield kvpair
 
-    @mrs.key_serializer('int')
-    @mrs.value_serializer('pso')
+    @mrs.key_serializer(mrs.MapReduce.int_serializer)
+    @mrs.value_serializer(pso_serializer)
     def pso_map(self, particle_id, particle):
         comparator = self.function.comparator
         assert particle.id == particle_id
@@ -329,8 +324,8 @@ class StandardPSO(mrs.IterativeMR):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    @mrs.key_serializer('int')
-    @mrs.value_serializer('pso')
+    @mrs.key_serializer(mrs.MapReduce.int_serializer)
+    @mrs.value_serializer(pso_serializer)
     def collapse_map(self, key, value):
         new_key = key % self.opts.mrs__reduce_tasks
         yield new_key, value
@@ -466,82 +461,81 @@ class StandardPSO(mrs.IterativeMR):
         rand = self.random(self.FUNCTION_OFFSET)
         self.function.randomize_center(rand)
 
+    @classmethod
+    def update_parser(cls, parser):
+        """Adds PSO options to an OptionParser instance."""
+        # Set the default Mrs implementation to Bypass (instead of MapReduce).
+        parser.usage = parser.usage.replace('Serial', 'Bypass')
+        parser.set_default('mrs', 'Bypass')
 
-##############################################################################
-# Busywork
+        parser.add_option('-q', '--quiet',
+                dest='quiet', action='store_true',
+                help='Refrain from printing version and option information',
+                default=False,
+                )
+        parser.add_option('-v', '--verbose',
+                dest='verbose', action='store_true',
+                help="Print out verbose error messages",
+                default=False,
+                )
+        parser.add_option('-i', '--iters',
+                dest='iters', type='int',
+                help='Number of iterations',
+                default=100,
+                )
+        parser.add_option('-f', '--func', metavar='FUNCTION',
+                dest='func', action='extend', search=['amlpso.functions'],
+                help='Function to optimize',
+                default='sphere.Sphere',
+                )
+        parser.add_option('-m', '--motion',
+                dest='motion', action='extend',
+                search=['amlpso.motion.basic', 'amlpso.motion'],
+                help='Particle motion type',
+                default='Constricted',
+                )
+        parser.add_option('-t', '--top', metavar='TOPOLOGY',
+                dest='top', action='extend', search=['amlpso.topology'],
+                help='Particle topology/sociometry',
+                default='Complete',
+                )
+        parser.add_option('-o', '--out', metavar='OUTPUTTER',
+                dest='out', action='extend', search=['amlpso.output'],
+                help='Style of output',
+                default='Basic',
+                )
+        parser.add_option('-N', '--num-tasks',
+                dest='numtasks', type='int',
+                help='Number of tasks (if 0, create 1 task per particle)',
+                default=0,
+                )
+        parser.add_option('--transitive-best',
+                dest='transitive_best', action='store_true',
+                help='Whether to send nbest to others instead of pbest',
+                default=False
+                )
+        parser.add_option('--split-reducemap',
+                dest='split_reducemap', action='store_true',
+                help='Split ReduceMap into two separate operations',
+                default=False
+                )
+        parser.add_option('--async',
+                dest='async', action='store_true',
+                help='Run in asynchronous mode',
+                default=False
+                )
+        parser.add_option('--hey-im-testing',
+                dest='hey_im_testing', action='store_true',
+                help='Ignore errors from uncommitted changes (testing only!)',
+                default=False,
+                )
 
-def update_parser(parser):
-    """Adds PSO options to an OptionParser instance."""
-    # Set the default Mrs implementation to Bypass (instead of MapReduce).
-    parser.usage = parser.usage.replace('Serial', 'Bypass')
-    parser.set_default('mrs', 'Bypass')
+        return parser
 
-    parser.add_option('-q', '--quiet',
-            dest='quiet', action='store_true',
-            help='Refrain from printing version and option information',
-            default=False,
-            )
-    parser.add_option('-v', '--verbose',
-            dest='verbose', action='store_true',
-            help="Print out verbose error messages",
-            default=False,
-            )
-    parser.add_option('-i', '--iters',
-            dest='iters', type='int',
-            help='Number of iterations',
-            default=100,
-            )
-    parser.add_option('-f', '--func', metavar='FUNCTION',
-            dest='func', action='extend', search=['amlpso.functions'],
-            help='Function to optimize',
-            default='sphere.Sphere',
-            )
-    parser.add_option('-m', '--motion',
-            dest='motion', action='extend',
-            search=['amlpso.motion.basic', 'amlpso.motion'],
-            help='Particle motion type',
-            default='Constricted',
-            )
-    parser.add_option('-t', '--top', metavar='TOPOLOGY',
-            dest='top', action='extend', search=['amlpso.topology'],
-            help='Particle topology/sociometry',
-            default='Complete',
-            )
-    parser.add_option('-o', '--out', metavar='OUTPUTTER',
-            dest='out', action='extend', search=['amlpso.output'],
-            help='Style of output',
-            default='Basic',
-            )
-    parser.add_option('-N', '--num-tasks',
-            dest='numtasks', type='int',
-            help='Number of tasks (if 0, create 1 task per particle)',
-            default=0,
-            )
-    parser.add_option('--transitive-best',
-            dest='transitive_best', action='store_true',
-            help='Whether to send nbest to others instead of pbest',
-            default=False
-            )
-    parser.add_option('--split-reducemap',
-            dest='split_reducemap', action='store_true',
-            help='Split ReduceMap into two separate operations',
-            default=False
-            )
-    parser.add_option('--async',
-            dest='async', action='store_true',
-            help='Run in asynchronous mode',
-            default=False
-            )
-    parser.add_option('--hey-im-testing',
-            dest='hey_im_testing', action='store_true',
-            help='Ignore errors from uncommitted changes (for testing only!)',
-            default=False,
-            )
-
-    return parser
+    pso_serializer = pso_serializer
 
 
 if __name__ == '__main__':
-    mrs.main(StandardPSO, update_parser)
+    mrs.main(StandardPSO)
 
 # vim: et sw=4 sts=4
