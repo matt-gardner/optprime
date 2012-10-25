@@ -266,8 +266,8 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.key_serializer(mrs.MapReduce.int_serializer)
-    @mrs.value_serializer(pso_serializer)
+    @mrs.output_serializer(key=mrs.MapReduce.int_serializerm
+                          value=pso_serializer)
     def init_map(self, swarm_id, value):
         rand = self.initialization_rand(swarm_id)
         swarm = Swarm(swarm_id, self.topology.newparticles(rand))
@@ -275,8 +275,8 @@ class SubswarmPSO(standardpso.StandardPSO):
         for kvpair in self.pso_map(swarm_id, swarm):
             yield kvpair
 
-    @mrs.key_serializer(mrs.MapReduce.int_serializer)
-    @mrs.value_serializer(pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
+                            value=pso_serializer)
     def pso_map(self, swarm_id, swarm):
         assert swarm.id == swarm_id
         subiters = self.subiters(swarm.id, swarm.iters())
@@ -354,8 +354,8 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    @mrs.key_serializer(mrs.MapReduce.int_serializer)
-    @mrs.value_serializer(pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
+                            value=pso_serializer)
     def collapse_map(self, key, swarm):
         """Finds the best particle in the swarm and yields it with id 0."""
         new_key = key % self.opts.mrs__reduce_tasks

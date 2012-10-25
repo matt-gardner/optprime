@@ -265,8 +265,8 @@ class StandardPSO(mrs.IterativeMR):
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.key_serializer(mrs.MapReduce.int_serializer)
-    @mrs.value_serializer(pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
+                           value=pso_serializer)
     def init_map(self, particle_id, value):
         particle_id = int(particle_id)
         rand = self.initialization_rand(particle_id)
@@ -275,8 +275,8 @@ class StandardPSO(mrs.IterativeMR):
         for kvpair in self.pso_map(particle_id, p):
             yield kvpair
 
-    @mrs.key_serializer(mrs.MapReduce.int_serializer)
-    @mrs.value_serializer(pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
+                           value=pso_serializer)
     def pso_map(self, particle_id, particle):
         comparator = self.function.comparator
         assert particle.id == particle_id
@@ -324,8 +324,8 @@ class StandardPSO(mrs.IterativeMR):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    @mrs.key_serializer(mrs.MapReduce.int_serializer)
-    @mrs.value_serializer(pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
+                           value=pso_serializer)
     def collapse_map(self, key, value):
         new_key = key % self.opts.mrs__reduce_tasks
         yield new_key, value
