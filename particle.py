@@ -4,7 +4,7 @@ import mrs
 import operator
 import sys
 
-from vector import Vector
+from .vector import Vector
 
 # TODO: change repr to be a human-readable string instead of __getstate__
 
