@@ -10,6 +10,7 @@ import time
 
 import mrs
 from mrs import param
+from amlpso import cli
 from amlpso.particle import Particle, Message, pso_serializer
 
 try:
@@ -376,8 +377,6 @@ class StandardPSO(mrs.IterativeMR):
 
         Returns True if startup succeeded, otherwise False.
         """
-        import cli
-
         # Check whether the repository is dirty.
         mrs_status = cli.GitStatus(mrs)
         amlpso_status = cli.GitStatus(sys.modules[__name__])

@@ -31,7 +31,7 @@ class _Topology(ParamObj):
         )
 
     def setup(self, func):
-        from cubes.cube import Cube
+        from .cubes.cube import Cube
 
         ispace = self.initscale
         ioffset = self.initoffset
@@ -54,7 +54,7 @@ class _Topology(ParamObj):
 
         Particles are distributed uniformly within the constraints.
         """
-        from particle import Particle
+        from .particle import Particle
         newpos = self.cube.random_vec(rand)
         newvel = self.vcube.random_vec(rand)
         p = Particle(id=i, pos=newpos, vel=newvel)
