@@ -36,12 +36,12 @@ class Vector(tuple):
         methods.
         """
         try:
-            return cls(float(field) for field in string.split(','))
+            return cls(float(field) for field in string.split(b','))
         except ValueError:
             raise RuntimeError('Vector could not unpack "%s".' % repr(string))
 
-    def __getstate__(self):
-        return ','.join(('%r' % x) for x in self)
+    def __getstate__(self, repr=repr):
+        return b','.join((repr(x).encode('ascii')) for x in self)
 
     def __repr__(self):
         return 'Vector(%s)' % ','.join(repr(x) for x in self)
