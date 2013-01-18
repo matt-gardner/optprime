@@ -9,7 +9,7 @@ import sys
 import mrs
 from mrs import param
 from amlpso import standardpso
-from amlpso.particle import Swarm, Particle, Message
+from amlpso.particle import Swarm, Particle, Message, pso_serializer
 
 try:
     range = xrange
@@ -266,7 +266,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.output_serializer(key=mrs.MapReduce.int_serializerm
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
                           value=pso_serializer)
     def init_map(self, swarm_id, value):
         rand = self.initialization_rand(swarm_id)
