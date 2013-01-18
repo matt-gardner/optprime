@@ -21,7 +21,7 @@ except NameError:
 # TODO: allow the initial set of particles to be given
 
 
-class StandardPSO(mrs.IterativeMR):
+class StandardPSO(mrs.GeneratorCallbackMR):
     def __init__(self, opts, args):
         """Mrs Setup (run on both master and slave)"""
 
@@ -131,7 +131,6 @@ class StandardPSO(mrs.IterativeMR):
 
         # Perform the simulation
         try:
-            self.iteration = 0
             self.last_data = None
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
@@ -157,109 +156,103 @@ class StandardPSO(mrs.IterativeMR):
             print("# INTERRUPTED")
             return 1
 
-    def producer(self, job):
-        if self.iteration > self.opts.iters:
-            return []
+    def generator(self, job):
+        self.out_datasets = {}
+        out_data = None
 
-        elif self.iteration == 0:
-            self.out_datasets = {}
-            self.datasets = {}
-            out_data = None
-
-            kvpairs = ((i, b'') for i in range(self.topology.num))
-            start_swarm = job.local_data(kvpairs,
-                    key_serializer=self.int_serializer,
-                    value_serializer=self.raw_serializer)
-            data = job.map_data(start_swarm, self.init_map)
-            start_swarm.close()
-
-        elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
-            num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
-            swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
-                    affinity=True)
-            if self.last_data not in self.out_datasets:
-                self.last_data.close()
-            data = job.map_data(swarm_data, self.pso_map, affinity=True)
-            if ('particles' not in self.output.args and
-                    'best' not in self.output.args):
-                out_data = None
-                swarm_data.close()
-            elif ('best' in self.output.args and num_reduce_tasks > 1):
-                interm = job.map_data(swarm_data, self.collapse_map,
-                        splits=num_reduce_tasks)
-                swarm_data.close()
-                out_data = job.reduce_data(interm, self.findbest_reduce,
-                        splits=1)
-                interm.close()
-            else:
-                out_data = swarm_data
-
-        else:
-            out_data = None
-            if self.opts.async:
-                async_r = {"async_start": True}
-                async_m = {"blocking_ratio": 0.75, "backlink": self.last_data}
-            else:
-                async_r = {}
-                async_m = {}
-            if self.opts.split_reducemap:
-                swarm = job.reduce_data(self.last_data, self.pso_reduce,
-                        affinity=True, **async_r)
-                if self.last_data not in self.out_datasets:
-                    self.last_data.close()
-                data = job.map_data(swarm, self.pso_map, affinity=True,
-                        **async_m)
-                swarm.close()
-            else:
-                if self.opts.async:
-                    async_rm = {"async_start": True, "blocking_ratio": 0.5,
-                                "backlink": self.last_data}
-                else:
-                    async_rm = {}
-                data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, affinity=True, **async_rm)
-                if self.last_data not in self.out_datasets:
-                    self.last_data.close()
-
-        self.iteration += 1
-        self.datasets[data] = self.iteration
+        kvpairs = ((i, b'') for i in range(self.topology.num))
+        start_swarm = job.local_data(kvpairs,
+                key_serializer=self.int_serializer,
+                value_serializer=self.raw_serializer)
+        data = job.map_data(start_swarm, self.init_map)
+        start_swarm.close()
+        yield data, None
         self.last_data = data
-        if out_data:
-            self.out_datasets[out_data] = self.iteration
-            return [out_data, data]
-        else:
-            return [data]
 
-    def consumer(self, dataset):
-        # Note that depending on the output class, a dataset could be both
-        # in out_datasets and datasets.
+        iteration = 1
+        while iteration <= self.opts.iters:
+            need_output = (self.output.freq and
+                    (iteration - 1) % self.output.freq == 0)
 
-        if dataset in self.datasets:
-            iteration = self.datasets[dataset]
-            del self.datasets[dataset]
+            if need_output:
+                num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
+                swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
+                        affinity=True)
+                if self.last_data not in self.out_datasets:
+                    self.last_data.close()
+                data = job.map_data(swarm_data, self.pso_map, affinity=True)
+                if ('particles' not in self.output.args and
+                        'best' not in self.output.args):
+                    out_data = None
+                    swarm_data.close()
+                elif ('best' in self.output.args and num_reduce_tasks > 1):
+                    interm = job.map_data(swarm_data, self.collapse_map,
+                            splits=num_reduce_tasks)
+                    swarm_data.close()
+                    out_data = job.reduce_data(interm, self.findbest_reduce,
+                            splits=1)
+                    interm.close()
+                else:
+                    out_data = swarm_data
 
-            #self.output.print_to_tty("Finished iteration %s" % iteration)
+            else:
+                out_data = None
+                if self.opts.async:
+                    async_r = {"async_start": True}
+                    async_m = {"blocking_ratio": 0.75,
+                            "backlink": self.last_data}
+                else:
+                    async_r = {}
+                    async_m = {}
+                if self.opts.split_reducemap:
+                    swarm = job.reduce_data(self.last_data, self.pso_reduce,
+                            affinity=True, **async_r)
+                    if self.last_data not in self.out_datasets:
+                        self.last_data.close()
+                    data = job.map_data(swarm, self.pso_map, affinity=True,
+                            **async_m)
+                    swarm.close()
+                else:
+                    if self.opts.async:
+                        async_rm = {"async_start": True, "blocking_ratio": 0.5,
+                                    "backlink": self.last_data}
+                    else:
+                        async_rm = {}
+                    data = job.reducemap_data(self.last_data, self.pso_reduce,
+                            self.pso_map, affinity=True, **async_rm)
+                    if self.last_data not in self.out_datasets:
+                        self.last_data.close()
 
-        if dataset in self.out_datasets:
-            iteration = self.out_datasets[dataset]
-            del self.out_datasets[dataset]
+            iteration += 1
+            self.last_data = data
+            if out_data:
+                self.out_datasets[out_data] = iteration
+                yield out_data, self.output_dataset_handler
 
-            if 'best' in self.output.args or 'particles' in self.output.args:
-                dataset.fetchall()
-                particles = [particle for _, particle in dataset.data()]
-            if dataset != self.last_data:
-                dataset.close()
-            kwds = {}
-            if 'iteration' in self.output.args:
-                kwds['iteration'] = iteration
-            if 'particles' in self.output.args:
-                kwds['particles'] = particles
-            if 'best' in self.output.args:
-                kwds['best'] = self.findbest(particles)
-            self.output(**kwds)
-            if self.stop_condition(particles):
-                self.output.success()
-                return False
+            yield data, None
+
+    def output_dataset_handler(self, dataset):
+        """Called when an output dataset is complete."""
+        iteration = self.out_datasets[dataset]
+        del self.out_datasets[dataset]
+
+        if 'best' in self.output.args or 'particles' in self.output.args:
+            dataset.fetchall()
+            particles = [particle for _, particle in dataset.data()]
+        if dataset != self.last_data:
+            dataset.close()
+        kwds = {}
+        if 'iteration' in self.output.args:
+            kwds['iteration'] = iteration
+        if 'particles' in self.output.args:
+            kwds['particles'] = particles
+        if 'best' in self.output.args:
+            kwds['best'] = self.findbest(particles)
+        self.output(**kwds)
+
+        if self.stop_condition(particles):
+            self.output.success()
+            return False
 
         return True
 
