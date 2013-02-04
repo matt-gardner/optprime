@@ -2,3 +2,4 @@
 *.swp
 .coverage
 test/htmlcov
+__pycache__

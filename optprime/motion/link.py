@@ -3,7 +3,7 @@ from __future__ import division
 import math
 import basic
 from itertools import izip
-from amlpso.vector import Vector
+from ..vector import Vector
 
 
 class Link1(basic._Base):

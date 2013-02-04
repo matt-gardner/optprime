@@ -6,8 +6,8 @@ import sys, operator
 import mrs
 from mrs import param
 
-from amlpso import standardpso
-from amlpso.particle import *
+from . import standardpso
+from .particle import *
 
 try:
     range = xrange
@@ -346,8 +346,5 @@ def update_parser(parser):
 
     return parser
 
-
-if __name__ == '__main__':
-    mrs.main(SpecExPSO, update_parser)
 
 # vim: et sw=4 sts=4

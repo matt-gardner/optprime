@@ -3,8 +3,8 @@ import operator
 from math import sqrt
 
 from mrs.param import ParamObj, Param
-from amlpso.vector import Vector
-from amlpso.cubes.cube import Cube
+from ..vector import Vector
+from ..cubes.cube import Cube
 
 try:
     range = xrange

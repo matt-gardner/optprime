@@ -5,7 +5,7 @@ import math
 import optparse
 from itertools import islice
 
-from amlpso.psodata import PSOData
+from psodata import PSOData
 from evilplot import Plot, Points, RawData
 
 MAX_BAR_SAMPLES = 40

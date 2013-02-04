@@ -130,7 +130,7 @@ class RBF(_general._Base):
 
     def generate_data(self, rand):
         """Generate some points."""
-        from amlpso.cubes.cube import Cube
+        from ..cubes.cube import Cube
         inputs_constraints = ((0, 100),) * self.inputdims
         inputs_cube = Cube(inputs_constraints)
         vec = self.generating_vec

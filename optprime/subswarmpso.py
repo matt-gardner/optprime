@@ -8,8 +8,9 @@ import sys
 
 import mrs
 from mrs import param
-from amlpso import standardpso
-from amlpso.particle import Swarm, Particle, Message, pso_serializer
+
+from . import standardpso
+from .particle import Swarm, Particle, Message, pso_serializer
 
 try:
     range = xrange
@@ -431,8 +432,5 @@ class SubswarmPSO(standardpso.StandardPSO):
                 )
         return parser
 
-
-if __name__ == '__main__':
-    mrs.main(SubswarmPSO)
 
 # vim: et sw=4 sts=4

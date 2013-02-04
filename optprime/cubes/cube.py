@@ -11,7 +11,7 @@ from copy import deepcopy
 from math import sqrt
 from math import floor, ceil
 import copy
-from amlpso.vector import Vector
+from ..vector import Vector
 
 try:
     from itertools import izip as zip

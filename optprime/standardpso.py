@@ -10,8 +10,9 @@ import time
 
 import mrs
 from mrs import param
-from amlpso import cli
-from amlpso.particle import Particle, Message, pso_serializer
+
+from . import cli
+from .particle import Particle, Message, pso_serializer
 
 try:
     range = xrange
@@ -149,7 +150,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
             else:
                 self.iterative_qmax = 2 * numtasks
 
-            mrs.IterativeMR.run(self, job)
+            mrs.GeneratorCallbackMR.run(self, job)
             self.output.finish()
             return 0
         except KeyboardInterrupt as e:
@@ -372,12 +373,12 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         """
         # Check whether the repository is dirty.
         mrs_status = cli.GitStatus(mrs)
-        amlpso_status = cli.GitStatus(sys.modules[__name__])
+        optprime_status = cli.GitStatus(sys.modules[__name__])
         if not self.opts.hey_im_testing:
-            if amlpso_status.dirty:
-                print(('Repository amlpso (%s) is dirty!'
+            if optprime_status.dirty:
+                print(('Repository optprime (%s) is dirty!'
                         '  Use --hey-im-testing if necessary.')
-                        % amlpso_status.directory, file=sys.stderr)
+                        % optprime_status.directory, file=sys.stderr)
                 return False
             if mrs_status.dirty:
                 print(('Repository mrs (%s) is dirty!'
@@ -392,7 +393,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
             print('#', sys.argv[0])
             print('# Date:', date)
             print('# Git Status:')
-            print('#   amlpso:', amlpso_status)
+            print('#   optprime:', optprime_status)
             print('#   mrs:', mrs_status)
             print("# Options:")
             for key, value in sorted(vars(self.opts).items()):
@@ -476,23 +477,23 @@ class StandardPSO(mrs.GeneratorCallbackMR):
                 default=100,
                 )
         parser.add_option('-f', '--func', metavar='FUNCTION',
-                dest='func', action='extend', search=['amlpso.functions'],
+                dest='func', action='extend', search=['optprime.functions'],
                 help='Function to optimize',
                 default='sphere.Sphere',
                 )
         parser.add_option('-m', '--motion',
                 dest='motion', action='extend',
-                search=['amlpso.motion.basic', 'amlpso.motion'],
+                search=['optprime.motion.basic', 'optprime.motion'],
                 help='Particle motion type',
                 default='Constricted',
                 )
         parser.add_option('-t', '--top', metavar='TOPOLOGY',
-                dest='top', action='extend', search=['amlpso.topology'],
+                dest='top', action='extend', search=['optprime.topology'],
                 help='Particle topology/sociometry',
                 default='Complete',
                 )
         parser.add_option('-o', '--out', metavar='OUTPUTTER',
-                dest='out', action='extend', search=['amlpso.output'],
+                dest='out', action='extend', search=['optprime.output'],
                 help='Style of output',
                 default='Basic',
                 )
@@ -526,8 +527,5 @@ class StandardPSO(mrs.GeneratorCallbackMR):
 
     pso_serializer = pso_serializer
 
-
-if __name__ == '__main__':
-    mrs.main(StandardPSO)
 
 # vim: et sw=4 sts=4
