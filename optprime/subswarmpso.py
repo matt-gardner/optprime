@@ -124,7 +124,6 @@ class SubswarmPSO(standardpso.StandardPSO):
 
         # Perform the simulation
         try:
-            self.iteration = 0
             self.last_data = None
             self.output = param.instantiate(self.opts, 'out')
             self.output.start()
@@ -143,124 +142,121 @@ class SubswarmPSO(standardpso.StandardPSO):
             else:
                 self.iterative_qmax = 2 * numtasks
 
-            mrs.IterativeMR.run(self, job)
+            mrs.GeneratorCallbackMR.run(self, job)
             self.output.finish()
             return 0
         except KeyboardInterrupt as e:
             print("# INTERRUPTED")
             return 1
 
-    def producer(self, job):
-        outer_iters = self.opts.iters // self.opts.subiters
-        if self.iteration > outer_iters:
-            return []
+    def generator(self, job):
+        self.out_datasets = {}
+        out_data = None
 
-        elif self.iteration == 0:
-            self.out_datasets = {}
-            self.datasets = {}
-            out_data = None
+        self.out_datasets = {}
+        self.datasets = {}
+        out_data = None
 
-            kvpairs = ((i, b'') for i in range(self.link.num))
-            start_swarm = job.local_data(kvpairs,
-                    key_serializer=self.int_serializer,
-                    value_serializer=self.raw_serializer)
-            data = job.map_data(start_swarm, self.init_map,
-                    format=mrs.ZipWriter)
-            start_swarm.close()
+        kvpairs = ((i, b'') for i in range(self.link.num))
+        start_swarm = job.local_data(kvpairs,
+                key_serializer=self.int_serializer,
+                value_serializer=self.raw_serializer)
+        data = job.map_data(start_swarm, self.init_map,
+                format=mrs.ZipWriter)
+        start_swarm.close()
+        yield data, None
+        self.last_data = data
 
-        elif self.output.freq and (self.iteration - 1) % self.output.freq == 0:
-            num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
-            swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
-                    affinity=True, format=mrs.ZipWriter)
-            if self.last_data not in self.out_datasets:
-                self.last_data.close()
-            data = job.map_data(swarm_data, self.pso_map, affinity=True,
-                    format=mrs.ZipWriter)
-            if ('particles' not in self.output.args and
-                    'best' not in self.output.args):
-                out_data = None
-                swarm_data.close()
-            elif ('best' in self.output.args):
-                interm = job.map_data(swarm_data, self.collapse_map,
-                        splits=num_reduce_tasks)
-                swarm_data.close()
-                out_data = job.reduce_data(interm, self.findbest_reduce,
-                        splits=1)
-                interm.close()
-            else:
-                out_data = swarm_data
+        iteration = 1
+        while iteration <= self.opts.iters // self.opts.subiters:
+            need_output = (self.output.freq and
+                    (iteration - 1) % self.output.freq == 0)
 
-        else:
-            out_data = None
-            if self.opts.async:
-                async_r = {"async_start": True}
-                async_m = {"blocking_ratio": 0.75, "backlink": self.last_data}
-            else:
-                async_r = {}
-                async_m = {}
-            if self.opts.split_reducemap:
-                interm = job.reduce_data(self.last_data, self.pso_reduce,
-                        affinity=True, format=mrs.ZipWriter, **async_r)
+            if need_output:
+                num_reduce_tasks = getattr(self.opts, 'mrs__reduce_tasks', 1)
+                swarm_data = job.reduce_data(self.last_data, self.pso_reduce,
+                        affinity=True, format=mrs.ZipWriter)
                 if self.last_data not in self.out_datasets:
                     self.last_data.close()
+                data = job.map_data(swarm_data, self.pso_map, affinity=True,
+                        format=mrs.ZipWriter)
+                if ('particles' not in self.output.args and
+                        'best' not in self.output.args):
+                    out_data = None
+                    swarm_data.close()
+                elif ('best' in self.output.args):
+                    interm = job.map_data(swarm_data, self.collapse_map,
+                            splits=num_reduce_tasks)
+                    swarm_data.close()
+                    out_data = job.reduce_data(interm, self.findbest_reduce,
+                            splits=1)
+                    interm.close()
+                else:
+                    out_data = swarm_data
 
-                data = job.map_data(interm, self.pso_map, affinity=True,
-                        format=mrs.ZipWriter, **async_m)
-                interm.close()
             else:
+                out_data = None
                 if self.opts.async:
-                    async_rm = {"async_start": True, "blocking_ratio": 0.5,
+                    async_r = {"async_start": True}
+                    async_m = {"blocking_ratio": 0.75,
                             "backlink": self.last_data}
                 else:
-                    async_rm = {}
-                data = job.reducemap_data(self.last_data, self.pso_reduce,
-                        self.pso_map, affinity=True, format=mrs.ZipWriter,
-                        **async_rm)
-                if self.last_data not in self.out_datasets:
-                    self.last_data.close()
+                    async_r = {}
+                    async_m = {}
+                if self.opts.split_reducemap:
+                    interm = job.reduce_data(self.last_data, self.pso_reduce,
+                            affinity=True, format=mrs.ZipWriter, **async_r)
+                    if self.last_data not in self.out_datasets:
+                        self.last_data.close()
 
-        self.iteration += 1
-        self.datasets[data] = self.iteration
-        self.last_data = data
-        if out_data:
-            self.out_datasets[out_data] = self.iteration
-            return [out_data, data]
-        else:
-            return [data]
+                    data = job.map_data(interm, self.pso_map, affinity=True,
+                            format=mrs.ZipWriter, **async_m)
+                    interm.close()
+                else:
+                    if self.opts.async:
+                        async_rm = {"async_start": True, "blocking_ratio": 0.5,
+                                "backlink": self.last_data}
+                    else:
+                        async_rm = {}
+                    data = job.reducemap_data(self.last_data, self.pso_reduce,
+                            self.pso_map, affinity=True, format=mrs.ZipWriter,
+                            **async_rm)
+                    if self.last_data not in self.out_datasets:
+                        self.last_data.close()
 
-    def consumer(self, dataset):
-        # Note that depending on the output class, a dataset could be both
-        # in out_datasets and datasets.
+            iteration += 1
+            self.last_data = data
+            if out_data:
+                self.out_datasets[out_data] = iteration
+                yield out_data, self.output_dataset_handler
 
-        if dataset in self.datasets:
-            iteration = self.datasets[dataset]
-            del self.datasets[dataset]
+            yield data, None
 
-            #self.output.print_to_tty("Finished iteration %s" % iteration)
+    def output_dataset_handler(self, dataset):
+        """Called when an output dataset is complete."""
+        iteration = self.out_datasets[dataset]
+        del self.out_datasets[dataset]
 
-        if dataset in self.out_datasets:
-            iteration = self.out_datasets[dataset]
-            del self.out_datasets[dataset]
-
-            if 'best' in self.output.args or 'particles' in self.output.args:
-                dataset.fetchall()
-                particles = []
-                particles = [particle for _, particle in dataset.data()]
-                if 'particles' in self.output.args:
-                    particles = list(chain(*particles))
-            if dataset != self.last_data:
-                dataset.close()
-            kwds = {}
-            if 'iteration' in self.output.args:
-                kwds['iteration'] = iteration
+        if 'best' in self.output.args or 'particles' in self.output.args:
+            dataset.fetchall()
+            particles = []
+            particles = [particle for _, particle in dataset.data()]
             if 'particles' in self.output.args:
-                kwds['particles'] = particles
-            if 'best' in self.output.args:
-                kwds['best'] = self.findbest(particles)
-            self.output(**kwds)
-            if self.stop_condition(particles):
-                self.output.success()
-                return False
+                particles = list(chain(*particles))
+        if dataset != self.last_data:
+            dataset.close()
+        kwds = {}
+        if 'iteration' in self.output.args:
+            kwds['iteration'] = iteration
+        if 'particles' in self.output.args:
+            kwds['particles'] = particles
+        if 'best' in self.output.args:
+            kwds['best'] = self.findbest(particles)
+        self.output(**kwds)
+
+        if self.stop_condition(particles):
+            self.output.success()
+            return False
 
         return True
 
@@ -406,7 +402,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         """Adds PSO options to an OptionParser instance."""
         parser = standardpso.StandardPSO.update_parser(parser)
         parser.add_option('-l', '--link', metavar='TOPOLOGY',
-                dest='link', action='extend', search=['topology'],
+                dest='link', action='extend', search=['optprime.topology'],
                 help='Topology/sociometry for linking subswarms',
                 default='Complete',
                 )
