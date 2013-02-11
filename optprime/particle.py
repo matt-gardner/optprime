@@ -6,7 +6,7 @@ import sys
 
 from .vector import Vector
 
-# TODO: change repr to be a human-readable string instead of __getstate__
+# TODO: change repr to be a human-readable string for debugging.
 
 
 class Particle(object):
@@ -38,19 +38,6 @@ class Particle(object):
     'p:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0;5;False,-1'
     >>>
 
-    A new particle is created by unpacking a repr string.  The repr string
-    of the new particle is identical to the repr string of the old particle.
-    >>> q = unpack(repr(p))
-    >>> repr(q) == repr(p)
-    True
-    >>>
-
-    Copying the particle doesn't change anything about the particle.
-    >>> r = p.copy()
-    >>> repr(r) == repr(p)
-    True
-    >>>
-
     Comparisons are based on the pbestval of the particle, not the id.
 
     >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
@@ -72,8 +59,6 @@ class Particle(object):
     True
     >>>
     """
-    CLASS_ID = b'p'
-
     def __init__(self, id, pos, vel, value=None):
         self.id = id
         self.iters = 0
@@ -221,70 +206,19 @@ class Particle(object):
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
 
     def __getstate__(self):
-        lastbranch = b','.join((repr(self.lastbranch[0]).encode('ascii'),
-                repr(self.lastbranch[1]).encode('ascii')))
-        fields = (repr(self.id).encode('ascii'),
-                repr(self.iters).encode('ascii'),
-                self.pos.__getstate__(), self.vel.__getstate__(),
-                float_repr(self.value), self.pbestpos.__getstate__(),
-                float_repr(self.pbestval), self.nbestpos.__getstate__(),
-                float_repr(self.nbestval), repr(self.tokens).encode('ascii'),
-                lastbranch)
-        return self.CLASS_ID + b':' + b';'.join(fields)
+        state = self.__dict__.copy()
+        del state['rand']
+        return state
 
     def __setstate__(self, state):
-        """Unpacks a state string.
-
-        This gets called instead of __new__/__init__.  The state string would
-        have been created with particle.__getstate__().
-        """
-        prefix = self.CLASS_ID + b':'
-        assert state.startswith(prefix)
-        state = state[len(prefix):]
-        (id, iters, pos, vel, value, pbestpos, pbestval,
-                nbestpos, nbestval, tokens, lastbranch) = state.split(b';')
-        id = int(id)
-        pos = Vector.from_state(pos)
-        vel = Vector.from_state(vel)
-        if value:
-            value = float(value)
-        else:
-            value = None
-        self.__init__(id, pos, vel, value)
-        self.iters = int(iters)
-        self.pbestpos = Vector.from_state(pbestpos)
-        if pbestval:
-            self.pbestval = float(pbestval)
-        else:
-            self.pbestval = None
-        self.nbestpos = Vector.from_state(nbestpos)
-        if nbestval:
-            self.nbestval = float(nbestval)
-        else:
-            self.nbestval = None
-        pbestbranch, nbestbranch = lastbranch.split(b',')
-        if pbestbranch == 'False':
-            pbestbranch = False
-        else:
-            pbestbranch = True
-        self.lastbranch = [pbestbranch, int(nbestbranch)]
-        self.tokens = int(tokens)
+        self.__dict__ = state
         self.rand = None
-
-    @classmethod
-    def unpack(cls, state):
-        p = cls.__new__(cls)
-        p.__setstate__(state)
-        return p
 
     def __lt__(self, other):
         if isinstance(other, Particle):
             return self.pbestval < other.pbestval
         else:
             return NotImplemented
-
-    def __repr__(self):
-        return self.__getstate__()
 
     def __gt__(self, other):
         if isinstance(other, Particle):
@@ -338,38 +272,10 @@ class Message(object):
         position: Position of the particle.
         value: Value of the particle at `position`.
     """
-    CLASS_ID = b'm'
-
     def __init__(self, sender, position, value):
         self.sender = sender
         self.position = position
         self.value = value
-
-    def __setstate__(self, state):
-        """Unpacks a state string, returning a new Message."""
-        prefix = self.CLASS_ID + b':'
-        assert state.startswith(prefix)
-        state = state[len(prefix):]
-        sender, pos, value = state.split(b';')
-        self.sender = int(sender)
-        self.position = Vector.from_state(pos)
-        self.value = float(value)
-        self.rand = None
-
-    def __getstate__(self):
-        fields = (repr(self.sender).encode('ascii'),
-                self.position.__getstate__(),
-                float_repr(self.value))
-        return self.CLASS_ID + b':' + b';'.join(fields)
-
-    @classmethod
-    def unpack(cls, state):
-        p = cls.__new__(cls)
-        p.__setstate__(state)
-        return p
-
-    def __repr__(self):
-        return self.__getstate__()
 
     def __lt__(self, other):
         if isinstance(other, Message):
@@ -413,13 +319,8 @@ class SEParticle(Particle):
     >>> p.nbestval = -12.0
     >>> repr(p)
     'sep:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0;False;4'
-    >>> q = unpack(repr(p))
-    >>> repr(q) == repr(p)
-    True
     >>>
     """
-    CLASS_ID = b'sep'
-
     def __init__(self, p, specpbest=False, specnbestid=-1):
         self.id = p.id
         self.pos = p.pos
@@ -433,39 +334,6 @@ class SEParticle(Particle):
 
         self.specpbest = specpbest
         self.specnbestid = specnbestid
-
-    def __setstate__(self, state):
-        """Unpacks a state string, returning a new SEParticle."""
-        prefix = self.CLASS_ID + b':'
-        assert state.startswith(prefix)
-        state = state[len(prefix):]
-        (id, iters, pos, vel, value, pbestpos, pbestval,
-                nbestpos, nbestval, specpbest, specnbestid) = state.split(b';')
-        self.id = int(id)
-        self.pos = Vector.from_state(pos)
-        self.vel = Vector.from_state(vel)
-        if value:
-            self.value = float(value)
-        else:
-            self.value = None
-
-        self.iters = int(iters)
-        self.pbestpos = Vector.from_state(pbestpos)
-        if pbestval:
-            self.pbestval = float(pbestval)
-        else:
-            self.pbestval = None
-        self.nbestpos = Vector.from_state(nbestpos)
-        if nbestval:
-            self.nbestval = float(nbestval)
-        else:
-            self.nbestval = None
-        if specpbest == 'False':
-            self.specpbest = False
-        else:
-            self.specpbest = True
-        self.specnbestid = int(specnbestid)
-        self.rand = None
 
     def make_message_particle(self):
         m = SEMessageParticle(self)
@@ -487,15 +355,6 @@ class SEParticle(Particle):
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval,
                 self.specpbest, self.specnbestid)
 
-    def __getstate__(self):
-        fields = (repr(self.id), repr(self.iters),
-                self.pos.__getstate__(), self.vel.__getstate__(),
-                float_repr(self.value), self.pbestpos.__getstate__(),
-                float_repr(self.pbestval), self.nbestpos.__getstate__(),
-                float_repr(self.nbestval), repr(self.specpbest),
-                repr(self.specnbestid))
-        return self.CLASS_ID + b':' + b';'.join(fields)
-
     def copy(self):
         """Performs a deep copy and returns the new Particle.
         """
@@ -511,7 +370,6 @@ class SEParticle(Particle):
 
 class Dummy(Particle):
     """A dummy particle that just has an id and a rand, for use with SpecEx."""
-    CLASS_ID = b'd'
 
     def __init__(self, id, iters):
         self.id = id
@@ -521,7 +379,6 @@ class Dummy(Particle):
 
 class MessageParticle(Particle):
     """A complete particle that is actually a message."""
-    CLASS_ID = b'mp'
 
     def __init__(self, p):
         self.id = p.id
@@ -533,33 +390,6 @@ class MessageParticle(Particle):
         self.nbestpos = p.nbestpos
         self.nbestval = p.nbestval
         self.iters = p.iters
-
-    def __setstate__(self, state):
-        """Unpacks a state string, returning a new MessageParticle."""
-        prefix = self.CLASS_ID + b':'
-        assert state.startswith(prefix)
-        state = state[len(prefix):]
-        (id, iters, pos, vel, value, pbestpos, pbestval,
-                nbestpos, nbestval) = state.split(b';')
-        self.id = int(id)
-        self.pos = Vector.from_state(pos)
-        self.vel = Vector.from_state(vel)
-        if value:
-            self.value = float(value)
-        else:
-            self.value = None
-        self.iters = int(iters)
-        self.pbestpos = Vector.from_state(pbestpos)
-        if pbestval:
-            self.pbestval = float(pbestval)
-        else:
-            self.pbestval = None
-        self.nbestpos = Vector.from_state(nbestpos)
-        if nbestval:
-            self.nbestval = float(nbestval)
-        else:
-            self.nbestval = None
-        self.rand = None
 
     def copy(self):
         """Performs a deep copy and returns the new Particle.
@@ -573,18 +403,9 @@ class MessageParticle(Particle):
         mp = MessageParticle(p)
         return mp
 
-    def __getstate__(self):
-        fields = (repr(self.id), repr(self.iters),
-                self.pos.__getstate__(), self.vel.__getstate__(),
-                float_repr(self.value), self.pbestpos.__getstate__(),
-                float_repr(self.pbestval), self.nbestpos.__getstate__(),
-                float_repr(self.nbestval))
-        return self.CLASS_ID + b':' + b';'.join(fields)
-
 
 class SEMessageParticle(SEParticle):
     """A complete particle that is actually a message."""
-    CLASS_ID = b'semp'
 
     def __init__(self, p):
         self.id = p.id
@@ -598,38 +419,6 @@ class SEMessageParticle(SEParticle):
         self.iters = p.iters
         self.specpbest = p.specpbest
         self.specnbestid = p.specnbestid
-
-    def __setstate__(self, state):
-        """Unpacks a state string, returning a new SEParticle."""
-        prefix = self.CLASS_ID + b':'
-        assert state.startswith(prefix)
-        state = state[len(prefix):]
-        (id, iters, pos, vel, value, pbestpos, pbestval,
-                nbestpos, nbestval, specpbest, specnbestid) = state.split(b';')
-        self.id = int(id)
-        self.pos = Vector.from_state(pos)
-        self.vel = Vector.from_state(vel)
-        if value:
-            self.value = float(value)
-        else:
-            self.value = None
-        self.iters = int(iters)
-        self.pbestpos = Vector.from_state(pbestpos)
-        if pbestval:
-            self.pbestval = float(pbestval)
-        else:
-            self.pbestval = None
-        self.nbestpos = Vector.from_state(nbestpos)
-        if nbestval:
-            self.nbestval = float(nbestval)
-        else:
-            self.nbestval = None
-        if specpbest == 'False':
-            self.specpbest = False
-        else:
-            self.specpbest = True
-        self.specnbestid = int(specnbestid)
-        self.rand = None
 
     def copy(self):
         """Performs a deep copy and returns the new Particle.
@@ -653,15 +442,7 @@ class Swarm(object):
     >>> repr(s)
     's:17&p:42;0;0;1.0;2.0;;1.0;;1.0;;0;False,-1&p:41;0;0;3.0;4.0;;3.0;;3.0;;0;False,-1'
     >>>
-
-    Test of round trip:
-    >>> t = unpack(repr(s))
-    >>> repr(t) == repr(s)
-    True
-    >>>
     """
-    CLASS_ID = b's'
-
     def __init__(self, sid, particles):
         self.id = sid
         self.particles = list(particles)
@@ -686,64 +467,15 @@ class Swarm(object):
         self.rand.shuffle(shuffled)
         return shuffled
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['rand']
+        return state
+
     def __setstate__(self, state):
-        """Unpacks a state string, returning a new Swarm."""
-        strings = state.split(b'&')
-        start = strings[0]
-        prefix = self.CLASS_ID + b':'
-        assert start.startswith(prefix)
-        self.id = int(start[len(prefix):])
-        self.particles = [Particle.unpack(s) for s in strings[1:]]
+        self.__dict__ = state
         self.rand = None
 
-    def __getstate__(self):
-        encoded = ['%s:%s' % (self.CLASS_ID, self.id)]
-        encoded += [p.__getstate__() for p in self.particles]
-        return '&'.join(encoded)
-
-    def __repr__(self):
-        return self.__getstate__()
-
-    @classmethod
-    def unpack(cls, state):
-        p = cls.__new__(cls)
-        p.__setstate__(state)
-        return p
-
-
-def pso_dumps(p):
-    return p.__getstate__()
-
-def pso_loads(state):
-    """Unpacks a state string, returning a Particle or Message."""
-    start, _ = state.split(b':', 1)
-    try:
-        cls = CLASS_IDS[start]
-    except KeyError:
-        raise ValueError('Cannot unpack a state string of class "%s".'
-                % start)
-
-    p = cls.__new__(cls)
-    try:
-        p.__setstate__(state)
-    except ValueError as e:
-        raise RuntimeError('Could not unpack the state "%s". Error: %s'
-                % (state, str(e)))
-    return p
-
-pso_serializer = mrs.Serializer(pso_dumps, pso_loads)
-
-def float_repr(x, repr=repr):
-    """Faster variant of repr for floats (returns an empty string for None)."""
-    if x is not None:
-        return repr(x).encode('ascii')
-    else:
-        return b''
-
-# Valid class identifiers and their corresponding classes.
-CLASSES = (Particle, Message, SEParticle, Swarm, Dummy, MessageParticle,
-        SEMessageParticle)
-CLASS_IDS = dict((cls.CLASS_ID, cls) for cls in CLASSES)
 
 if __name__ == '__main__':
     import doctest

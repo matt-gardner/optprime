@@ -10,7 +10,7 @@ import mrs
 from mrs import param
 
 from . import standardpso
-from .particle import Swarm, Particle, Message, pso_serializer
+from .particle import Swarm, Particle, Message
 
 try:
     range = xrange
@@ -263,8 +263,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
-                          value=pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer)
     def init_map(self, swarm_id, value):
         rand = self.initialization_rand(swarm_id)
         swarm = Swarm(swarm_id, self.topology.newparticles(rand))
@@ -272,8 +271,7 @@ class SubswarmPSO(standardpso.StandardPSO):
         for kvpair in self.pso_map(swarm_id, swarm):
             yield kvpair
 
-    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
-                            value=pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer)
     def pso_map(self, swarm_id, swarm):
         assert swarm.id == swarm_id
         subiters = self.subiters(swarm.id, swarm.iters())
@@ -351,8 +349,7 @@ class SubswarmPSO(standardpso.StandardPSO):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
-                            value=pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer)
     def collapse_map(self, key, swarm):
         """Finds the best particle in the swarm and yields it with id 0."""
         new_key = key % self.opts.mrs__reduce_tasks

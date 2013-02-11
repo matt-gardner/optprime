@@ -129,9 +129,8 @@ class SpecExPSO(standardpso.StandardPSO):
                     # Also, outputs that use current particle
                     # position and value will be off on the value,
                     # because it hasn't been evaluated yet.
-                    record = PSOPickler.loads(particle)
-                    if type(record) == Particle:
-                        particles.append(record)
+                    if type(value) == Particle:
+                        particles.append(value)
             if dataset != self.last_data:
                 dataset.close()
             kwds = {}
@@ -152,8 +151,7 @@ class SpecExPSO(standardpso.StandardPSO):
     ##########################################################################
     # Primary MapReduce
 
-    def sepso_map(self, key, value):
-        particle = PSOPickler.loads(value)
+    def sepso_map(self, key, particle):
         assert particle.id == int(key)%self.topology.num
         prev_val = particle.pbestval
         self.just_evaluate(particle)
@@ -194,15 +192,14 @@ class SpecExPSO(standardpso.StandardPSO):
             if value == 'token':
                 tokens += 1
                 continue
-            record = PSOPickler.loads(value)
-            if type(record) == Particle:
-                particle = record
-            elif type(record) == SEParticle:
-                children.append(record)
-            elif type(record) == MessageParticle:
-                it1messages.append(record)
-            elif type(record) == SEMessageParticle:
-                it2messages.append(record)
+            if type(value) == Particle:
+                particle = value
+            elif type(value) == SEParticle:
+                children.append(value)
+            elif type(value) == MessageParticle:
+                it1messages.append(value)
+            elif type(value) == SEMessageParticle:
+                it2messages.append(value)
             else:
                 raise ValueError
 
@@ -273,9 +270,8 @@ class SpecExPSO(standardpso.StandardPSO):
         # anything interesting to say.  So, to get an accurate iteration count,
         # we decrement the iteration of best by 1.
         for value in value_iter:
-            record = PSOPickler.loads(value)
-            if type(record) == Particle:
-                particles.append(record)
+            if type(value) == Particle:
+                particles.append(value)
         best = self.findbest(particles)
         best.iters -= 1
         yield repr(best)

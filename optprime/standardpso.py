@@ -12,7 +12,7 @@ import mrs
 from mrs import param
 
 from . import cli
-from .particle import Particle, Message, pso_serializer
+from .particle import Particle, Message
 
 try:
     range = xrange
@@ -260,8 +260,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
     ##########################################################################
     # Primary MapReduce
 
-    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
-                           value=pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer)
     def init_map(self, particle_id, value):
         particle_id = int(particle_id)
         rand = self.initialization_rand(particle_id)
@@ -270,8 +269,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         for kvpair in self.pso_map(particle_id, p):
             yield kvpair
 
-    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
-                           value=pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer)
     def pso_map(self, particle_id, particle):
         comparator = self.function.comparator
         assert particle.id == particle_id
@@ -319,8 +317,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
     ##########################################################################
     # MapReduce to Find the Best Particle
 
-    @mrs.output_serializers(key=mrs.MapReduce.int_serializer,
-                           value=pso_serializer)
+    @mrs.output_serializers(key=mrs.MapReduce.int_serializer)
     def collapse_map(self, key, value):
         new_key = key % self.opts.mrs__reduce_tasks
         yield new_key, value
@@ -524,8 +521,6 @@ class StandardPSO(mrs.GeneratorCallbackMR):
                 )
 
         return parser
-
-    pso_serializer = pso_serializer
 
 
 # vim: et sw=4 sts=4
