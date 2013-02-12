@@ -19,12 +19,7 @@ class Rosenbrock(_general._Base):
         self._set_constraints(((-100,100),) * self.dims)
 
     def __call__(self, vec):
-        s=0
-        for i in range(self.dims-1):
-            v = vec[i]
-            v1 = vec[i+1]
-            c = self.abscenter[i]
-            c1 = self.abscenter[i+1]
-            s += 100 * ((v1-c1) - (v-c)**2)**2 + ((v-c)-1)**2
-
-        return s
+        v = vec - self.abscenter
+        part1 = ((v[1:] - v[:-1] ** 2) ** 2).sum()
+        part2 = ((v[:-1] - 1) ** 2).sum()
+        return 100 * part1 + part2
