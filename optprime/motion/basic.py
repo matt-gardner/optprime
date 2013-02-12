@@ -3,8 +3,12 @@ import operator
 from math import sqrt
 
 from mrs.param import ParamObj, Param
-from ..vector import Vector
-from ..cubes.cube import Cube
+from ..cube import Cube
+
+try:
+    from numpy import array
+except ImportError:
+    from numpypy import array
 
 try:
     range = xrange
@@ -38,12 +42,6 @@ class Constricted(_Base):
         restrictvel=Param(type='bool', doc='Restrict velocities'),
         )
 
-    def setup(self, *args, **kargs):
-        super(Constricted, self).setup(*args, **kargs)
-
-        p1, p2 = [Vector(x) for x in zip(*self.cube.constraints)]
-        self.diaglength = abs(p1 - p2)
-
     def __call__(self, particle):
         """Get the next position and velocity from this particle."""
 
@@ -55,8 +53,8 @@ class Constricted(_Base):
             s = kappa
 
         uniform = particle.rand.uniform
-        r1 = Vector(uniform(0, self.phi1) for x in range(self.dims))
-        r2 = Vector(uniform(0, self.phi2) for x in range(self.dims))
+        r1 = array([uniform(0, self.phi1) for x in range(self.dims)])
+        r2 = array([uniform(0, self.phi2) for x in range(self.dims)])
 
         grel = particle.nbestpos - particle.pos
         prel = particle.pbestpos - particle.pos
@@ -106,8 +104,8 @@ class BasicAdaptive(_Base):
 
         dims, k, c1, c2 = self.dims, self.k, self.c1, self.c2
 
-        r1 = Vector(particle.rand.uniform(0,c1) for x in range(dims))
-        r2 = Vector(particle.rand.uniform(0,c2) for x in range(dims))
+        r1 = array([particle.rand.uniform(0,c1) for x in range(dims)])
+        r2 = array([particle.rand.uniform(0,c2) for x in range(dims)])
 
         pos, vel, dt = particle.pos, particle.vel, particle.dt
 
@@ -148,8 +146,8 @@ class BasicGauss(_Base):
 
         # Generate a Gaussian around the velocity vectors according to Clerc's
         # paper.
-        gvel = Vector(particle.rand.gauss(x,abs(x)/2) for x in grel)
-        pvel = Vector(particle.rand.gauss(x,abs(x)/2) for x in prel)
+        gvel = array([particle.rand.gauss(x,abs(x)/2) for x in grel])
+        pvel = array([particle.rand.gauss(x,abs(x)/2) for x in prel])
 
         newvel = chi * (particle.vel + gvel + pvel)
 

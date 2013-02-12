@@ -6,6 +6,8 @@ try:
 except NameError:
     pass
 
+from .cube import Cube
+
 
 # TODO: should initscale and initoffset be moved into Function??
 class _Topology(ParamObj):
@@ -31,20 +33,21 @@ class _Topology(ParamObj):
         )
 
     def setup(self, func):
-        from .cubes.cube import Cube
-
-        ispace = self.initscale
+        iscale = self.initscale
         ioffset = self.initoffset
 
-        # TODO: Make sure this is correct.  Shouldn't both the left and the
-        # right constraints need an ispace term?  The inner formula should
-        # even be split off into a separate testable method.
-        constraints = [
-            (cl+abs(cr-cl)*ioffset,cl + abs(cr-cl)*ioffset + (cr-cl)*ispace)
-            for cl,cr in func.constraints
-            ]
-        sizes = [abs(cr-cl) * ispace for cl, cr in func.constraints]
-        vconstraints = [(-s,s) for s in sizes]
+        constraints = []
+        vconstraints = []
+        for cl, cr in func.constraints:
+            natural_width = abs(cr - cl)
+            center = (cl + cr) / 2 + natural_width * self.initoffset
+            initialization_width = natural_width * self.initscale
+
+            left = center - initialization_width / 2
+            right = center + initialization_width / 2
+            constraints.append((left, right))
+
+            vconstraints.append((-initialization_width, initialization_width))
 
         self.cube = Cube(constraints)
         self.vcube = Cube(vconstraints)

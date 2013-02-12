@@ -4,7 +4,10 @@ import mrs
 import operator
 import sys
 
-from .vector import Vector
+try:
+    from numpy import array, fromstring
+except ImportError:
+    from numpypy import array, fromstring
 
 # TODO: change repr to be a human-readable string for debugging.
 
@@ -12,13 +15,13 @@ from .vector import Vector
 class Particle(object):
     """Particle for Particle Swarm Optimization.
 
-    The particle assumes that the position and velocity are Vectors so it
+    The particle assumes that the position and velocity are arrays so it
     doesn't have to coerce them.
 
     We create a simple particle with unspecified value.  Note that the empty
     value, pbestval, and nbestval are represented as empty fields.
 
-    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> p = Particle(42, array((1.0, 2.0)), array((3.0, 4.0)))
     >>> repr(p)
     'p:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;;0;False,-1'
     >>>
@@ -27,20 +30,19 @@ class Particle(object):
     representation looks like.
 
     >>> p.iters = 200
-    >>> p.pbestpos = Vector((6.0, 7.0))
-    >>> p.nbestpos = Vector((8.0, 9.0))
+    >>> p.pbestpos = array((6.0, 7.0))
+    >>> p.nbestpos = array((8.0, 9.0))
     >>> p.value = -10.0
     >>> p.pbestval = -11.0
     >>> p.nbestval = -12.0
     >>> p.lastbranch = [False, -1]
-    >>> p.tokens = 5
     >>> repr(p)
     'p:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0;5;False,-1'
     >>>
 
     Comparisons are based on the pbestval of the particle, not the id.
 
-    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> p = Particle(42, array((1.0, 2.0)), array((3.0, 4.0)))
     >>> p.pbestval = 0.0
     >>> q = Particle(7, p.pos, p.vel)
     >>> q.pbestval = p.pbestval
@@ -70,8 +72,7 @@ class Particle(object):
         self.pbestval = value
         self.nbestpos = pos
         self.nbestval = value
-        self.lastbranch = [False, -1]
-        self.tokens = 0
+        #self.lastbranch = [False, -1]
 
         self.rand = None
 
@@ -83,8 +84,6 @@ class Particle(object):
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
-        p.lastbranch = self.lastbranch
-        p.tokens = self.tokens
         p.iters = self.iters
         return p
 
@@ -135,17 +134,17 @@ class Particle(object):
     def nbest_cand(self, potential_pos, potential_val, comparator):
         """Update nbest if the given value is better than the current nbest.
 
-        >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+        >>> p = Particle(42, array((1.0, 2.0)), array((3.0, 4.0)))
         >>> p.nbestval = -12.0
         >>> p.nbestpos
         1.0,2.0
-        >>> p.nbest_cand(Vector((1.0,1.0)),-10.0,operator.lt)
+        >>> p.nbest_cand(array((1.0,1.0)),-10.0,operator.lt)
         False
         >>> p.nbestval
         -12.0
         >>> p.nbestpos
         1.0,2.0
-        >>> p.nbest_cand(Vector((2.0,2.0)),-15,operator.lt)
+        >>> p.nbest_cand(array((2.0,2.0)),-15,operator.lt)
         True
         >>> p.nbestval
         -15
@@ -190,17 +189,6 @@ class Particle(object):
         else:
             return False
 
-    def reset(self, pos, vel, value):
-        self.pos = pos
-        self.vel = vel
-        self.value = value
-        self.pbestpos = pos
-        self.pbestval = value
-        self.nbestpos = pos
-        self.nbestval = value
-        self.lastbranch = [False, -1]
-        self.tokens = 0
-
     def __str__(self):
         return "pos: %r; vel: %r; value: %r; pbestpos: %r; pbestval: %r" % (
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
@@ -208,9 +196,13 @@ class Particle(object):
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['rand']
+        for name in ('pos', 'vel', 'pbestpos', 'nbestpos'):
+            state[name] = state[name].tostring()
         return state
 
     def __setstate__(self, state):
+        for name in ('pos', 'vel', 'pbestpos', 'nbestpos'):
+            state[name] = fromstring(state[name])
         self.__dict__ = state
         self.rand = None
 
@@ -236,21 +228,21 @@ class Particle(object):
 class Message(object):
     """Message used to update bests in Mrs PSO.
 
-    >>> m = Message(128, Vector((1.0, 2.0)), -5.0)
+    >>> m = Message(128, array((1.0, 2.0)), -5.0)
     >>> repr(m)
     'm:128;1.0,2.0;-5.0'
     >>>
 
     Empty values should still work, too.
 
-    >>> m = Message(128, Vector((1.0, 2.0)), None)
+    >>> m = Message(128, array((1.0, 2.0)), None)
     >>> repr(m)
     'm:128;1.0,2.0;'
     >>>
 
     Comparisons are based on the value of the message, not the id.
 
-    >>> m = Message(128, Vector((1.0, 2.0)), -5.0)
+    >>> m = Message(128, array((1.0, 2.0)), -5.0)
     >>> n = Message(42, m.position, m.value)
     >>> m == n
     True
@@ -295,6 +287,17 @@ class Message(object):
         else:
             return NotImplemented
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        for name in ('position',):
+            state[name] = state[name].tostring()
+        return state
+
+    def __setstate__(self, state):
+        for name in ('position',):
+            state[name] = fromstring(state[name])
+        self.__dict__ = state
+
 
 class SEParticle(Particle):
     """An extension to Particle that adds fields for speculative execution:
@@ -307,13 +310,13 @@ class SEParticle(Particle):
 
     We'll redo some doctests here, as repr and unpack have changed.
 
-    >>> p = Particle(42, Vector((1.0, 2.0)), Vector((3.0, 4.0)))
+    >>> p = Particle(42, array((1.0, 2.0)), array((3.0, 4.0)))
     >>> p = SEParticle(p, False, 4)
     >>> repr(p)
     'sep:42;0;0;1.0,2.0;3.0,4.0;;1.0,2.0;;1.0,2.0;;False;4'
     >>> p.iters = 200
-    >>> p.pbestpos = Vector((6.0, 7.0))
-    >>> p.nbestpos = Vector((8.0, 9.0))
+    >>> p.pbestpos = array((6.0, 7.0))
+    >>> p.nbestpos = array((8.0, 9.0))
     >>> p.value = -10.0
     >>> p.pbestval = -11.0
     >>> p.nbestval = -12.0

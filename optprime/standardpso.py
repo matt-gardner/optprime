@@ -341,7 +341,8 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         else:
             newpos, newvel = p.pos, p.vel
         # TODO(?): value = self.function(newpos, p.rand)
-        value = self.function(newpos)
+        # Note that we cast to float because numpy returns numpy.float64. :(
+        value = float(self.function(newpos))
         p.update(newpos, newvel, value, self.function.comparator)
 
     def findbest(self, candidates):

@@ -1,6 +1,5 @@
 from __future__ import division
 import math
-from . import _general
 
 try:
     from itertools import izip as zip
@@ -11,6 +10,9 @@ try:
     range = xrange
 except NameError:
     pass
+
+from . import _general
+from ..cube import Cube
 
 
 class RBF(_general._Base):

@@ -1,6 +1,5 @@
 from __future__ import division
 import basic
-from ..vector import Vector
 from itertools import izip
 
 class Bare(basic._Base):
@@ -10,9 +9,9 @@ class Bare(basic._Base):
         # standard deviation as the absolue value of the distance between them
         # in each dimension.
         mean = (particle.pbestpos + particle.nbestpos) / 2
-        sdev = Vector([abs(x) for x in (particle.pbestpos - particle.nbestpos)])
+        sdev = array([abs(x) for x in (particle.pbestpos - particle.nbestpos)])
 
-        newpos = Vector(particle.rand.gauss(m,s) for m,s in izip(mean,sdev))
+        newpos = array([particle.rand.gauss(m,s) for m,s in izip(mean,sdev)])
         newvel = newpos - particle.pos
 
         return newpos, newvel

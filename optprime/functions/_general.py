@@ -5,6 +5,11 @@ import operator
 from mrs.param import ParamObj, Param
 
 try:
+    from numpy import array, empty
+except ImportError:
+    from numpypy import array, empty
+
+try:
     from itertools import izip as zip
 except ImportError:
     pass
@@ -51,22 +56,23 @@ class _Base(ParamObj):
 
     def _set_constraints(self, constraints):
         self.dims = len(constraints)
-        self.constraints = tuple(constraints)
+        self.constraints = array(constraints)
+        center = empty(self.dims)
         if ',' in self.center:
-            center = [float(x) for x in self.center.split(',')]
+            center[:] = [float(x) for x in self.center.split(',')]
         else:
             if self.center:
-                val = float(self.center)
+                center[:] = float(self.center)
             else:
-                val = 0.5
-            center = [val] * self.dims
+                center[:] = 0.5
         self._set_abscenter(center)
 
     def _set_abscenter(self, center):
         """Sets an absolute center from the relative center and constraints."""
-        self.abscenter = [
-            (c * (r - l) + l)
-            for c, (l, r) in zip(center, self.constraints)]
+        center = array(center)
+        left = self.constraints[:, 0]
+        right = self.constraints[:, 1]
+        self.abscenter = center * (right - left) + left
 
     def __call__(self, vec):
         return 0

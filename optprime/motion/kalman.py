@@ -1,19 +1,19 @@
 from __future__ import division
-import basic
-from ..vector import Vector
+
+import sys
 
 from mrs.param import Param
 from numpy import array, dot, transpose, identity, zeros
 from numpy.random.mtrand import RandomState
 from numpy.linalg import inv
-from particle import Particle
-
-import sys
 
 try:
     range = xrange
 except NameError:
     pass
+
+from . import basic
+from ..particle import Particle
 
 
 class Kalman(basic._Base):
@@ -140,7 +140,7 @@ class Kalman(basic._Base):
         if not self.usepbest:
             kalman.add(newpos)
         else:
-            kalman.add(Vector(list(newpos) + list(particle.pbestpos)))
+            kalman.add(array(list(newpos) + list(particle.pbestpos)))
 
         if self.predict:
             mean, var = kalman.predict()
@@ -153,7 +153,7 @@ class Kalman(basic._Base):
         # from state less good
         state = RandomState(particle.rand.randint(0, sys.maxint))
         newstate = state.multivariate_normal(mean, var)
-        return Vector(newstate[:self.dims]),Vector(newstate[self.dims:])
+        return array(newstate[:self.dims]),array(newstate[self.dims:])
 
 
 def ddot(*args):

@@ -3,7 +3,6 @@ from __future__ import division
 import math
 import basic
 from itertools import izip
-from ..vector import Vector
 
 
 class Link1(basic._Base):
@@ -46,7 +45,7 @@ class Link1(basic._Base):
         else:
             gnorm = particle.nbestpos - particle.pos
 
-        pnorm = Vector(particle.vel)
+        pnorm = array(particle.vel)
         gval = particle.nbestval
         gmag = abs(gnorm)
         pmag = abs(pnorm)
@@ -92,15 +91,15 @@ class Link1(basic._Base):
                     nvel = pnorm
 
             nvel.normalize()
-            nvel = Vector([gauss(x,sdev) for x in nvel])
+            nvel = array([gauss(x,sdev) for x in nvel])
             nvel.normalize()
             nvel *= (pmag * pw + gmag * gw)
         else:
             if self.vecsdev:
-                nvel = Vector([gauss(x,math.sqrt(abs(x)*sdev)) for x in nvel])
+                nvel = array([gauss(x,math.sqrt(abs(x)*sdev)) for x in nvel])
             else:
                 nmag = abs(nvel)
-                nvel = Vector([gauss(x,nmag*sdev) for x in nvel])
+                nvel = array([gauss(x,nmag*sdev) for x in nvel])
 
         if self.restrictvel:
             self.vcube.constrain_vec(nvel, True)
@@ -168,7 +167,7 @@ class Link2(basic._Base):
         else:
             gnorm = particle.nbestpos - particle.pos
 
-        pnorm = Vector(particle.vel)
+        pnorm = array(particle.vel)
 
         gval = particle.nbestval
 
@@ -209,8 +208,8 @@ class Link2(basic._Base):
         # Pick a random element of the vector and randomize it.
         elidx = particle.rand.randrange(0,len(nvel))
         if self.craziness == -1:
-            nvel = Vector(particle.rand.gauss(x,max(abs(x)/2,s*0.00001)) 
-                for x,s in izip(nvel,self.sizes))
+            nvel = array([particle.rand.gauss(x,max(abs(x)/2,s*0.00001))
+                for x,s in izip(nvel,self.sizes)])
         else:
             sdev = self.sdev * self.craziness
             nvel[elidx] = particle.rand.gauss(nvel[elidx], sdev)
@@ -270,7 +269,7 @@ class Link3(basic._Base):
                 for s,sdev in izip(diffpos,self.sdevs)]
 
         gauss = particle.rand.gauss
-        newpos = Vector(gauss(x,sdev) for x,sdev in izip(meanpos,sdevs))
+        newpos = array([gauss(x,sdev) for x,sdev in izip(meanpos,sdevs)])
         newvel = newpos - particle.pos
 
         return None, newvel

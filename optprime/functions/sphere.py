@@ -1,6 +1,12 @@
 from __future__ import division
+
 from . import _general
 from mrs.param import Param
+
+try:
+    from numpy import array
+except ImportError:
+    from numpypy import array
 
 try:
     from itertools import izip as zip
@@ -12,9 +18,10 @@ class Sphere(_general._Base):
     def setup(self):
         super(Sphere, self).setup()
         self._set_constraints(((-50,50),) * self.dims)
+        self.abscenter = array(self.abscenter)
 
     def __call__(self, vec):
-        return sum([(x-c)**2 for x,c in zip(vec,self.abscenter)])
+        return ((vec - self.abscenter) ** 2).sum()
 
 
 class SleepSphere(Sphere):

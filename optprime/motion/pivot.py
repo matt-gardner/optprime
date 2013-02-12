@@ -1,6 +1,5 @@
 from __future__ import division
 import basic
-from ..vector import Vector
 from itertools import izip
 
 try:
@@ -21,9 +20,7 @@ class Pivot(basic._Base):
         dims = self.dims
 
         # ---- Direction ----
-        vec = Vector()
-        for i in range(dims):
-            vec.append(rand.gauss(0,1))
+        vec = array([rand.gauss(0,1) for i in range(dims)])
 
         # ---- Random Radius ----
         if uniformity > 0:
