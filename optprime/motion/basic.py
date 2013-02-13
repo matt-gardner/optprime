@@ -6,9 +6,9 @@ from mrs.param import ParamObj, Param
 from ..cube import Cube
 
 try:
-    from numpy import array
+    from numpy import empty
 except ImportError:
-    from numpypy import array
+    from numpypy import empty
 
 try:
     range = xrange
@@ -42,23 +42,26 @@ class Constricted(_Base):
         restrictvel=Param(type='bool', doc='Restrict velocities'),
         )
 
-    def __call__(self, particle):
-        """Get the next position and velocity from this particle."""
+    def __init__(self):
+        super(Constricted, self).__init__()
 
         phi = self.phi1 + self.phi2
         kappa = self.kappa
         if phi > 4:
-            s = 2*kappa/abs(2 - phi - sqrt(phi**2 - 4*phi))
+            self.const = 2*kappa/abs(2 - phi - sqrt(phi**2 - 4*phi))
         else:
-            s = kappa
+            self.const = kappa
 
-        uniform = particle.rand.uniform
-        r1 = array([uniform(0, self.phi1) for x in range(self.dims)])
-        r2 = array([uniform(0, self.phi2) for x in range(self.dims)])
+    def __call__(self, particle):
+        """Get the next position and velocity from this particle."""
+
+        # TODO: once numpypy supports the numpy.random module, use it instead.
+        r1 = rand_uniform(0, self.phi1, self.dims, particle.rand)
+        r2 = rand_uniform(0, self.phi2, self.dims, particle.rand)
 
         grel = particle.nbestpos - particle.pos
         prel = particle.pbestpos - particle.pos
-        newvel = s * (particle.vel + grel*r1 + prel*r2)
+        newvel = self.const * (particle.vel + grel*r1 + prel*r2)
 
         if self.restrictvel:
             self.vcube.constrain_vec(newvel)
@@ -104,8 +107,8 @@ class BasicAdaptive(_Base):
 
         dims, k, c1, c2 = self.dims, self.k, self.c1, self.c2
 
-        r1 = array([particle.rand.uniform(0,c1) for x in range(dims)])
-        r2 = array([particle.rand.uniform(0,c2) for x in range(dims)])
+        r1 = rand_uniform(0, c1, dims, particle.rand)
+        r2 = rand_uniform(0, c2, dims, particle.rand)
 
         pos, vel, dt = particle.pos, particle.vel, particle.dt
 
@@ -153,3 +156,10 @@ class BasicGauss(_Base):
 
         return None, newvel
 
+# TODO: once numpypy supports the numpy.random module, use it instead.
+def rand_uniform(a, b, n, rand):
+    """Draw an array of n random variables distributed as Uniform(a, b)."""
+    v = empty(n)
+    for i in range(n):
+        v[i] = rand.uniform(a, b)
+    return v
