@@ -29,7 +29,7 @@ class _Base(ParamObj):
         vconstraints = [(-s,s) for s in sizes]
         self.vcube = Cube(vconstraints)
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         raise NotImplementedError
 
 
@@ -52,12 +52,12 @@ class Constricted(_Base):
         else:
             self.const = kappa
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Get the next position and velocity from this particle."""
 
         # TODO: once numpypy supports the numpy.random module, use it instead.
-        r1 = rand_uniform(0, self.phi1, self.dims, particle.rand)
-        r2 = rand_uniform(0, self.phi2, self.dims, particle.rand)
+        r1 = rand_uniform(0, self.phi1, self.dims, rand)
+        r2 = rand_uniform(0, self.phi2, self.dims, rand)
 
         grel = particle.nbestpos - particle.pos
         prel = particle.pbestpos - particle.pos
@@ -90,7 +90,7 @@ class BasicAdaptive(_Base):
     def setup(self, *args, **kargs):
         super(BasicAdaptive, self).setup(*args, **kargs)
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Adaptation of the APSO (Tsou and MacNish) -- this actually always
         keeps the position whether we liked it or not (easier with this code
         base) and performs the step calculations right before diving into the
@@ -107,8 +107,8 @@ class BasicAdaptive(_Base):
 
         dims, k, c1, c2 = self.dims, self.k, self.c1, self.c2
 
-        r1 = rand_uniform(0, c1, dims, particle.rand)
-        r2 = rand_uniform(0, c2, dims, particle.rand)
+        r1 = rand_uniform(0, c1, dims, rand)
+        r2 = rand_uniform(0, c2, dims, rand)
 
         pos, vel, dt = particle.pos, particle.vel, particle.dt
 
@@ -137,7 +137,7 @@ class BasicAdaptive(_Base):
 
 
 class BasicGauss(_Base):
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
 
@@ -149,8 +149,8 @@ class BasicGauss(_Base):
 
         # Generate a Gaussian around the velocity vectors according to Clerc's
         # paper.
-        gvel = array([particle.rand.gauss(x,abs(x)/2) for x in grel])
-        pvel = array([particle.rand.gauss(x,abs(x)/2) for x in prel])
+        gvel = array([rand.gauss(x,abs(x)/2) for x in grel])
+        pvel = array([rand.gauss(x,abs(x)/2) for x in prel])
 
         newvel = chi * (particle.vel + gvel + pvel)
 

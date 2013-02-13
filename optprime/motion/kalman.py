@@ -39,7 +39,7 @@ class Kalman(basic._Base):
 
         self.filters = {}
 
-    def getfilter(self, particle):
+    def getfilter(self, particle, rand):
         if particle.id in self.filters:
             return self.filters[particle.id]
 
@@ -50,7 +50,7 @@ class Kalman(basic._Base):
         if self.randinit:
             from cubes.cube import Cube
             c = Cube(self.constraints)
-            prior = c.random_vec(particle.rand) + c.random_vec(particle.rand)
+            prior = c.random_vec(rand) + c.random_vec(rand)
         else:
             prior = list(particle.pos) + list(particle.vel)
 
@@ -102,7 +102,7 @@ class Kalman(basic._Base):
         self.filters[particle.id] = kalman
         return self.filters[particle.id]
 
-    def __call__(self, particle):
+    def __call__(self, particle, rand):
         """Get the next velocity from this particle given a particle that it
         should be moving toward"""
         # I'm not sure what "given a particle that it should be moving toward"
@@ -124,13 +124,13 @@ class Kalman(basic._Base):
         raise NotImplementedError("Kalman motion requires state that is not "
                 "persistent in mrs")
 
-        kalman = self.getfilter(particle)
+        kalman = self.getfilter(particle, rand)
 
         grel = particle.nbestpos - particle.pos
         if self.norandscale:
             newvel = 1.0 * grel
         else:
-            newvel = particle.rand.uniform(0,2) * grel
+            newvel = rand.uniform(0,2) * grel
 
         if self.restrictvel:
             self.cube.constrain_vec(newvel, True)
@@ -151,7 +151,7 @@ class Kalman(basic._Base):
         # instead of just drawing a random number from the particle rand
         # This does give reproducible results, it just makes the random numbers
         # from state less good
-        state = RandomState(particle.rand.randint(0, sys.maxint))
+        state = RandomState(rand.randint(0, sys.maxint))
         newstate = state.multivariate_normal(mean, var)
         return array(newstate[:self.dims]),array(newstate[self.dims:])
 

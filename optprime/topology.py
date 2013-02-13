@@ -74,7 +74,7 @@ class _Topology(ParamObj):
         for i in range(self.num):
             yield self.newparticle(i, rand)
 
-    def iterneighbors(self, particle):
+    def iterneighbors(self, particle, rand):
         """Yields the particle ids of the neighbors of the give particle."""
         raise NotImplementedError
 
@@ -82,7 +82,7 @@ class _Topology(ParamObj):
 class Isolated(_Topology):
     """Independent isolated particles."""
 
-    def iterneighbors(self, particle):
+    def iterneighbors(self, particle, rand):
         if not self.noselflink:
             yield particle.id
 
@@ -94,7 +94,7 @@ class Ring(_Topology):
             doc='Number of neighbors to send to on each side'),
         )
 
-    def iterneighbors(self, particle):
+    def iterneighbors(self, particle, rand):
         if not self.noselflink:
             yield particle.id
         for i in range(1,self.neighbors+1):
@@ -104,7 +104,7 @@ class Ring(_Topology):
 
 class DRing(Ring):
     """Directed (one-way) Ring"""
-    def iterneighbors(self, particle):
+    def iterneighbors(self, particle, rand):
         if not self.noselflink:
             yield particle.id
         for i in range(1,self.neighbors+1):
@@ -113,7 +113,7 @@ class DRing(Ring):
 
 class Complete(_Topology):
     """Complete (aka fully connected, gbest, or star)"""
-    def iterneighbors(self, particle):
+    def iterneighbors(self, particle, rand):
         # Yield all of the particles up to this one, and all after, then this
         # one last.
         for i in range(self.num):
@@ -128,8 +128,8 @@ class Rand(_Topology):
             doc='Number of neighbors to send to.'),
         )
 
-    def iterneighbors(self, particle):
-        randrange = particle.rand.randrange
+    def iterneighbors(self, particle, rand):
+        randrange = rand.randrange
         id = particle.id
         num = self.num
         if (self.neighbors == -1):

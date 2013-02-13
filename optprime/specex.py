@@ -56,8 +56,8 @@ class SpecExPSO(standardpso.StandardPSO):
                 init_particles.append((str(p.id),repr(p)))
                 neighbors = []
                 for n in particles:
-                    self.set_neighborhood_rand(n)
-                    if p.id in self.topology.iterneighbors(n):
+                    rand = self.neighborhood_rand(n)
+                    if p.id in self.topology.iterneighbors(n, rand):
                         neighbors.append(particles[n.id])
                 children = self.specmethod.generate_children(p, neighbors)
                 for i, child in enumerate(children):
@@ -160,8 +160,8 @@ class SpecExPSO(standardpso.StandardPSO):
         if (type(particle) == Particle and particle.pbestval == prev_val
                 and particle.tokens > self.opts.min_tokens):
             particle.tokens -= 1
-            self.set_neighborhood_rand(particle, 1)
-            pass_to = particle.rand.randrange(self.topology.num)
+            rand = self.neighborhood_rand(particle, 1)
+            pass_to = rand.randrange(self.topology.num)
             yield (str(pass_to), 'token')
 
         # Emit the particle without changing its id:
@@ -288,9 +288,9 @@ class SpecExPSO(standardpso.StandardPSO):
     def just_move(self, p):
         """Moves the particle without evaluating the function at the new
         position.  Updates the iteration count for the particle."""
-        self.set_motion_rand(p)
+        motion_rand = self.motion_rand(p)
         if p.iters > 0:
-            newpos, newvel = self.motion(p)
+            newpos, newvel = self.motion(p, motion_rand)
         else:
             newpos, newvel = p.pos, p.vel
         p.update_pos(newpos, newvel, self.function.comparator)

@@ -74,8 +74,6 @@ class Particle(object):
         self.nbestval = value
         #self.lastbranch = [False, -1]
 
-        self.rand = None
-
     def copy(self):
         """Performs a deep copy and returns the new Particle.
         """
@@ -195,7 +193,6 @@ class Particle(object):
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        del state['rand']
         for name in ('pos', 'vel', 'pbestpos', 'nbestpos'):
             state[name] = state[name].tostring()
         return state
@@ -204,7 +201,6 @@ class Particle(object):
         for name in ('pos', 'vel', 'pbestpos', 'nbestpos'):
             state[name] = fromstring(state[name])
         self.__dict__ = state
-        self.rand = None
 
     def __lt__(self, other):
         if isinstance(other, Particle):
@@ -349,7 +345,6 @@ class SEParticle(Particle):
         p.nbestpos = self.nbestpos
         p.nbestval = self.nbestval
         p.iters = self.iters
-        p.rand = None
         return p
 
     def __str__(self):
@@ -372,12 +367,11 @@ class SEParticle(Particle):
 
 
 class Dummy(Particle):
-    """A dummy particle that just has an id and a rand, for use with SpecEx."""
+    """A dummy particle that just has an id, for use with SpecEx."""
 
     def __init__(self, id, iters):
         self.id = id
         self.iters = iters
-        self.rand = None
 
 
 class MessageParticle(Particle):
@@ -450,8 +444,6 @@ class Swarm(object):
         self.id = sid
         self.particles = list(particles)
 
-        self.rand = None
-
     def __len__(self):
         return len(self.particles)
 
@@ -464,20 +456,18 @@ class Swarm(object):
     def iters(self):
         return self.particles[0].iters
 
-    def shuffled(self):
+    def shuffled(self, rand):
         """Return the list of particles in shuffled order."""
         shuffled = list(self.particles)
-        self.rand.shuffle(shuffled)
+        rand.shuffle(shuffled)
         return shuffled
 
     def __getstate__(self):
         state = self.__dict__.copy()
-        del state['rand']
         return state
 
     def __setstate__(self, state):
         self.__dict__ = state
-        self.rand = None
 
 
 if __name__ == '__main__':

@@ -111,8 +111,8 @@ class StandardPSO(mrs.GeneratorCallbackMR):
             topology = copy.copy(self.topology)
             topology.num = len(particles)
         for p in particles:
-            self.set_neighborhood_rand(p, swarmid)
-            for i in topology.iterneighbors(p):
+            rand = self.neighborhood_rand(p, swarmid)
+            for i in topology.iterneighbors(p, rand):
                 # Send p's information to neighbor i.
                 neighbor = particles[i]
                 neighbor.nbest_cand(p.pbestpos, p.pbestval, comp)
@@ -288,8 +288,8 @@ class StandardPSO(mrs.GeneratorCallbackMR):
 
         # Emit a message for each dependent particle:
         message = particle.make_message(self.opts.transitive_best, comparator)
-        self.set_neighborhood_rand(particle, 0)
-        for dep_id in self.topology.iterneighbors(particle):
+        rand = self.neighborhood_rand(particle, 0)
+        for dep_id in self.topology.iterneighbors(particle, rand):
             yield (dep_id, message)
 
     def pso_reduce(self, key, value_iter):
@@ -335,9 +335,9 @@ class StandardPSO(mrs.GeneratorCallbackMR):
 
     def move_and_evaluate(self, p, swarmid=0):
         """Moves, evaluates, and updates the given particle."""
-        self.set_motion_rand(p, swarmid)
+        motion_rand = self.motion_rand(p, swarmid)
         if p.iters > 0:
-            newpos, newvel = self.motion(p)
+            newpos, newvel = self.motion(p, motion_rand)
         else:
             newpos, newvel = p.pos, p.vel
         # TODO(?): value = self.function(newpos, p.rand)
@@ -414,7 +414,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
     FUNCTION_OFFSET = 5
     SUBITERS_OFFSET = 6
 
-    def set_motion_rand(self, p, swarmid=0):
+    def motion_rand(self, p, swarmid=0):
         """Makes a Random for the given particle and saves it to `p.rand`.
 
         This should be used just before performing motion on the particle.
@@ -424,10 +424,10 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
-        p.rand = self.random(self.MOTION_OFFSET, p.id, p.iters, swarmid)
+        return self.random(self.MOTION_OFFSET, p.id, p.iters, swarmid)
 
-    def set_neighborhood_rand(self, n, swarmid=0):
-        """Makes a Random for the given node and saves it to `n.rand`.
+    def neighborhood_rand(self, n, swarmid=0):
+        """Returns a Random for the given node.
 
         This should be used just before passing p to iterneighbors.  Note that
         depending on the PSO variant, node might be a particle, subswarm, or
@@ -438,7 +438,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         sure that the particles in different subswarms have unique seeds), but
         it doesn't hurt the standardpso case to include it.
         """
-        n.rand = self.random(self.NEIGHBORHOOD_OFFSET, n.id, n.iters, swarmid)
+        return self.random(self.NEIGHBORHOOD_OFFSET, n.id, n.iters, swarmid)
 
     def initialization_rand(self, i):
         """Returns a Random for the given particle id.

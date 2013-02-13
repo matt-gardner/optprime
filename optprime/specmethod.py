@@ -123,17 +123,18 @@ class ReproducePSO(_SpecMethod):
         end.
         """
         ids = set()
-        self.specex.set_neighborhood_rand(particle)
-        for n in self.specex.topology.iterneighbors(particle):
+        p_rand = self.specex.neighborhood_rand(particle)
+        topology = self.specex.topology
+        for n in topology.iterneighbors(particle, p_rand):
             ids.add(n)
             ndummy = Dummy(n, particle.iters+1)
-            self.specex.set_neighborhood_rand(ndummy)
-            for n2 in self.specex.topology.iterneighbors(ndummy):
+            ndummy_rand = self.specex.neighborhood_rand(ndummy)
+            for n2 in topology.iterneighbors(ndummy, ndummy_rand):
                 ids.add(n2)
                 if type(particle) == Particle:
                     n2dummy = Dummy(n2, particle.iters+2)
-                    self.specex.set_neighborhood_rand(n2dummy)
-                    for n3 in self.specex.topology.iterneighbors(n2dummy):
+                    n2dummy_rand = self.specex.neighborhood_rand(n2dummy)
+                    for n3 in topology.iterneighbors(n2dummy, n2dummy_rand):
                         ids.add(n3)
         return ids
 
@@ -381,28 +382,24 @@ class OneCompleteIteration(_Pruner):
         speculative children for iteration i+1."""
         # Create children guessing that pbest was not updated
         child = SEParticle(particle, specpbest=False, specnbestid=-1)
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
         for n in neighbors:
             if n.id != particle.id:
                 child = SEParticle(particle, specpbest=False, specnbestid=n.id)
                 child.nbestpos = n.pos
-                self.specex.set_motion_rand(child)
                 self.specex.just_move(child)
                 yield child
 
         # Create children guessing that pbest was updated
         child = SEParticle(particle, specpbest=True, specnbestid=-1)
         child.pbestpos = particle.pos
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
         for n in neighbors:
             child = SEParticle(particle, specpbest=True, specnbestid=n.id)
             child.nbestpos = n.pos
             child.pbestpos = particle.pos
-            self.specex.set_motion_rand(child)
             self.specex.just_move(child)
             yield child
 
@@ -419,13 +416,11 @@ class NoNBestUpdate(_Pruner):
         """
         # Create child guessing that pbest was not updated
         child = SEParticle(particle, specpbest=False, specnbestid=-1)
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
         # And now guessing that pbest was updated
         child = SEParticle(particle, specpbest=True, specnbestid=-1)
         child.pbestpos = particle.pos
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
 
@@ -436,7 +431,6 @@ class Stagnant(_Pruner):
         """Just one particle, for the stagnant case.
         """
         child = SEParticle(particle, specpbest=False, specnbestid=-1)
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
 
@@ -449,7 +443,6 @@ class Stats(_Pruner):
         """
         # Create child guessing that neither pbest nor nbest was updated
         child = SEParticle(particle, specpbest=False, specnbestid=-1)
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
         # And now for the last branch that was taken
@@ -460,7 +453,6 @@ class Stats(_Pruner):
         specnbestid = particle.lastbranch[1]
         child = SEParticle(particle, specpbest=specpbest,
                 specnbestid=specnbestid)
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
 
@@ -479,7 +471,6 @@ class LastBranch(_Pruner):
         specnbestid = particle.lastbranch[1]
         child = SEParticle(particle, specpbest=specpbest,
                 specnbestid=specnbestid)
-        self.specex.set_motion_rand(child)
         self.specex.just_move(child)
         yield child
 
@@ -496,7 +487,6 @@ class TokenBasedOneIter(_Pruner):
             children = []
             # Create child guessing that neither pbest nor nbest was updated
             child = SEParticle(particle, specpbest=False, specnbestid=-1)
-            self.specex.set_motion_rand(child)
             self.specex.just_move(child)
             children.append((False, -1))
             yield child
@@ -504,7 +494,6 @@ class TokenBasedOneIter(_Pruner):
             # And now guessing that pbest was updated
             child = SEParticle(particle, specpbest=True, specnbestid=-1)
             child.pbestpos = particle.pos
-            self.specex.set_motion_rand(child)
             self.specex.just_move(child)
             children.append((True, -1))
             yield child
@@ -518,14 +507,12 @@ class TokenBasedOneIter(_Pruner):
             if specnbestid != -1:
                 child = SEParticle(particle, specpbest=specpbest,
                         specnbestid=specnbestid)
-                self.specex.set_motion_rand(child)
                 self.specex.just_move(child)
             else:
                 self.specex.set_neighborhood_rand(particle)
                 specnbestid = particle.rand.randrange(len(neighbors))
                 child = SEParticle(particle, specpbest=specpbest,
                         specnbestid=specnbestid)
-                self.specex.set_motion_rand(child)
                 self.specex.just_move(child)
             children.append((specpbest, specnbestid))
             yield child
@@ -547,7 +534,6 @@ class TokenBasedOneIter(_Pruner):
                     break
                 child = SEParticle(particle, specpbest=specpbest,
                         specnbestid=specnbestid)
-                self.specex.set_motion_rand(child)
                 self.specex.just_move(child)
                 children.append((specpbest, specnbestid))
                 yield child
