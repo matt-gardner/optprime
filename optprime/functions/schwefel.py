@@ -1,7 +1,7 @@
 from __future__ import division
 
 from math import sqrt, sin
-from ._base import Benchmark
+from . import Benchmark
 
 try:
     from itertools import izip as zip

@@ -1,6 +1,6 @@
 from __future__ import division
 from math import sqrt, exp
-from ._base import Benchmark
+from . import Benchmark
 
 try:
     from itertools import izip as zip

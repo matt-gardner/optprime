@@ -1,7 +1,7 @@
 from __future__ import division
 
 from numpy import array
-from ._base import BaseFunction
+from . import BaseFunction
 from mrs.param import Param
 
 

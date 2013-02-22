@@ -1,6 +1,6 @@
 from __future__ import division
 from math import sqrt
-from ._base import BaseFunction
+from . import BaseFunction
 
 try:
     from itertools import izip as zip

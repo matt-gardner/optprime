@@ -11,7 +11,7 @@ try:
 except NameError:
     pass
 
-from ._base import BaseFunction
+from . import BaseFunction
 from ..cube import Cube
 
 

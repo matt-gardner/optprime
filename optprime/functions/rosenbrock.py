@@ -1,6 +1,6 @@
 from __future__ import division
 from itertools import izip
-from ._base import Benchmark
+from . import Benchmark
 
 try:
     range = xrange

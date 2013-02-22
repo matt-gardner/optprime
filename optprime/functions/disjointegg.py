@@ -2,7 +2,7 @@
 
 import math
 from numpy import array
-from ._base import BaseFunction
+from . import BaseFunction
 
 class DisjointEgg(BaseFunction):
     def setup(self, rand):

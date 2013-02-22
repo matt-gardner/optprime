@@ -1,6 +1,6 @@
 from __future__ import division
 
-from ._base import Benchmark
+from . import Benchmark
 from math import sqrt, cos
 
 try:

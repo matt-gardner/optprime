@@ -1,7 +1,7 @@
 from __future__ import division
 from math import exp, cos, pi
 from operator import mul
-from ._base import Benchmark
+from . import Benchmark
 
 class Easom(Benchmark):
     _each_constraints = (-100, 100)

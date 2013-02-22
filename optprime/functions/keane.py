@@ -1,7 +1,7 @@
 from __future__ import division
 from operator import mul
 from math import cos, sqrt
-from ._base import Benchmark
+from . import Benchmark
 
 try:
     from itertools import izip as zip

@@ -1,5 +1,5 @@
 from math import sin, cos
-from ._base import BaseFunction
+from . import BaseFunction
 
 from numpy import array
 

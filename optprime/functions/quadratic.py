@@ -1,6 +1,6 @@
 from __future__ import division
 from math import exp
-from ._base import Benchmark
+from . import Benchmark
 
 try:
     range = xrange

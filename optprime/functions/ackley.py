@@ -2,7 +2,7 @@ from __future__ import division
 from itertools import imap
 from math import e, exp, sqrt, cos, pi
 
-from ._base import Benchmark
+from . import Benchmark
 
 
 class Ackley(Benchmark):
