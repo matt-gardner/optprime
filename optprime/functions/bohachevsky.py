@@ -1,15 +1,13 @@
 from __future__ import division
 from math import cos, pi
 
-from . import _general
+from ._base import Benchmark
 
 
-class Bohachevsky(_general._Base):
-    def setup(self):
-        super(Bohachevsky, self).setup()
-        self._set_constraints(((-15,15),) * self.dims)
+class Bohachevsky(Benchmark):
+    _each_constraints = (-15, 15)
 
-    def __call__(self, vec):
+    def _standard_call(self, vec):
         sum = 0.0
         for j,x in enumerate(vec):
             if j == len(vec)-1:

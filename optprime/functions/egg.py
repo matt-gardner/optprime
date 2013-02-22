@@ -1,8 +1,7 @@
 from math import sin, cos
-from . import _general
+from ._base import BaseFunction
 
-class Egg(_general._Base):
-    __slots__ = ['constraints']
+class Egg(BaseFunction):
     def setup(self):
         super(Egg, self).setup()
         self.constraints = [[-10.0,10.0],[-10.0,10.0]]

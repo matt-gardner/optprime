@@ -1,6 +1,6 @@
 from __future__ import division
 from math import exp
-from . import _general
+from ._base import Benchmark
 
 try:
     range = xrange
@@ -8,12 +8,10 @@ except NameError:
     pass
 
 
-class Quadratic(_general._Base):
-    def setup(self):
-        super(Quadratic,self).setup()
-        self._set_constraints(((-100,100),) * self.dims)
+class Quadratic(Benchmark):
+    _each_constraints = (-100, 100)
 
-    def __call__(self, vec):
+    def _standard_call(self, vec):
         s = 0
         for i in range(self.dims):
             for j in range(self.dims):

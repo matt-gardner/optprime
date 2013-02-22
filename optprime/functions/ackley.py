@@ -2,13 +2,11 @@ from __future__ import division
 from itertools import imap
 from math import e, exp, sqrt, cos, pi
 
-from . import _general
+from ._base import Benchmark
 
 
-class Ackley(_general._Base):
-    def setup(self):
-        super(Ackley,self).setup()
-        self._set_constraints(((-32.768,32.768),) * self.dims)
+class Ackley(Benchmark):
+    _each_constraints = (-32.768, 32.768)
 
     def __call__(self, vec):
         n = self.dims

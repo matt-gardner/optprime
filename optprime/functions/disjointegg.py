@@ -1,17 +1,16 @@
 #!/usr/bin/env python2.2
 
 import math
-from . import _general
+from numpy import array
+from ._base import BaseFunction
 
-class DisjointEgg(_general._Base):
-    __slots__ = 'constraints'
+class DisjointEgg(BaseFunction):
+    def setup(self, rand):
+        self.dims = 2
+        self.constraints = array([(0,5), (0,5)])
 
-    def setup(self):
-        super(DisjointEgg, self).setup()
-        self.constraints = ((0,5), (0,5))
-
-    def __call__(self, input):
-        x, y = input
+    def __call__(self, vec):
+        x, y = vec
 
         alpha = 0.71 * int(y) + 1.0
 

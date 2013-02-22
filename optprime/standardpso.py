@@ -33,7 +33,7 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         self.motion = param.instantiate(opts, 'motion')
         self.topology = param.instantiate(opts, 'top')
 
-        self.function.setup()
+        self.function.setup(self.func_init_rand())
         self.motion.setup(self.function)
         self.topology.setup(self.function)
 
@@ -95,8 +95,6 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         The swarmid is used for seed initialization when this is used in
         subswarms.
         """
-        self.randomize_function_center()
-
         # Update position and value.
         for p in particles:
             self.move_and_evaluate(p, swarmid)
@@ -276,7 +274,6 @@ class StandardPSO(mrs.GeneratorCallbackMR):
 
         before = datetime.datetime.now()
 
-        self.randomize_function_center()
         self.move_and_evaluate(particle)
         after = datetime.datetime.now()
         delta = after - before
@@ -447,10 +444,9 @@ class StandardPSO(mrs.GeneratorCallbackMR):
         """
         return self.random(self.INITIALIZATION_OFFSET, i)
 
-    def randomize_function_center(self):
-        """Sets a random function center."""
-        rand = self.random(self.FUNCTION_OFFSET)
-        self.function.randomize_center(rand)
+    def func_init_rand(self):
+        """Returns a Random for function initialization."""
+        return self.random(self.FUNCTION_OFFSET)
 
     @classmethod
     def update_parser(cls, parser):

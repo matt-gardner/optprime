@@ -11,11 +11,11 @@ try:
 except NameError:
     pass
 
-from . import _general
+from ._base import BaseFunction
 from ..cube import Cube
 
 
-class RBF(_general._Base):
+class RBF(BaseFunction):
     """Radial Basis Function Network trainer
 
     The function takes an RBF and returns the sum squared error over the
@@ -52,7 +52,7 @@ class RBF(_general._Base):
         (otherwise such a vector is randomly generated using the seed).
         """
         super(RBF, self).setup()
-        self._set_constraints(((0,100),) * self.dims)
+        self.constraints = array([(0, 100)] * self.dims)
         self.nbases = int(self.dims / (1 + 2 * self.inputdims))
 
         import random

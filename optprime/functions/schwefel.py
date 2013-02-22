@@ -1,6 +1,7 @@
 from __future__ import division
-from . import _general
+
 from math import sqrt, sin
+from ._base import Benchmark
 
 try:
     from itertools import izip as zip
@@ -8,7 +9,7 @@ except ImportError:
     pass
 
 
-class Schwefel(_general._Base):
+class Schwefel(Benchmark):
     """The Schwefel benchmark function.
 
     There are other Schwefel benchmark functions; this one is often referred
@@ -19,36 +20,30 @@ class Schwefel(_general._Base):
     work very well with PSO.
     """
 
-    def setup(self):
-        super(Schwefel,self).setup()
-        self._set_constraints(((-500,500),) * self.dims)
+    _each_constraints = (-500, 500)
 
-    def __call__(self, vec):
+    def _standard_call(self, vec):
         s = sum([-x * sin(sqrt(abs(x))) for x in vec])
         return 418.9829 * self.dims + s
 
 
-class Schwefel221(_general._Base):
+class Schwefel221(Benchmark):
     """The Schwefel 2.21 benchmark function.
     """
 
-    def setup(self):
-        super(Schwefel221,self).setup()
-        self._set_constraints(((-500,500),) * self.dims)
+    _each_constraints = (-500, 500)
 
-    def __call__(self, vec):
-        return max([abs(x-c) for x,c in zip(vec, self.abscenter)])
+    def _standard_call(self, vec):
+        return max([abs(x) for x in vec])
 
 
-class Schwefel12(_general._Base):
+class Schwefel12(Benchmark):
     """The Schwefel 1.2 benchmark function.
 
     Schwefel's Problem 1.2 is a naturally nonseparable function.  This
     function is part of the CEC 2010 benchmark suite.
     """
-    def setup(self):
-        super(Schwefel12, self).setup()
-        self._set_constraints(((-100, 100),) * self.dims)
+    _each_constraints = (-100, 100)
 
-    def __call__(self, vec):
+    def _standard_call(self, vec):
         return sum((sum(vec[:i]) ** 2) for i in xrange(self.dims))

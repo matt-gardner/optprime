@@ -1,6 +1,6 @@
 from __future__ import division
 
-from . import _general
+from ._base import Benchmark
 from mrs.param import Param
 
 try:
@@ -14,14 +14,11 @@ except ImportError:
     pass
 
 
-class Sphere(_general._Base):
-    def setup(self):
-        super(Sphere, self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
-        self.abscenter = array(self.abscenter)
+class Sphere(Benchmark):
+    _each_constraints = (-50, 50)
 
-    def __call__(self, vec):
-        return ((vec - self.abscenter) ** 2).sum()
+    def _standard_call(self, vec):
+        return (vec ** 2).sum()
 
 
 class SleepSphere(Sphere):

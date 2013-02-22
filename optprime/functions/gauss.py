@@ -1,6 +1,6 @@
 from __future__ import division
 from math import sqrt, exp
-from . import _general
+from ._base import Benchmark
 
 try:
     from itertools import izip as zip
@@ -8,13 +8,11 @@ except ImportError:
     pass
 
 
-class Gauss(_general._Base):
-    def setup(self):
-        super(Gauss,self).setup()
-        self._set_constraints(((-2,2),) * self.dims)
+class Gauss(Benchmark):
+    _each_constraints = (-2, 2)
 
-    def __call__(self, vec):
+    def _standard_call(self, vec):
         p = 1.0
-        for x,c in zip(vec,self.abscenter):
-            p *= exp( -(x-c)**2 )
+        for x in vec:
+            p *= exp(-x**2)
         return 1-p

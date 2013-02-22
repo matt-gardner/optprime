@@ -1,7 +1,7 @@
 from __future__ import division
 from operator import mul
 from math import cos, sqrt
-from . import _general
+from ._base import Benchmark
 
 try:
     from itertools import izip as zip
@@ -9,10 +9,8 @@ except ImportError:
     pass
 
 
-class Keane(_general._Base):
-    def setup(self):
-        super(Keane,self).setup()
-        self._set_constraints(((0,10),) * self.dims)
+class Keane(Benchmark):
+    _each_constraints = (0, 10)
 
     def __call__(self, vec):
         if min(vec) < 0 or max(vec) > 10:

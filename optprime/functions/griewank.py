@@ -1,5 +1,6 @@
 from __future__ import division
-from . import _general
+
+from ._base import Benchmark
 from math import sqrt, cos
 
 try:
@@ -8,17 +9,15 @@ except ImportError:
     pass
 
 
-class Griewank(_general._Base):
-    def setup(self):
-        super(Griewank,self).setup()
-        self._set_constraints(((-600,600),) * self.dims)
+class Griewank(Benchmark):
+    _each_constraints = (-600, 600)
 
-    def __call__(self, vec):
+    def _standard_call(self, vec):
         s = 0.0
         p = 1.0
-        for i, (v,c) in enumerate(zip(vec,self.abscenter)):
-            s += (v-c)**2
-            p *= cos((v-c)/sqrt(i+1))
+        for i, v in enumerate(vec):
+            s += v**2
+            p *= cos(v/sqrt(i+1))
 
         val = s/4000 - p + 1
         return val

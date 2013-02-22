@@ -1,14 +1,12 @@
 from math import sin, cos
-from . import _general
+from ._base import BaseFunction
 
-class egghill(_general._Base):
-    __slots__ = [
-        'constraints',
-        'alpha',
-        'p'
-        ]
+from numpy import array
+
+class egghill(BaseFunction):
     def setup(self, alpha=2.0, p=0.5):
-        self.constraints = [[-10.0,10.0],[-10.0,10.0]]
+        self.dims = 2
+        self.constraints = array([[-10.0,10.0],[-10.0,10.0]])
         self.alpha = alpha
         self.p = p
 
@@ -17,5 +15,3 @@ class egghill(_general._Base):
         a = self.alpha
         x, y = vec
         return a * ((1-p) * (sin(x) * cos(y)) - p * ((x/10)**2 + (y/10)**2))
-
-f = egghill()

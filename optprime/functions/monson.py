@@ -1,6 +1,7 @@
 from __future__ import division
+
 from math import sqrt, exp, cos, sin, pi
-from . import _general
+from ._base import Benchmark
 
 try:
     from itertools import izip as zip
@@ -9,9 +10,7 @@ except ImportError:
 
 
 class TwoGaussians(_general._Base):
-    def setup(self):
-        super(TwoGaussians,self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
+    _each_constraints = (-50, 50)
 
     def __call__(self, vec):
         magsq = sum([(x-c)**2 for x,c in zip(vec,self.abscenter)])
@@ -30,9 +29,7 @@ class TwoGaussians(_general._Base):
         return (1-oogaussian) + 0.4*(outergaussian - innergaussian)
 
 class ValleyNeedle(_general._Base):
-    def setup(self):
-        super(ValleyNeedle,self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
+    _each_constraints = (-50, 50)
 
     def __call__(self, vec):
         magsq = sum([(x-c)**2 for x,c in zip(vec,self.abscenter)])
@@ -50,9 +47,7 @@ class ValleyNeedle(_general._Base):
             return flatheight*(1 - prod)
 
 class AsymmetricCone(_general._Base):
-    def setup(self):
-        super(AsymmetricCone,self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
+    _each_constraints = (-50, 50)
 
     def __call__(self, vec):
         cvec = self.abscenter

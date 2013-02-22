@@ -1,6 +1,7 @@
 from __future__ import division
+
 from math import cos, pi
-from . import _general
+from ._base import Benchmark
 
 try:
     from itertools import izip as zip
@@ -8,13 +9,11 @@ except ImportError:
     pass
 
 
-class Rastrigin(_general._Base):
-    def setup(self):
-        super(Rastrigin,self).setup()
-        self._set_constraints(((-5.12,5.12),) * self.dims)
+class Rastrigin(Benchmark):
+    _each_constraints = (-5.12, 5.12)
 
-    def __call__(self, vec):
-        s= 0.0
-        for v, c in zip(vec, self.abscenter):
-            s += ((v-c)**2 - 10*cos(2*pi*(v-c)) + 10)
+    def _standard_call(self, vec):
+        s = 0.0
+        for v in vec:
+            s += v**2 - 10*cos(2*pi*v) + 10
         return s

@@ -1,9 +1,11 @@
 from __future__ import division
-from . import _general
+
+from numpy import array
+from ._base import BaseFunction
 from mrs.param import Param
 
 
-class CommandLine(_general._Base):
+class CommandLine(BaseFunction):
     """A function that takes an executable file and uses that as the function
     to optimize.  So, if you already have a C or C++ executable, you can just
     give that to this function, and you don't have to translate the C code to
@@ -53,7 +55,7 @@ class CommandLine(_general._Base):
         # die.
         super(CommandLine, self).setup()
 
-        self._set_constraints(tuple(constraints))
+        self.constraints = array(constraints)
 
     def __call__(self, vec):
         import sys

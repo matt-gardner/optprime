@@ -1,5 +1,6 @@
 from __future__ import division
-from . import _general
+
+from ._base import Benchmark
 from mrs.param import Param
 
 try:
@@ -8,17 +9,14 @@ except ImportError:
     pass
 
 
-class Distance(_general._Base):
+class Distance(Benchmark):
     _params = dict(
-                norm=Param(default=2.0, type='float', 
-                    doc='Default norm (2 is Euclidian)'),
+            norm=Param(default=2.0, type='float',
+                doc='Default norm (2 is Euclidian)'),
             )
 
-    def setup(self):
-        super(Distance,self).setup()
-        self._set_constraints(((-50,50),) * self.dims)
-        #self._set_constraints( ((-2,2),) * self.dims )
+    _each_constraints = (-50, 50)
 
-    def __call__(self, vec):
-        s = sum([abs(x-c)**self.norm for x,c in zip(vec,self.abscenter)])
-        return s**(1/self.norm)
+    def _standard_call(self, vec):
+        s = (abs(vec) ** self.norm).sum()
+        return s ** (1/self.norm)
