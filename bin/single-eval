@@ -1,14 +1,22 @@
 #!/usr/bin/env python
 
+from mrs.main import DEFAULT_SEED
 from mrs import param
-from mrs.cli import option_parser
+import optprime
+import random
 
-parser = option_parser()
+parser = param.OptionParser()
 
 parser.add_option('-f','--func', metavar='FUNCTION',
-        dest='func', action='extend', search=['functions'],
+        dest='func', action='extend', search=['optprime.functions'],
         help='Function to optimize',
         default='sphere.Sphere',
+        )
+parser.add_option('-s','--seed', metavar='SEED',
+        type='int',
+        dest='seed',
+        help='Random seed',
+        default=DEFAULT_SEED,
         )
 parser.add_option('-v','--vec', metavar='VEC',
         dest='vec',
@@ -17,9 +25,12 @@ parser.add_option('-v','--vec', metavar='VEC',
 opts, args = parser.parse_args()
 
 function = param.instantiate(opts, 'func')
-function.setup()
+rand = random.Random(opts.seed)
+function.setup(rand)
+
 vec = [float(v) for v in opts.vec.split(',')]
 value = function(vec)
+
 function.master_log()
 print value
 
