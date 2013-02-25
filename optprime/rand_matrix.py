@@ -34,7 +34,7 @@ def rand_o_matrix(n, rand=None):
 
         # Numpy "broadcasting" converts a single-axis array into an mx1 array,
         # which then gets saved to the first m slots of x.
-        x[:m] = rand_norm_array(i + 1)[:, None]
+        x[:m] = rand_norm_array(i + 1, rand)[:, None]
 
         # Reflect A across the plane defined by x (this is a Householder
         # transformation).
@@ -52,5 +52,40 @@ def rand_norm_array(n, rand=None):
         samples[i] = rand.normalvariate(0, 1)
     normalization = (samples ** 2).sum() ** 0.5
     return samples / normalization
+
+def rand_cliques_matrix(n, m, rand=None):
+    """Create an nxn orthogonal matrix with m random orthogonal submatrices."""
+    if rand is None:
+        rand = random
+
+    result = matrix(zeros((n, n)))
+    min_block_size = n // m
+    num_big_blocks = n % m
+
+    index = 0
+    for block_id in range(m):
+        if block_id < num_big_blocks:
+            N = min_block_size + 1
+        else:
+            N = min_block_size
+
+        submatrix = rand_o_matrix(N, rand)
+        result[index:index + N, index:index + N] = submatrix
+
+        index += N
+
+    return result
+
+def rand_permutation(n, rand=None):
+    """Create a random permutation matrix."""
+    if rand is None:
+        rand = random
+
+    variables = list(range(n))
+    rand.shuffle(variables)
+    A = matrix(zeros((n, n)))
+    for i, j in enumerate(variables):
+        A[i, j] = 1
+    return A
 
 # vim: et sw=4 sts=4
