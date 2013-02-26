@@ -3,9 +3,9 @@
 import random
 
 try:
-    from numpy import empty, eye, matrix, zeros
+    from numpy import empty, eye, asmatrix, zeros
 except ImportError:
-    from numpypy import empty, eye, matrix, zeros
+    from numpypy import empty, eye, asmatrix, zeros
 
 def rand_o_matrix(n, rand=None):
     """Creates a random Haar-distributed orthonormal matrix.
@@ -14,15 +14,15 @@ def rand_o_matrix(n, rand=None):
     """
     # `A` holds the orthonormal matrix that is built inductively (starting
     # from [[1.0]], which is a 1x1 orthonormal matrix.
-    A = matrix(zeros((n, n)))
+    A = asmatrix(zeros((n, n)))
     A[0, 0] = 1.0
 
     # Identity matrices can come in handy.
-    I = matrix(eye(n))
+    I = asmatrix(eye(n))
 
     # `x` holds an n-dimensional vector (an nx1 matrix) that will hold normal
     # vectors that will define planes in successively larger subspaces.
-    x = matrix(zeros((n, 1)))
+    x = asmatrix(zeros((n, 1)))
 
     for i in range(1, n):
         # The m-dimensional subspace (in the top-left corner) is the relevant
@@ -58,7 +58,7 @@ def rand_cliques_matrix(n, m, rand=None):
     if rand is None:
         rand = random
 
-    result = matrix(zeros((n, n)))
+    result = asmatrix(zeros((n, n)))
     min_block_size = n // m
     num_big_blocks = n % m
 
@@ -83,7 +83,7 @@ def rand_permutation(n, rand=None):
 
     variables = list(range(n))
     rand.shuffle(variables)
-    A = matrix(zeros((n, n)))
+    A = asmatrix(zeros((n, n)))
     for i, j in enumerate(variables):
         A[i, j] = 1
     return A

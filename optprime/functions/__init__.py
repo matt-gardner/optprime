@@ -3,11 +3,12 @@ from __future__ import division
 import operator
 
 from mrs.param import ParamObj, Param
+from ..rand_matrix import rand_cliques_matrix, rand_permutation
 
 try:
-    from numpy import array, empty
+    from numpy import array, asarray, asmatrix, empty, squeeze
 except ImportError:
-    from numpypy import array, empty
+    from numpypy import array, asarray, asmatrix, empty, squeeze
 
 try:
     from itertools import izip as zip
@@ -60,6 +61,9 @@ class Benchmark(BaseFunction):
                 doc='Relative center, between 0 and 1 per dim (rand if '')'),
             maximize=Param(type='bool',
                 doc='Maximize the function instead of minimizing.'),
+            part_sep_cliques=Param(default=0, type='int',
+                doc='Number of partially separable cliques of unsep. variables'
+                    ' (0 for fully sep., 1 for fully unsep.)'),
             )
 
     _each_constraints = (0, 0)
@@ -88,8 +92,20 @@ class Benchmark(BaseFunction):
         else:
             self.comparator = operator.lt
 
+        # Setup partially separable cliques of unseparable variables.
+        if self.part_sep_cliques:
+            A = rand_cliques_matrix(self.dims, self.part_sep_cliques, rand)
+            B = rand_permutation(self.dims, rand)
+            self._sep_matrix = A * B
+        else:
+            self._sep_matrix = None
+
     def __call__(self, vec):
-        return self._standard_call(vec - self.abscenter)
+        vec = vec - self.abscenter
+        if self._sep_matrix is not None:
+            rotated = self._sep_matrix * asmatrix(vec).T
+            vec = squeeze(asarray(rotated))
+        return self._standard_call(vec)
 
     def _standard_call(self, vec):
         """Evaluate the function in its standard form.
