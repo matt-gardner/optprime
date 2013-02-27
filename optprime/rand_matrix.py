@@ -12,10 +12,13 @@ def rand_o_matrix(n, rand=None):
 
     Uses the Stewart algorithm.
     """
+    if rand is None:
+        rand = random
+
     # `A` holds the orthonormal matrix that is built inductively (starting
-    # from [[1.0]], which is a 1x1 orthonormal matrix.
+    # from [[1.0]] or [[-1.0]], which are the only 1x1 orthonormal matrices.
     A = asmatrix(zeros((n, n)))
-    A[0, 0] = 1.0
+    A[0, 0] = rand.randrange(-1, 2, 2)
 
     # Identity matrices can come in handy.
     I = asmatrix(eye(n))
@@ -30,7 +33,10 @@ def rand_o_matrix(n, rand=None):
         m = i + 1
 
         # Extend A to m dimensions by adding a new orthogonal basis vector.
-        A[i, i] = 1.0
+        # The value is either [0, 0, ..., 1] or [0, 0, ..., -1] (flipped).
+        # If you don't ever flip, then the algorithm only produces
+        # reflection+rotations (never pure rotations).
+        A[i, i] = rand.randrange(-1, 2, 2)
 
         # Numpy "broadcasting" converts a single-axis array into an mx1 array,
         # which then gets saved to the first m slots of x.
