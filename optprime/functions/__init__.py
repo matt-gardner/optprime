@@ -3,7 +3,7 @@ from __future__ import division
 import operator
 
 from mrs.param import ParamObj, Param
-from ..rand_matrix import rand_cliques_matrix, rand_permutation
+from ..linalg import rand_cliques_matrix, rand_perm_matrix
 
 try:
     from numpy import array, asarray, asmatrix, empty, squeeze
@@ -95,7 +95,7 @@ class Benchmark(BaseFunction):
         # Setup partially separable cliques of unseparable variables.
         if self.part_sep_cliques:
             A = rand_cliques_matrix(self.dims, self.part_sep_cliques, rand)
-            B = rand_permutation(self.dims, rand)
+            B = rand_perm_matrix(self.dims, rand)
             self._sep_matrix = A * B
         else:
             self._sep_matrix = None

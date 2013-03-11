@@ -82,7 +82,7 @@ def rand_cliques_matrix(n, m, rand=None):
 
     return result
 
-def rand_permutation(n, rand=None):
+def rand_perm_matrix(n, rand=None):
     """Create a random permutation matrix."""
     if rand is None:
         rand = random
