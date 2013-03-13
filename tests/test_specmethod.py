@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
-import unittest
-import default_opts
-import specmethod
-from specex import SpecExPSO
-from particle import Particle, SEParticle, Dummy
 from copy import deepcopy
+import unittest
+
+from optprime import specmethod
+from optprime.specex import SpecExPSO
+from optprime.particle import Particle, SEParticle, Dummy
+
+import default_opts
 
 
 class Test_SpecMethod(unittest.TestCase):

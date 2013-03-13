@@ -2,12 +2,11 @@
 
 import unittest
 import default_opts
-import output
 import sys
 import StringIO
+
 from mrs import param
-from mrs.impl import Serial
-from specex import SpecExPSO
+from optprime.specex import SpecExPSO
 
 
 class TestSpecEx(unittest.TestCase):
