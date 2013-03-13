@@ -187,6 +187,13 @@ class Particle(object):
         else:
             return False
 
+    def __repr__(self):
+        cls_name = type(self).__name__
+        args = []
+        for attr, value in sorted(vars(self).iteritems()):
+            args.append('{}={}'.format(attr, repr(value)))
+        return '{}({})'.format(cls_name, ', '.join(args))
+
     def __str__(self):
         return "pos: %r; vel: %r; value: %r; pbestpos: %r; pbestval: %r" % (
                 self.pos, self.vel, self.value, self.pbestpos, self.pbestval)
