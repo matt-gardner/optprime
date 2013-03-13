@@ -28,12 +28,13 @@ def default_specex_opts():
     opts.motion__Kappa = 1
     opts.mrs__debug = False
     opts.quiet = False
-    opts.mrs = 'mrs.impl.Serial'
+    opts.mrs = 'mrs.main.Serial'
     opts.motion = 'optprime.motion.basic.Constricted'
     opts.transitive_best = False
     opts.func = 'optprime.functions.sphere.Sphere'
     opts.min_tokens = 0
     opts.tokens = 0
+    opts.mrs__profile = False
     return opts
 
 # vim: et sw=4 sts=4

@@ -129,7 +129,7 @@ class SpecExPSO(standardpso.StandardPSO):
                     # Also, outputs that use current particle
                     # position and value will be off on the value,
                     # because it hasn't been evaluated yet.
-                    if type(value) == Particle:
+                    if type(value) == BranchParticle:
                         particles.append(value)
             if dataset != self.last_data:
                 dataset.close()
@@ -157,7 +157,7 @@ class SpecExPSO(standardpso.StandardPSO):
         self.just_evaluate(particle)
 
         # If we didn't update our pbest, pass a token to someone else
-        if (type(particle) == Particle and particle.pbestval == prev_val
+        if (type(particle) == BranchParticle and particle.pbestval == prev_val
                 and particle.tokens > self.opts.min_tokens):
             particle.tokens -= 1
             rand = self.neighborhood_rand(particle, 1)
@@ -175,7 +175,8 @@ class SpecExPSO(standardpso.StandardPSO):
             yield (str(dep_id), repr(message))
 
     def sepso_reduce(self, key, value_iter):
-        # Particles are at iteration 1, as are their messages, MessageParticles.
+        # BranchParticles are at iteration 1, as are their messages,
+        # MessageParticles.
         # SEParticles and SEMessageParticles are at iteration 2.
         # You should only ever have one Particle in the reduce phase, and all
         # of the SEParticles send themselves (not as messages) to the same
@@ -192,7 +193,7 @@ class SpecExPSO(standardpso.StandardPSO):
             if value == 'token':
                 tokens += 1
                 continue
-            if type(value) == Particle:
+            if type(value) == BranchParticle:
                 particle = value
             elif type(value) == SEParticle:
                 children.append(value)
@@ -270,7 +271,7 @@ class SpecExPSO(standardpso.StandardPSO):
         # anything interesting to say.  So, to get an accurate iteration count,
         # we decrement the iteration of best by 1.
         for value in value_iter:
-            if type(value) == Particle:
+            if type(value) == BranchParticle:
                 particles.append(value)
         best = self.findbest(particles)
         best.iters -= 1

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from mrs.param import ParamObj, Param
-from particle import Particle, SEParticle, Dummy
+from particle import BranchParticle, Particle, SEParticle, Dummy
 
 class _SpecMethod(ParamObj):
     """A method for performing speculative execution.
@@ -89,8 +89,8 @@ class _SpecMethod(ParamObj):
         for cand in messages:
             olditer = cand.iters
             cand.iters = particle.iters
-            self.specex.set_neighborhood_rand(cand)
-            if particle.id in self.specex.topology.iterneighbors(cand):
+            rand = self.specex.neighborhood_rand(cand)
+            if particle.id in self.specex.topology.iterneighbors(cand, rand):
                 realneighbors.append(cand)
             cand.iters = olditer
         return realneighbors
@@ -334,7 +334,7 @@ class SocialPromotion(ReproducePSO):
         # We don't really care about the branch messages took.  Also, this only
         # matters here if we didn't guess the right branch.  If we did, then
         # the child will get updated branch information later.
-        if type(particle) == Particle:
+        if type(particle) == BranchParticle:
             particle.lastbranch = [updatedpbest, nbestid]
 
         # Look through the children and pick the child that corresponds to the
@@ -446,11 +446,7 @@ class Stats(_Pruner):
         self.specex.just_move(child)
         yield child
         # And now for the last branch that was taken
-        if particle.lastbranch[0] == True:
-            specpbest = True
-        else:
-            specpbest = False
-        specnbestid = particle.lastbranch[1]
+        specpbest, specnbestid = particle.lastbranch
         child = SEParticle(particle, specpbest=specpbest,
                 specnbestid=specnbestid)
         self.specex.just_move(child)
@@ -509,8 +505,8 @@ class TokenBasedOneIter(_Pruner):
                         specnbestid=specnbestid)
                 self.specex.just_move(child)
             else:
-                self.specex.set_neighborhood_rand(particle)
-                specnbestid = particle.rand.randrange(len(neighbors))
+                rand = self.specex.neighborhood_rand(particle)
+                specnbestid = rand.randrange(len(neighbors))
                 child = SEParticle(particle, specpbest=specpbest,
                         specnbestid=specnbestid)
                 self.specex.just_move(child)

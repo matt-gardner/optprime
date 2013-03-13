@@ -35,7 +35,6 @@ class Particle(object):
     >>> p.value = -10.0
     >>> p.pbestval = -11.0
     >>> p.nbestval = -12.0
-    >>> p.lastbranch = [False, -1]
     >>> repr(p)
     'p:42;100;200;1.0,2.0;3.0,4.0;-10.0;6.0,7.0;-11.0;8.0,9.0;-12.0;5;False,-1'
     >>>
@@ -72,7 +71,6 @@ class Particle(object):
         self.pbestval = value
         self.nbestpos = pos
         self.nbestval = value
-        #self.lastbranch = [False, -1]
 
     def copy(self):
         """Performs a deep copy and returns the new Particle.
@@ -346,7 +344,7 @@ class SEParticle(Particle):
         return m
 
     def make_real_particle(self):
-        p = Particle(self.id, self.pos, self.vel, self.value)
+        p = BranchParticle(self.id, self.pos, self.vel, self.value)
         p.pbestpos = self.pbestpos
         p.pbestval = self.pbestval
         p.nbestpos = self.nbestpos
@@ -371,6 +369,13 @@ class SEParticle(Particle):
         p.iters = self.iters
         sep = SEParticle(p, self.specpbest, self.specnbestid)
         return sep
+
+
+class BranchParticle(Particle):
+    """A particle that keeps track of its last branch."""
+    def __init__(self, *args):
+        super(BranchParticle, self).__init__(*args)
+        self.lastbranch = [False, -1]
 
 
 class Dummy(Particle):
