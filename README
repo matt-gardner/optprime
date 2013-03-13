@@ -5,3 +5,8 @@ This is the experimental optimization library of the AML Lab at Brigham
 Young University.  As experimental code, many things are broken at any given
 point in time.  The previous version of this library was called ``amlpso``
 and this is a reorganized version (hence, "Optimize'").
+
+Tests
+-----
+
+To run tests, use the `py.test` command.
