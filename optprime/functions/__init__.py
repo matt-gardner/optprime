@@ -6,9 +6,9 @@ from mrs.param import ParamObj, Param
 from ..linalg import rand_cliques_matrix, rand_perm_matrix
 
 try:
-    from numpy import array, asarray, asmatrix, empty, squeeze
+    import numpy as np
 except ImportError:
-    from numpypy import array, asarray, asmatrix, empty, squeeze
+    import numpypy as np
 
 try:
     from itertools import izip as zip
@@ -70,18 +70,18 @@ class Benchmark(BaseFunction):
 
     def setup(self, rand):
         # Set the constraints (feasible region).
-        self.constraints = array([self._each_constraints] * self.dims)
+        self.constraints = np.array([self._each_constraints] * self.dims)
 
         # Set the function center for shifting (may be later overridden by
         # randomize_center).  Note that self.center is the user-specified
         # value, and self.abscenter is what actually gets used.
-        center = empty(self.dims)
+        center = np.empty(self.dims)
         if ',' in self.center:
             center[:] = [float(x) for x in self.center.split(',')]
         elif self.center:
             center[:] = float(self.center)
         else:
-            center = array([rand.uniform(0, 1) for i in range(self.dims)])
+            center = np.array([rand.uniform(0, 1) for i in range(self.dims)])
         left = self.constraints[:, 0]
         right = self.constraints[:, 1]
         self.abscenter = center * (right - left) + left
@@ -96,15 +96,15 @@ class Benchmark(BaseFunction):
         if self.part_sep_cliques:
             A = rand_cliques_matrix(self.dims, self.part_sep_cliques, rand)
             B = rand_perm_matrix(self.dims, rand)
-            self._sep_matrix = A * B
+            self._sep_matrix = np.dot(A, B)
         else:
             self._sep_matrix = None
 
     def __call__(self, vec):
         vec = vec - self.abscenter
         if self._sep_matrix is not None:
-            rotated = self._sep_matrix * asmatrix(vec).T
-            vec = squeeze(asarray(rotated))
+            rotated = np.dot(self._sep_matrix, vec)
+            vec = np.squeeze(rotated)
         return self._standard_call(vec)
 
     def _standard_call(self, vec):

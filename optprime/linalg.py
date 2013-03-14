@@ -1,11 +1,15 @@
-#!/usr/bin/env python
+"""Miscellaneous linear algebra operations.
+
+For numpy arrays vs. matrices, see:
+    http://www.scipy.org/NumPy_for_Matlab_Users#head-e9a492daa18afcd86e84e07cd2824a9b1b651935
+"""
 
 import random
 
 try:
-    from numpy import empty, eye, asmatrix, zeros
+    from numpy import dot, empty, eye, vdot, zeros
 except ImportError:
-    from numpypy import empty, eye, asmatrix, zeros
+    from numpypy import dot, empty, eye, vdot, zeros
 
 def rand_o_matrix(n, rand=None):
     """Creates a random Haar-distributed orthonormal matrix.
@@ -17,15 +21,15 @@ def rand_o_matrix(n, rand=None):
 
     # `A` holds the orthonormal matrix that is built inductively (starting
     # from [[1.0]] or [[-1.0]], which are the only 1x1 orthonormal matrices.
-    A = asmatrix(zeros((n, n)))
+    A = zeros((n, n))
     A[0, 0] = rand.randrange(-1, 2, 2)
 
     # Identity matrices can come in handy.
-    I = asmatrix(eye(n))
+    I = eye(n)
 
     # `x` holds an n-dimensional vector (an nx1 matrix) that will hold normal
     # vectors that will define planes in successively larger subspaces.
-    x = asmatrix(zeros((n, 1)))
+    x = zeros((n, 1))
 
     for i in range(1, n):
         # The m-dimensional subspace (in the top-left corner) is the relevant
@@ -44,7 +48,8 @@ def rand_o_matrix(n, rand=None):
 
         # Reflect A across the plane defined by x (this is a Householder
         # transformation).
-        A = (I - 2 * x * x.T) * A
+        householder_mat = I - 2 * dot(x, x.T)
+        A = dot(householder_mat, A)
 
     return A
 
@@ -60,11 +65,14 @@ def rand_norm_array(n, rand=None):
     return samples / normalization
 
 def rand_cliques_matrix(n, m, rand=None):
-    """Create an nxn orthogonal matrix with m random orthogonal submatrices."""
+    """Create an nxn orthogonal matrix with m random orthogonal submatrices.
+
+    Note that the matrix is returned as a numpy array (not a numpy matrix).
+    """
     if rand is None:
         rand = random
 
-    result = asmatrix(zeros((n, n)))
+    result = zeros((n, n))
     min_block_size = n // m
     num_big_blocks = n % m
 
@@ -83,13 +91,16 @@ def rand_cliques_matrix(n, m, rand=None):
     return result
 
 def rand_perm_matrix(n, rand=None):
-    """Create a random permutation matrix."""
+    """Create a random permutation matrix.
+
+    Note that the matrix is returned as a numpy array (not a numpy matrix).
+    """
     if rand is None:
         rand = random
 
     variables = list(range(n))
     rand.shuffle(variables)
-    A = asmatrix(zeros((n, n)))
+    A = zeros((n, n))
     for i, j in enumerate(variables):
         A[i, j] = 1
     return A
