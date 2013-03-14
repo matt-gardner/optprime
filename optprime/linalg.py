@@ -4,12 +4,14 @@ For numpy arrays vs. matrices, see:
     http://www.scipy.org/NumPy_for_Matlab_Users#head-e9a492daa18afcd86e84e07cd2824a9b1b651935
 """
 
+from __future__ import division, print_function
+
 import random
 
 try:
-    from numpy import dot, empty, eye, vdot, zeros
+    import numpy as np
 except ImportError:
-    from numpypy import dot, empty, eye, vdot, zeros
+    import numpypy as np
 
 def rand_o_matrix(n, rand=None):
     """Creates a random Haar-distributed orthonormal matrix.
@@ -21,15 +23,15 @@ def rand_o_matrix(n, rand=None):
 
     # `A` holds the orthonormal matrix that is built inductively (starting
     # from [[1.0]] or [[-1.0]], which are the only 1x1 orthonormal matrices.
-    A = zeros((n, n))
+    A = np.zeros((n, n))
     A[0, 0] = rand.randrange(-1, 2, 2)
 
     # Identity matrices can come in handy.
-    I = eye(n)
+    I = np.eye(n)
 
     # `x` holds an n-dimensional vector (an nx1 matrix) that will hold normal
     # vectors that will define planes in successively larger subspaces.
-    x = zeros((n, 1))
+    x = np.zeros((n, 1))
 
     for i in range(1, n):
         # The m-dimensional subspace (in the top-left corner) is the relevant
@@ -48,8 +50,8 @@ def rand_o_matrix(n, rand=None):
 
         # Reflect A across the plane defined by x (this is a Householder
         # transformation).
-        householder_mat = I - 2 * dot(x, x.T)
-        A = dot(householder_mat, A)
+        householder_mat = I - 2 * np.dot(x, x.T)
+        A = np.dot(householder_mat, A)
 
     return A
 
@@ -58,7 +60,7 @@ def rand_norm_array(n, rand=None):
     if rand is None:
         rand = random
 
-    samples = empty(n, 'float')
+    samples = np.empty(n, 'float')
     for i in range(n):
         samples[i] = rand.normalvariate(0, 1)
     normalization = (samples ** 2).sum() ** 0.5
@@ -72,7 +74,7 @@ def rand_cliques_matrix(n, m, rand=None):
     if rand is None:
         rand = random
 
-    result = zeros((n, n))
+    result = np.zeros((n, n))
     min_block_size = n // m
     num_big_blocks = n % m
 
@@ -100,9 +102,27 @@ def rand_perm_matrix(n, rand=None):
 
     variables = list(range(n))
     rand.shuffle(variables)
-    A = zeros((n, n))
+    A = np.zeros((n, n))
     for i, j in enumerate(variables):
         A[i, j] = 1
     return A
+
+def orthogonalize(x, A):
+    """Orthogonalize the vector x relative to A, a matrix of column vectors.
+
+    The input is expected to be a numpy array (not a numpy matrix).  The
+    array A need not be an orthonormal matrix.
+
+    Based on the Modified Gram-Schmidt algorithm (numerically stable).
+    """
+    v = x.copy()
+    q, _ = np.linalg.qr(A)
+    for u in q.T:
+        # Subtract out the projection of v onto u.
+        v -= np.dot(v, u) * u
+    # Normalize.
+    v /= np.sqrt(np.dot(v, v))
+    return v
+
 
 # vim: et sw=4 sts=4
