@@ -166,16 +166,12 @@ def kume_walker_norm(a, N):
     """Sum up all of the w(l) terms with \sum l_i < N."""
     indices = range(len(a))
     total = 0
-    for cap in range(N):
-        print('CAP:', cap)
-        #print(list(itertools.combinations_with_replacement(indices, cap)))
-        for combos in itertools.combinations_with_replacement(indices, cap):
+    for sum_l in range(N):
+        for combos in itertools.combinations_with_replacement(indices, sum_l):
             l = [0] * len(a)
             for i in combos:
                 l[i] += 1
             total += kume_walker_w(l, a)
-            print(l)
-        print('total:', total)
     return total
 
 def kume_walker_norm2(a_i, p, N):
@@ -193,34 +189,52 @@ def kume_walker_norm2(a_i, p, N):
         w_i_terms.append(term)
 
     total = 0
-    for cap in range(N):
-        print('CAP:', cap)
+    for sum_l in range(N):
         # The log of the base term (outside the product) in w(l)
-        base_term = math.lgamma(0.5) - math.lgamma(0.5 * (p + 1) + cap)
+        base_term = math.lgamma(0.5) - math.lgamma(0.5 * (p + 1) + sum_l)
 
-        for part in partitions(cap):
+        for part in partitions(sum_l):
             if len(part) > p:
                 continue
-            print(part)
 
+            # log_w accumulates the value of w for this partition.
             log_w = base_term
+            # log_count accumulates the number of assignments of l that
+            # are based on this partition and share the same value of w.
+            log_count = 0.0
+
             # Note that partitions(0) returns [0] (for better or worse).
             if part[0] == 0:
                 part_size = 0
             else:
+                last_l = None
+                multiplicity = 0
                 for i, l_i in enumerate(part):
+                    if last_l == l_i:
+                        multiplicity += 1
+                    else:
+                        # Account for all of the permutations which are
+                        # identical assignments of l.
+                        log_count -= math.lgamma(multiplicity + 1)
+                        last_l = l_i
+                        multiplicity = 1
+
                     log_w += w_i_terms[l_i]
+
+                # Account for all of the permutations which are identical
+                # assignments of l.
+                log_count -= math.lgamma(multiplicity + 1)
+
                 part_size = i + 1
+
             # Add in all of the 0 terms.
             log_w += (p - part_size) * w_i_terms[0]
 
-            # The binomial coefficient (choose function) indicates the
-            # number of identical terms (i.e., the number of l vectors
-            # that can be formed by rearranging this partition).
-            log_count = (math.lgamma(p + 1) - math.lgamma(part_size + 1)
-                    - math.lgamma(p - part_size + 1))
+            # The partial permutations function indicates the number of
+            # identical terms (i.e., the number of l vectors that can be
+            # formed by rearranging this partition).
+            log_count += (math.lgamma(p + 1) - math.lgamma(p - part_size + 1))
             total += math.exp(log_w + log_count)
-        print('total:', total)
 
     return total
 
