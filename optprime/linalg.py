@@ -6,8 +6,10 @@ For numpy arrays vs. matrices, see:
 
 from __future__ import division, print_function
 
+import bisect
 import itertools
 import math
+import numpy
 import random
 
 try:
@@ -174,67 +176,135 @@ def kume_walker_norm(a, N):
             total += kume_walker_w(l, a)
     return total
 
+
+class BinghamSampler(object):
+    """Create a mixture of Dirichlets for all w(l) terms with \sum l_i < N."""
+    def __init__(self, a_i, p, N):
+        self.total = 0
+        self.weights = []
+        self.dirichlets = []
+
+        for sum_l in range(N):
+            for part in partitions(sum_l):
+                if len(part) > p:
+                    continue
+
+                d = KumeWalkerDirichlet(part, a_i, p)
+                weight = d.weight()
+                self.total += weight
+
+                self.weights.append(self.total)
+                self.dirichlets.append(d)
+
+        # TODO: Consider sorting and pruning low-weight elements.
+
+    def sample(self, rand):
+        u = rand.uniform(0, self.total)
+        i = bisect.bisect_left(self.weights, u)
+        dirichlet = self.dirichlets[i]
+        return dirichlet.sample(rand)
+
+
+class KumeWalkerDirichlet(object):
+    """A sampler for a single Dirichlet from a Kume Walker mixture.
+
+    Attributes:
+        l_values: The list of l_i values (irrespective of order since all a_i's
+            are equal) associated with this Dirichlet distribution.
+        a_i: The difference between the largest eigenvalue (\lambda_0) and all
+            others (\lambda_i).  Assumes that the a_i's are all equal.
+    """
+    __slots__ = ['l_values', 'a_i', 'p']
+
+    def __init__(self, l_values, a_i, p):
+        self.l_values = l_values
+        self.a_i = a_i
+        self.p = p
+
+    def weight(self):
+        """Computes the weight associated with this Dirichlet."""
+        l_values = self.l_values
+        a_i = self.a_i
+        p = self.p
+        lgamma = math.lgamma
+
+        # log_w accumulates the value of w for l_values.  It's initialized to
+        # the log of the base term (outside the product) in w(l).
+        log_w = lgamma(0.5) - lgamma(0.5 * (p + 1) + sum(l_values))
+
+        # log_count accumulates the number of assignments of l that are based
+        # on l_values and share the same value of w.
+        log_count = 0.0
+
+        # Note that partitions(0) returns [0] (for better or worse).
+        if l_values[0] == 0:
+            part_size = 0
+        else:
+            last_l = None
+            multiplicity = 0
+            for i, l_i in enumerate(l_values):
+                if last_l == l_i:
+                    multiplicity += 1
+                else:
+                    # Account for all of the permutations which are identical
+                    # assignments of last_l.
+                    log_count -= lgamma(multiplicity + 1)
+                    last_l = l_i
+                    multiplicity = 1
+
+                # The log of the term of w(l) corresponding to a single i
+                # (within the product).
+                log_w += (l_i * math.log(a_i) + lgamma(l_i + 0.5)
+                        - lgamma(l_i + 1))
+
+            # Account for all of the permutations which are identical
+            # assignments of the final last_l.
+            log_count -= lgamma(multiplicity + 1)
+
+            part_size = i + 1
+
+        # Add in all of the 0 terms.
+        log_w += (p - part_size) * (lgamma(0.5) - lgamma(+ 1))
+
+        # The partial permutations function indicates the number of identical
+        # terms (i.e., the number of l vectors that can be formed by
+        # rearranging l_values).
+        log_count += (lgamma(p + 1) - lgamma(p - part_size + 1))
+        print(math.exp(log_w + log_count), l_values)
+        return math.exp(log_w + log_count)
+
+    def sample(self, rand):
+        """Sample from the Bingham assuming this Dirichlet was picked."""
+        l_array = list(self.l_values)
+        rand.shuffle(l_array)
+
+        alphas = [0.5] + [(l_i + 0.5) for l_i in l_array]
+        gammas = [rand.gammavariate(alpha_i, 1) for alpha_i in alphas]
+        total = sum(gammas)
+
+        bingham = numpy.empty(self.p + 1)
+        for i, gamma_i in enumerate(gammas):
+            s_i = gamma_i / total
+            sign = rand.choice([-1, 1])
+            bingham[i] = sign * (s_i ** 0.5)
+
+        return bingham
+
+
 def kume_walker_norm2(a_i, p, N):
     """Sum up all of the w(l) terms with \sum l_i < N.
 
     This variant assumes that a_i = a_1 for all i.  Note that p is the number
     of dimensions.
     """
-    w_i_terms = []
-    for l_i in range(N):
-        # The log of the term of w(l) corresponding to a single i (within the
-        # product).
-        term = (l_i * math.log(a_i) + math.lgamma(l_i + 0.5)
-                - math.lgamma(l_i + 1))
-        w_i_terms.append(term)
-
     total = 0
     for sum_l in range(N):
-        # The log of the base term (outside the product) in w(l)
-        base_term = math.lgamma(0.5) - math.lgamma(0.5 * (p + 1) + sum_l)
-
         for part in partitions(sum_l):
             if len(part) > p:
                 continue
 
-            # log_w accumulates the value of w for this partition.
-            log_w = base_term
-            # log_count accumulates the number of assignments of l that
-            # are based on this partition and share the same value of w.
-            log_count = 0.0
-
-            # Note that partitions(0) returns [0] (for better or worse).
-            if part[0] == 0:
-                part_size = 0
-            else:
-                last_l = None
-                multiplicity = 0
-                for i, l_i in enumerate(part):
-                    if last_l == l_i:
-                        multiplicity += 1
-                    else:
-                        # Account for all of the permutations which are
-                        # identical assignments of l.
-                        log_count -= math.lgamma(multiplicity + 1)
-                        last_l = l_i
-                        multiplicity = 1
-
-                    log_w += w_i_terms[l_i]
-
-                # Account for all of the permutations which are identical
-                # assignments of l.
-                log_count -= math.lgamma(multiplicity + 1)
-
-                part_size = i + 1
-
-            # Add in all of the 0 terms.
-            log_w += (p - part_size) * w_i_terms[0]
-
-            # The partial permutations function indicates the number of
-            # identical terms (i.e., the number of l vectors that can be
-            # formed by rearranging this partition).
-            log_count += (math.lgamma(p + 1) - math.lgamma(p - part_size + 1))
-            total += math.exp(log_w + log_count)
+            d = KumeWalkerDirichlet(part, a_i, p)
+            total += d.weight()
 
     return total
 
