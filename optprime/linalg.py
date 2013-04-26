@@ -178,23 +178,28 @@ def kume_walker_norm(a, N):
 
 
 class BinghamSampler(object):
-    """Create a mixture of Dirichlets for all w(l) terms with \sum l_i < N."""
-    def __init__(self, a_i, p, N):
+    """Create a mixture of Dirichlets for all w(l) terms with \sum l_i < N.
+
+    Attributes:
+        d: the number of dimensions
+    """
+    def __init__(self, a_i, d, N):
         self.total = 0
         self.weights = []
         self.dirichlets = []
+        p = d - 1
 
         for sum_l in range(N):
             for part in partitions(sum_l):
                 if len(part) > p:
                     continue
 
-                d = KumeWalkerDirichlet(part, a_i, p)
-                weight = d.weight()
+                dirichlet = KumeWalkerDirichlet(part, a_i, p)
+                weight = dirichlet.weight()
                 self.total += weight
 
                 self.weights.append(self.total)
-                self.dirichlets.append(d)
+                self.dirichlets.append(dirichlet)
 
         # TODO: Consider sorting and pruning low-weight elements.
 
@@ -270,7 +275,6 @@ class KumeWalkerDirichlet(object):
         # terms (i.e., the number of l vectors that can be formed by
         # rearranging l_values).
         log_count += (lgamma(p + 1) - lgamma(p - part_size + 1))
-        print(math.exp(log_w + log_count), l_values)
         return math.exp(log_w + log_count)
 
     def sample(self, rand):
@@ -278,14 +282,14 @@ class KumeWalkerDirichlet(object):
         l_array = list(self.l_values)
         rand.shuffle(l_array)
 
-        alphas = [0.5] + [(l_i + 0.5) for l_i in l_array]
-        gammas = [rand.gammavariate(alpha_i, 1) for alpha_i in alphas]
+        params = [0.5] + [(l_i + 0.5) for l_i in l_array]
+        gammas = [rand.gammavariate(alpha_i, 1) for alpha_i in params]
         total = sum(gammas)
 
         bingham = numpy.empty(self.p + 1)
         for i, gamma_i in enumerate(gammas):
             s_i = gamma_i / total
-            sign = rand.choice([-1, 1])
+            sign = rand.choice((-1, 1))
             bingham[i] = sign * (s_i ** 0.5)
 
         return bingham
