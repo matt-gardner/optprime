@@ -7,6 +7,7 @@ For numpy arrays vs. matrices, see:
 from __future__ import division, print_function
 
 import bisect
+import collections
 import itertools
 import math
 import numpy
@@ -128,5 +129,81 @@ def orthogonalize(x, A):
     v /= np.sqrt(np.dot(v, v))
     return v
 
+class BinghamSampler(object):
+    """Sample from a Bingham distribution.
+
+    The pdf is of the form:
+        f(z) = c(A)^{-1} exp(z^T A z), z \in S^{k-1}
+
+    where A is a k*k symmetric matrix, c(A) is a normalizing constant, and
+    S^{k-1} is the unit sphere in R^k.
+
+    Methods based on: Kent, Constable, and Er.  Simulation for the complex
+    Bingham distribution.  Statistics and Computing, 2004.
+
+    Attributes:
+        lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
+            be 0 and is not included in the list).
+    """
+
+    #def __init__(self, A):
+    def __init__(self, lambdas):
+        # lambdas assumed to be positive and in decreasing order
+        #self.lambdas = []
+        self.lambdas = lambdas
+
+    def truncation_probability(self):
+        """Equation (3.8) from the paper.
+
+        The technique assumes that none of the lambdas are equal!  We work
+        around this with some inaccuracy that hopefully doesn't matter.
+        """
+        if len(set(self.lambdas)) == len(self.lambdas):
+            lambdas = self.lambdas
+        else:
+            counter = collections.Counter()
+            counter.update(self.lambdas)
+            lambdas = []
+            for lambda_i in self.lambdas:
+                if counter[lambda_i] > 1:
+                    r = random.normalvariate(1, 0.005)
+                    lambda_i *= r
+                lambdas.append(lambda_i)
+
+        p_T = 0
+        for j, lambda_j in enumerate(self.lambdas):
+            product = 1 - math.exp(-lambda_j)
+            for i, lambda_i in enumerate(self.lambdas):
+                if i != j:
+                    product *= lambda_i / (lambda_i - lambda_j)
+            p_T += product
+        return p_T
+
+    def expected_draws_m1(self):
+        """The expected value of the number of uniform samples for Method 1.
+
+        From Table 1.
+        """
+        k = len(self.lambdas) + 1
+        log_E = math.log(k - 1)
+        for lambda_j in self.lambdas:
+            log_E += math.log(1 - math.exp(-lambda_j))
+        log_E -= math.log(self.truncation_probability())
+        return math.exp(log_E)
+
+    # TODO: It looks like we don't actually need to divide by the
+    # truncation probability since both M1 and M2 divide by it.
+    def expected_draws_m2(self):
+        """The expected value of the number of uniform samples for Method 2.
+
+        From Table 1.
+        """
+        k = len(self.lambdas) + 1
+        log_E = math.log(k)
+        for lambda_j in self.lambdas:
+            log_E += math.log(lambda_j)
+        log_E -= math.lgamma((k - 1) + 1)
+        log_E -= math.log(self.truncation_probability())
+        return math.exp(log_E)
 
 # vim: et sw=4 sts=4
