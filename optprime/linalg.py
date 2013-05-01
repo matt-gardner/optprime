@@ -150,60 +150,63 @@ class BinghamSampler(object):
     def __init__(self, lambdas):
         # lambdas assumed to be positive and in decreasing order
         #self.lambdas = []
-        self.lambdas = lambdas
+        self._lambdas = lambdas
+        self.sample = self._pick_sampler()
 
-    def truncation_probability(self):
-        """Equation (3.8) from the paper.
+    def _pick_sampler(self):
+        if any(l == 0 for l in self._lambdas):
+            return self.sample_m2
+        if all(l == self._lambdas[0] for l in self._lambdas):
+            return self.sample_m3
 
-        The technique assumes that none of the lambdas are equal!  We work
-        around this with some inaccuracy that hopefully doesn't matter.
-        """
-        if len(set(self.lambdas)) == len(self.lambdas):
-            lambdas = self.lambdas
+        k = len(self._lambdas) + 1
+
+        # From Table 1: expected number for M1 with p_T removed.
+        m1 = math.log(k - 1)
+        for lambda_j in self._lambdas:
+            m1 += math.log(1 - math.exp(-lambda_j))
+
+        # From Table 1: expected number for M2 with p_T removed.
+        m2 = math.log(k)
+        for lambda_j in self._lambdas:
+            m2 += math.log(lambda_j)
+        m2 -= math.lgamma((k - 1) + 1)
+
+        if m1 < m2:
+            return self.sample_m1
         else:
-            counter = collections.Counter()
-            counter.update(self.lambdas)
-            lambdas = []
-            for lambda_i in self.lambdas:
-                if counter[lambda_i] > 1:
-                    r = random.normalvariate(1, 0.005)
-                    lambda_i *= r
-                lambdas.append(lambda_i)
+            return self.sample_m2
 
-        p_T = 0
-        for j, lambda_j in enumerate(self.lambdas):
-            product = 1 - math.exp(-lambda_j)
-            for i, lambda_i in enumerate(self.lambdas):
-                if i != j:
-                    product *= lambda_i / (lambda_i - lambda_j)
-            p_T += product
-        return p_T
+    def sample_m1(self, rand):
+        """Sample using Method 1: Truncation to the simplex."""
+        k = len(self._lambdas) + 1
 
-    def expected_draws_m1(self):
-        """The expected value of the number of uniform samples for Method 1.
+    def sample_m2(self, rand):
+        """Sample using Method 2: Acceptance-rejection on the simplex."""
+        k = len(self._lambdas) + 1
 
-        From Table 1.
-        """
-        k = len(self.lambdas) + 1
-        log_E = math.log(k - 1)
-        for lambda_j in self.lambdas:
-            log_E += math.log(1 - math.exp(-lambda_j))
-        log_E -= math.log(self.truncation_probability())
-        return math.exp(log_E)
+        #for iters in itertools.count(1):
+        while True:
+            uniforms = [rand.random() for _ in range(k - 1)]
+            uniforms.sort()
+            last = 0
 
-    # TODO: It looks like we don't actually need to divide by the
-    # truncation probability since both M1 and M2 divide by it.
-    def expected_draws_m2(self):
-        """The expected value of the number of uniform samples for Method 2.
+            s = []
+            for u in uniforms:
+                s.append(u - last)
+                last = u
 
-        From Table 1.
-        """
-        k = len(self.lambdas) + 1
-        log_E = math.log(k)
-        for lambda_j in self.lambdas:
-            log_E += math.log(lambda_j)
-        log_E -= math.lgamma((k - 1) + 1)
-        log_E -= math.log(self.truncation_probability())
-        return math.exp(log_E)
+            u = math.log(rand.random())
+            if u < sum((-l_j * s_j) for l_j, s_j in zip(self._lambdas, s)):
+                s_k = 1 - sum(s)
+                s.append(s_k)
+                z = [(s_i ** 0.5) for s_i in s]
+                return z
+
+    def sample_m3(self, rand):
+        """Sample using Method 3: Uniform on a simplex and truncated gamma."""
+
+    # This method is selected in the constructor.
+    sample = None
 
 # vim: et sw=4 sts=4
