@@ -139,7 +139,9 @@ class BinghamSampler(object):
     S^{k-1} is the unit sphere in R^k.
 
     Methods based on: Kent, Constable, and Er.  Simulation for the complex
-    Bingham distribution.  Statistics and Computing, 2004.
+    Bingham distribution.  Statistics and Computing, 2004.  We skip Method 3,
+    which is only useful in very limited circumstances (all lambdas equal
+    to about 0.5).
 
     Attributes:
         lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
@@ -157,8 +159,6 @@ class BinghamSampler(object):
     def _pick_sampler(self):
         if any(l == 0 for l in self._lambdas):
             return self.sample_m2
-        if all(l == self._lambdas[0] for l in self._lambdas):
-            return self.sample_m3
 
         k = len(self._lambdas) + 1
 
@@ -206,9 +206,6 @@ class BinghamSampler(object):
             u = math.log(rand.random())
             if u < sum((-l_j * s_j) for l_j, s_j in zip(self._lambdas, s)):
                 return self._convert_s_to_z(s)
-
-    def sample_m3(self, rand):
-        """Sample using Method 3: Uniform on a simplex and truncated gamma."""
 
     def _convert_s_to_z(self, s):
         """Convert a list of values on the simplex to values on the sphere."""
