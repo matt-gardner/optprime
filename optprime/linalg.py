@@ -145,11 +145,12 @@ class BinghamSampler(object):
         lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
             be 0 and is not included in the list).
     """
+    # This method is selected in the constructor.
+    sample = None
 
     #def __init__(self, A):
     def __init__(self, lambdas):
         # lambdas assumed to be positive and in decreasing order
-        #self.lambdas = []
         self._lambdas = lambdas
         self.sample = self._pick_sampler()
 
@@ -181,11 +182,17 @@ class BinghamSampler(object):
         """Sample using Method 1: Truncation to the simplex."""
         k = len(self._lambdas) + 1
 
+        while True:
+            uniforms = [rand.random() for _ in range(k - 1)]
+            s = [-(1 / l_j) * math.log(1 - u_j * (1 - math.exp(-l_j)))
+                for l_j, u_j in zip(self._lambdas, uniforms)]
+            if sum(s) < 1:
+                return self._convert_s_to_z(s)
+
     def sample_m2(self, rand):
         """Sample using Method 2: Acceptance-rejection on the simplex."""
         k = len(self._lambdas) + 1
 
-        #for iters in itertools.count(1):
         while True:
             uniforms = [rand.random() for _ in range(k - 1)]
             uniforms.sort()
@@ -198,15 +205,16 @@ class BinghamSampler(object):
 
             u = math.log(rand.random())
             if u < sum((-l_j * s_j) for l_j, s_j in zip(self._lambdas, s)):
-                s_k = 1 - sum(s)
-                s.append(s_k)
-                z = [(s_i ** 0.5) for s_i in s]
-                return z
+                return self._convert_s_to_z(s)
 
     def sample_m3(self, rand):
         """Sample using Method 3: Uniform on a simplex and truncated gamma."""
 
-    # This method is selected in the constructor.
-    sample = None
+    def _convert_s_to_z(self, s):
+        """Convert a list of values on the simplex to values on the sphere."""
+        z = [(s_i ** 0.5) for s_i in s]
+        s_k = 1 - sum(s)
+        z.append(s_k ** 0.5)
+        return z
 
 # vim: et sw=4 sts=4
