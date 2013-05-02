@@ -214,4 +214,24 @@ class BinghamSampler(object):
         z.append(s_k ** 0.5)
         return z
 
+def sample_wishart(scale, dof, rand):
+    """Sample from a Wishart with the given scale and degrees of freedom.
+
+    Based on: Smith and Hocking. Wishart Variate Generator. 1972.
+    """
+    m, n = scale.shape
+    assert m == n
+    L = numpy.linalg.cholesky(scale)
+    A = numpy.zeros(scale.shape)
+    for i in range(n):
+        # The Chi-squared distribution is a special case of the Gamma
+        # distribution.  Note that Python uses the scale parameterization.
+        # Also note that the paper uses 1-based instead of 0-based indexing.
+        A[i, i] = rand.gammavariate((dof - i) / 2, 2) ** 0.5
+    for i in range(1, n):
+        for j in range(i):
+            A[i, j] = rand.normalvariate(0, 1)
+    LA = numpy.dot(L, A)
+    return numpy.dot(LA, LA.T)
+
 # vim: et sw=4 sts=4
