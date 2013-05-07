@@ -18,6 +18,15 @@ try:
 except ImportError:
     import numpypy as np
 
+def eigh_sorted(A):
+    """Performs numpy.linalg.eigh and sorts the resulting eigenvalues/vectors.
+
+    Note that sorting is from large to small.
+    """
+    eigvals, eigvecs = numpy.linalg.eigh(A)
+    idx = numpy.argsort(eigvals[::-1])
+    return eigvals[idx], eigvecs[:, idx]
+
 def rand_o_matrix(n, rand=None):
     """Creates a random Haar-distributed orthonormal matrix.
 
