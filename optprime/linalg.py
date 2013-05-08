@@ -152,18 +152,22 @@ class BinghamSampler(object):
     which is only useful in very limited circumstances (all lambdas equal
     to about 0.5).
 
-    Attributes:
+    Parameters (either A or lambdas must be specified, but not both):
+        A: the parameter matrix of the Bingham distribution
         lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
             be 0 and is not included in the list).
     """
-    # This method is selected in the constructor.
-    sample = None
+    def __init__(self, A=None, lambdas=None):
+        assert lambdas is None or A is None
 
-    #def __init__(self, A):
-    def __init__(self, lambdas):
-        # lambdas assumed to be positive and in decreasing order
+        self._sampler = None
+        self._eigvecs = None
+
+        if A is not None:
+            eigvals, self._eigvecs = eigh_sorted(-A)
+            smallest_eig = eigvals[-1]
+            lambdas = eigvals[:-1] - smallest_eig
         self._lambdas = lambdas
-        self.sample = self._pick_sampler()
 
     def _pick_sampler(self):
         if any(l == 0 for l in self._lambdas):
@@ -186,6 +190,11 @@ class BinghamSampler(object):
             return self.sample_m1
         else:
             return self.sample_m2
+
+    def sample(self, rand):
+        if self._sampler is None:
+            self._sampler = self._pick_sampler()
+        return self._sampler(rand)
 
     def sample_m1(self, rand):
         """Sample using Method 1: Truncation to the simplex."""
@@ -218,29 +227,83 @@ class BinghamSampler(object):
 
     def _convert_s_to_z(self, s):
         """Convert a list of values on the simplex to values on the sphere."""
-        z = [(s_i ** 0.5) for s_i in s]
-        s_k = 1 - sum(s)
-        z.append(s_k ** 0.5)
+        s.append(1 - sum(s))
+        s = numpy.array(s)
+        z = s ** 0.5
+
+        if self._eigvecs is not None:
+            z = self._eigvecs.dot(z)
         return z
 
-def sample_wishart(scale, dof, rand):
-    """Sample from a Wishart with the given scale and degrees of freedom.
 
-    Based on: Smith and Hocking. Wishart Variate Generator. 1972.
+class WishartBinghamPair(object):
+    """Represents a pair of Bingham distributions with a Wishart prior.
+
+    The success Bingham distribution's parameter matrix is the Wishart prior,
+    while the failure Bingham distribution's parameter matrix is the negative
+    of the Wishart prior.
+
+    Attributes:
+        inv_scale: the inverse of the scale matrix of the Wishart distribution
+        dof: the degrees of freedom of the Wishart distribution
     """
-    m, n = scale.shape
-    assert m == n
-    L = numpy.linalg.cholesky(scale)
-    A = numpy.zeros(scale.shape)
-    for i in range(n):
-        # The Chi-squared distribution is a special case of the Gamma
-        # distribution.  Note that Python uses the scale parameterization.
-        # Also note that the paper uses 1-based instead of 0-based indexing.
-        A[i, i] = rand.gammavariate((dof - i) / 2, 2) ** 0.5
-    for i in range(1, n):
-        for j in range(i):
-            A[i, j] = rand.normalvariate(0, 1)
-    LA = numpy.dot(L, A)
-    return numpy.dot(LA, LA.T)
+    def __init__(self, inv_scale, dof):
+        self.inv_scale = inv_scale
+        self.dof = dof
+
+        m, n = inv_scale.shape
+        assert m == n
+
+    def posterior(self, successes=None, failures=None):
+        """Returns the posterior distribution given samples from the Bingham.
+
+        The `successes` are data from the success Bingham distribution, and
+        the `failures` are data from the failure Bingham distribution.  Both
+        are of the form of two-dimensional arrays where data[0] is the first
+        data vector, data[1] is the second data vector, etc.
+        """
+        inv_scale = self.inv_scale
+        dof = self.dof
+
+        if successes is not None:
+            success_scatter = numpy.dot(successes.T, successes)
+            inv_scale = inv_scale - 2 * success_scatter
+            dof += len(successes)
+
+        if failures is not None:
+            failure_scatter = numpy.dot(failures.T, failures)
+            inv_scale = inv_scale + 2 * failure_scatter
+            dof += len(failures)
+
+        return WishartBinghamPair(inv_scale, dof)
+
+    def sample_wishart(self, rand):
+        """Sample from a Wishart with the given scale and degrees of freedom.
+
+        The scale matrix must be a positive definite.  If the scale matrix has
+        dimension p, then the degrees of freedom must satisfy dof > p-1.
+
+        Based on: Smith and Hocking. Wishart Variate Generator. 1972.
+        """
+        scale = numpy.linalg.inv(self.inv_scale)
+        L = numpy.linalg.cholesky(scale)
+        m, n = scale.shape
+        A = numpy.zeros((m, n))
+        for i in range(m):
+            # The Chi-squared distribution is a special case of the Gamma
+            # distribution.  Note that Python uses the scale parameterization
+            # and that the paper uses 1-based instead of 0-based indexing.
+            A[i, i] = rand.gammavariate((self.dof - i) / 2, 2) ** 0.5
+        for i in range(1, m):
+            for j in range(i):
+                A[i, j] = rand.normalvariate(0, 1)
+        LA = numpy.dot(L, A)
+        return numpy.dot(LA, LA.T)
+
+    def sample_success(self, rand):
+        """Sample from the success Bingham distribution."""
+        A = self.sample_wishart(rand)
+        bs = BinghamSampler(A)
+        return bs.sample(rand)
 
 # vim: et sw=4 sts=4
