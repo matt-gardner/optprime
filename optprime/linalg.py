@@ -267,12 +267,12 @@ class WishartBinghamPair(object):
 
         if successes is not None:
             success_scatter = numpy.dot(successes.T, successes)
-            inv_scale = inv_scale - 2 * success_scatter
+            inv_scale = inv_scale + 2 * success_scatter
             dof += len(successes)
 
         if failures is not None:
             failure_scatter = numpy.dot(failures.T, failures)
-            inv_scale = inv_scale + 2 * failure_scatter
+            inv_scale = inv_scale - 2 * failure_scatter
             dof += len(failures)
 
         return WishartBinghamPair(inv_scale, dof)
@@ -303,7 +303,7 @@ class WishartBinghamPair(object):
     def sample_success(self, rand):
         """Sample from the success Bingham distribution."""
         A = self.sample_wishart(rand)
-        bs = BinghamSampler(A)
+        bs = BinghamSampler(-A)
         return bs.sample(rand)
 
 # vim: et sw=4 sts=4
