@@ -317,4 +317,12 @@ def sample_von_mises_fisher(dims, kappa, rand):
     tail = math.sin(theta) * rand_norm_array(dims - 1, rand)
     return numpy.concatenate((head, tail))
 
+def sample_mf_scatter(dims, kappa, num_samples, rand):
+    """Sample from the scatter matrix of a set of von Mises Fisher samples.
+    """
+    samples = numpy.vstack([sample_von_mises_fisher(dims, kappa, rand)
+            for _ in range(num_samples)])
+    A = numpy.dot(samples.T, samples)
+    return A
+
 # vim: et sw=4 sts=4
