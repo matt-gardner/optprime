@@ -306,4 +306,15 @@ class WishartBinghamPair(object):
         bs = BinghamSampler(-A)
         return bs.sample(rand)
 
+def sample_von_mises_fisher(dims, kappa, rand):
+    """Samples from a von Mises Fisher distribution centered at [1, 0, ..., 0].
+
+    To use a distribution at a different center, rotate the sample with a
+    Householder transformation.
+    """
+    theta = rand.vonmisesvariate(0, kappa)
+    head = numpy.array([math.cos(theta)])
+    tail = math.sin(theta) * rand_norm_array(dims - 1, rand)
+    return numpy.concatenate((head, tail))
+
 # vim: et sw=4 sts=4
