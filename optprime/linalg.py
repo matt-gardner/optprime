@@ -235,6 +235,28 @@ class BinghamSampler(object):
             z = self._eigvecs.dot(z)
         return z
 
+class BinghamWishartModel(object):
+    """A Wishart random variable with Bingham-distributed observations.
+
+    The distribution of A is a Wishart parameterized by its inverse-scale
+    matrix.  The inverse-scale parameter is constrained such that it must be
+    positive definite and the angle of its first eigenvector from the x-axis
+    must be less than pi/4.
+
+    The prior distribution of A is...
+
+    Note that k has an extremely skewed distribution, such that it makes more
+    sense to use the maximum likelihood estimate of k than to sample from it
+    (the probability of the second most likely value is 5 to 6 orders of
+    magnitude smaller in some quick experiments).
+    """
+
+    def __init__(self, inv_scale, dof, kappa):
+        pass
+
+        m, n = inv_scale.shape
+        assert m == n
+        self._dims = n
 
 class WishartBinghamPair(object):
     """Represents a pair of Bingham distributions with a Wishart prior.
@@ -259,20 +281,21 @@ class WishartBinghamPair(object):
 
         The `successes` are data from the success Bingham distribution, and
         the `failures` are data from the failure Bingham distribution.  Both
-        are of the form of two-dimensional arrays where data[0] is the first
-        data vector, data[1] is the second data vector, etc.
+        are of the form of two-dimensional arrays of row vectors (data[0] is
+        the first data vector, data[1] is the second data vector, etc.).
+        Combine individual arrays using vstack.
         """
         inv_scale = self.inv_scale
         dof = self.dof
 
         if successes is not None:
             success_scatter = numpy.dot(successes.T, successes)
-            inv_scale = inv_scale + 2 * success_scatter
+            inv_scale = inv_scale + success_scatter
             dof += len(successes)
 
         if failures is not None:
-            failure_scatter = numpy.dot(failures.T, failures)
-            inv_scale = inv_scale - 2 * failure_scatter
+            failure_scatter = numpy.dot(failures, failures.T)
+            inv_scale = inv_scale - failure_scatter
             dof += len(failures)
 
         return WishartBinghamPair(inv_scale, dof)
@@ -303,7 +326,7 @@ class WishartBinghamPair(object):
     def sample_success(self, rand):
         """Sample from the success Bingham distribution."""
         A = self.sample_wishart(rand)
-        bs = BinghamSampler(-A)
+        bs = BinghamSampler(-A/2)
         return bs.sample(rand)
 
 def sample_von_mises_fisher(dims, kappa, rand):
@@ -324,5 +347,55 @@ def sample_mf_scatter(dims, kappa, num_samples, rand):
             for _ in range(num_samples)])
     A = numpy.dot(samples.T, samples)
     return A
+
+def expected_mf_scatter(dims, kappa, rand, rtol=0.5, step=2):
+    """Find the expected value of the scatter matrix of a von Mises Fisher.
+
+    The `rtol` parameter is the relative tolerance used in the stopping
+    criterion.  The `step` parameter signifies how many von Mises Fisher
+    samples to take at a time.
+    """
+    # Set indices for the diagonal (except the first entry).
+    subdiag_rows, subdiag_cols = numpy.diag_indices(dims)
+    subdiag_rows = subdiag_rows[1:]
+    subdiag_cols = subdiag_cols[1:]
+
+    # Set indices for the lower subtriangular entries (except the first col).
+    subtril_rows, subtril_cols = numpy.tril_indices(dims - 2)
+    subtril_rows = subtril_rows + 2
+    subtril_cols = subtril_cols + 1
+    subtriu_rows = dims - subtril_rows
+    subtriu_cols = dims - subtril_cols
+
+    last_E = numpy.zeros((dims, dims))
+    last_n = 0
+    while True:
+        #A = sample_mf_scatter(dims, kappa, step, rand)
+        A = (sample_mf_scatter(dims, kappa, 1, rand)
+            + sample_mf_scatter(dims, kappa, 1, rand))
+
+        # Average to reduce the total # of required samples.
+        # Average the first column (except the first entry).
+        subcol1_mean = numpy.mean(A[1:, 0])
+        A[1:, 0] = subcol1_mean
+        A[0, 1:] = subcol1_mean
+        # Average the diagonal (except the first entry).
+        subdiag_mean = numpy.mean(A[subdiag_rows, subdiag_cols])
+        A[subdiag_rows, subdiag_cols] = subdiag_mean
+        # Average everything else.
+        subtri_mean = numpy.mean(A[subtril_rows, subtril_cols])
+        A[subtril_rows, subtril_cols] = subtri_mean
+        A[subtriu_rows, subtriu_cols] = subtri_mean
+
+        n = last_n + step
+        E = last_E * (last_n / n) + A / n
+
+        if numpy.allclose(E, last_E):
+            print('E:', E)
+            print('n:', n)
+            return E
+
+        last_n = n
+        last_E = E
 
 # vim: et sw=4 sts=4
