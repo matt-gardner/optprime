@@ -348,13 +348,32 @@ def sample_mf_scatter(dims, kappa, num_samples, rand):
     A = numpy.dot(samples.T, samples)
     return A
 
-def expected_mf_scatter(dims, kappa, rand, rtol=0.5, step=2):
+def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
     """Find the expected value of the scatter matrix of a von Mises Fisher.
 
     The `rtol` parameter is the relative tolerance used in the stopping
     criterion.  The `step` parameter signifies how many von Mises Fisher
     samples to take at a time.
+
+    Note that: Var(\sum{X_i} / n) = sigma^2 / n
+        where sigma^2 is the variance of each independent X_i.
+    So to divide the standard deviation by x, we need to multiply the number
+    of samples by x^2.
+    If the range of X_i is restricted to [0, 1] and its distribution is
+    unimodal, then sigma^2 < 1/12.  This loose bound seems fairly effective
+    at estimating the error of the diagonal entries in the scatter matrix.
+    So samples=100000 gives almost four digits of accuracy.
     """
+    assert samples % step == 0
+
+    E = numpy.zeros((dims, dims))
+    for _ in range(0, samples, step):
+        A = sample_mf_scatter(dims, kappa, step, rand)
+
+        E += A / samples
+
+    # Average to reduce the total # of required samples.
+
     # Set indices for the diagonal (except the first entry).
     subdiag_rows, subdiag_cols = numpy.diag_indices(dims)
     subdiag_rows = subdiag_rows[1:]
@@ -367,35 +386,19 @@ def expected_mf_scatter(dims, kappa, rand, rtol=0.5, step=2):
     subtriu_rows = dims - subtril_rows
     subtriu_cols = dims - subtril_cols
 
-    last_E = numpy.zeros((dims, dims))
-    last_n = 0
-    while True:
-        #A = sample_mf_scatter(dims, kappa, step, rand)
-        A = (sample_mf_scatter(dims, kappa, 1, rand)
-            + sample_mf_scatter(dims, kappa, 1, rand))
+    # Average the first column (except the first entry).
+    subcol1_mean = numpy.mean(E[1:, 0])
+    E[1:, 0] = subcol1_mean
+    E[0, 1:] = subcol1_mean
+    # Average the diagonal (except the first entry).
+    subdiag_mean = numpy.mean(E[subdiag_rows, subdiag_cols])
+    E[subdiag_rows, subdiag_cols] = subdiag_mean
+    # Average everything else.
+    subtri_mean = numpy.mean(E[subtril_rows, subtril_cols])
+    E[subtril_rows, subtril_cols] = subtri_mean
+    E[subtriu_rows, subtriu_cols] = subtri_mean
+    print(E)
+    return E
 
-        # Average to reduce the total # of required samples.
-        # Average the first column (except the first entry).
-        subcol1_mean = numpy.mean(A[1:, 0])
-        A[1:, 0] = subcol1_mean
-        A[0, 1:] = subcol1_mean
-        # Average the diagonal (except the first entry).
-        subdiag_mean = numpy.mean(A[subdiag_rows, subdiag_cols])
-        A[subdiag_rows, subdiag_cols] = subdiag_mean
-        # Average everything else.
-        subtri_mean = numpy.mean(A[subtril_rows, subtril_cols])
-        A[subtril_rows, subtril_cols] = subtri_mean
-        A[subtriu_rows, subtriu_cols] = subtri_mean
-
-        n = last_n + step
-        E = last_E * (last_n / n) + A / n
-
-        if numpy.allclose(E, last_E):
-            print('E:', E)
-            print('n:', n)
-            return E
-
-        last_n = n
-        last_E = E
 
 # vim: et sw=4 sts=4
