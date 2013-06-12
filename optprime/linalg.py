@@ -249,32 +249,34 @@ class BinghamWishartModel(object):
     sense to use the maximum likelihood estimate of k than to sample from it
     (the probability of the second most likely value is 5 to 6 orders of
     magnitude smaller in some quick experiments).
-    """
 
-    def __init__(self, inv_scale, dof, kappa):
-        pass
-
-        m, n = inv_scale.shape
-        assert m == n
-        self._dims = n
-
-class WishartBinghamPair(object):
-    """Represents a pair of Bingham distributions with a Wishart prior.
-
-    The success Bingham distribution's parameter matrix is the Wishart prior,
-    while the failure Bingham distribution's parameter matrix is the negative
+    The failure Bingham distribution's parameter matrix is the Wishart prior,
+    while the success Bingham distribution's parameter matrix is the negative
     of the Wishart prior.
 
     Attributes:
         inv_scale: the inverse of the scale matrix of the Wishart distribution
         dof: the degrees of freedom of the Wishart distribution
     """
-    def __init__(self, inv_scale, dof):
-        self.inv_scale = inv_scale
-        self.dof = dof
 
+    def __init__(self, inv_scale, dof, exp_scatter):
         m, n = inv_scale.shape
         assert m == n
+
+        self._inv_scale = inv_scale
+        self._dims = n
+        self._dof = dof
+        self._exp_scatter = exp_scatter
+
+    def incremented_dof(self, n=1):
+        """Create a new BinghamWishartModel with an incremented dof.
+
+        The number of degrees of freedom is incremented by the given amount,
+        and the prior scatter matrix is increased accordingly.
+        """
+        dof = self._dof + n
+        inv_scale = self._inv_scale + self._exp_scatter * n
+        return BinghamWishartModel(inv_scale, dof, self._exp_scatter)
 
     def posterior(self, successes=None, failures=None):
         """Returns the posterior distribution given samples from the Bingham.
@@ -285,8 +287,8 @@ class WishartBinghamPair(object):
         the first data vector, data[1] is the second data vector, etc.).
         Combine individual arrays using vstack.
         """
-        inv_scale = self.inv_scale
-        dof = self.dof
+        inv_scale = self._inv_scale
+        dof = self._dof
 
         if successes is not None:
             success_scatter = numpy.dot(successes.T, successes)
@@ -298,7 +300,7 @@ class WishartBinghamPair(object):
             inv_scale = inv_scale - failure_scatter
             dof += len(failures)
 
-        return WishartBinghamPair(inv_scale, dof)
+        return BinghamWishartModel(inv_scale, dof, self._exp_scatter)
 
     def sample_wishart(self, rand):
         """Sample from a Wishart with the given scale and degrees of freedom.
@@ -308,7 +310,7 @@ class WishartBinghamPair(object):
 
         Based on: Smith and Hocking. Wishart Variate Generator. 1972.
         """
-        scale = numpy.linalg.inv(self.inv_scale)
+        scale = numpy.linalg.inv(self._inv_scale)
         L = numpy.linalg.cholesky(scale)
         m, n = scale.shape
         A = numpy.zeros((m, n))
@@ -316,7 +318,7 @@ class WishartBinghamPair(object):
             # The Chi-squared distribution is a special case of the Gamma
             # distribution.  Note that Python uses the scale parameterization
             # and that the paper uses 1-based instead of 0-based indexing.
-            A[i, i] = rand.gammavariate((self.dof - i) / 2, 2) ** 0.5
+            A[i, i] = rand.gammavariate((self._dof - i) / 2, 2) ** 0.5
         for i in range(1, m):
             for j in range(i):
                 A[i, j] = rand.normalvariate(0, 1)
@@ -328,6 +330,18 @@ class WishartBinghamPair(object):
         A = self.sample_wishart(rand)
         bs = BinghamSampler(-A/2)
         return bs.sample(rand)
+
+def make_bingham_wishart_model(dims, kappa, rand):
+    """Construct a new BinghamWishartModel with the given dimensions."""
+
+    inv_scale = numpy.zeros((dims, dims))
+    dof = 0
+
+    exp_scatter = expected_mf_scatter(dims, kappa, rand)
+    empty_model = BinghamWishartModel(inv_scale, dof, exp_scatter)
+    model = empty_model.incremented_dof(dims)
+
+    return model
 
 def sample_von_mises_fisher(dims, kappa, rand):
     """Samples from a von Mises Fisher distribution centered at [1, 0, ..., 0].
@@ -397,7 +411,6 @@ def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
     subtri_mean = numpy.mean(E[subtril_rows, subtril_cols])
     E[subtril_rows, subtril_cols] = subtri_mean
     E[subtriu_rows, subtriu_cols] = subtri_mean
-    print(E)
     return E
 
 
