@@ -182,3 +182,30 @@ def test_von_mises_fisher_nonuniform():
             z = sample_von_mises_fisher(5, i, random)
             assert np.all(abs(z) <= z[0])
 
+def test_chol_update():
+    rand = random.Random(42)
+
+    # Create an initial positive definite matrix A.
+    A = np.zeros((4, 4))
+    for i in range(1, 5):
+        x = np.array([rand.normalvariate(0, 1) for _ in range(4)])
+        x /= np.linalg.norm(x)
+        A += np.outer(x, x)
+
+    # Find the upper-triangular Cholesky decomposition of A.
+    R_orig = np.linalg.cholesky(A).T
+
+    # Create a new data point.
+    y = np.array([rand.normalvariate(0, 1) for _ in range(4)])
+    y /= np.linalg.norm(y)
+    scatter = np.outer(y, y)
+
+    R_boring = np.linalg.cholesky(A + scatter).T
+
+    R_fancy = R_orig.copy()
+    chol_upper_update(R_fancy, y)
+    assert np.allclose(R_fancy, R_boring)
+
+    chol_upper_downdate(R_fancy, y)
+    assert np.allclose(R_fancy, R_orig)
+

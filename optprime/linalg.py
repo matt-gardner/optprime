@@ -10,7 +10,6 @@ import bisect
 import collections
 import itertools
 import math
-import numpy
 import random
 
 try:
@@ -23,8 +22,8 @@ def eigh_sorted(A):
 
     Note that sorting is from large to small.
     """
-    eigvals, eigvecs = numpy.linalg.eigh(A)
-    idx = numpy.argsort(eigvals[::-1])
+    eigvals, eigvecs = np.linalg.eigh(A)
+    idx = np.argsort(eigvals[::-1])
     return eigvals[idx], eigvecs[:, idx]
 
 def rand_o_matrix(n, rand=None):
@@ -138,6 +137,34 @@ def orthogonalize(x, A):
     v /= np.sqrt(np.dot(v, v))
     return v
 
+def chol_upper_update(R, x):
+    """Rank 1 update of the upper-triangular Cholesky factor R.
+
+    R is modified in-place.
+    """
+    x = x.copy()
+    for k in range(len(x)):
+        r = (R[k, k] ** 2 + x[k] ** 2) ** 0.5
+        c = r / R[k, k]
+        s = x[k] / R[k, k]
+        R[k, k] = r
+        R[k, k+1:] = (R[k, k+1:] + s * x[k+1:]) / c
+        x[k+1:] = c * x[k+1:] - s * R[k, k+1:]
+
+def chol_upper_downdate(R, x):
+    """Rank 1 downdate of the upper-triangular Cholesky factor R.
+
+    R is modified in-place.
+    """
+    x = x.copy()
+    for k in range(len(x)):
+        r = (R[k, k] ** 2 - x[k] ** 2) ** 0.5
+        c = r / R[k, k]
+        s = x[k] / R[k, k]
+        R[k, k] = r
+        R[k, k+1:] = (R[k, k+1:] - s * x[k+1:]) / c
+        x[k+1:] = c * x[k+1:] - s * R[k, k+1:]
+
 class BinghamSampler(object):
     """Sample from a Bingham distribution.
 
@@ -228,7 +255,7 @@ class BinghamSampler(object):
     def _convert_s_to_z(self, s):
         """Convert a list of values on the simplex to values on the sphere."""
         s.append(1 - sum(s))
-        s = numpy.array(s)
+        s = np.array(s)
         z = s ** 0.5
 
         if self._eigvecs is not None:
@@ -258,6 +285,14 @@ class BinghamWishartModel(object):
         inv_scale: the inverse of the scale matrix of the Wishart distribution
         dof: the degrees of freedom of the Wishart distribution
     """
+    # TODO: Use rank-one Cholesky updates and downdates.
+    # We should then also be able to find a fairly fast way to do matrix
+    # inversion that preserves the Cholesky decomposition.  For example, see:
+    # http://arxiv.org/abs/1111.4144
+    # A simple approach (but not the most efficient) is to solve for:
+    # A x_i = e_i where e_i is the i^th column of the identity matrix
+    # From a sequence of these solutions, we get the inverse:
+    # X = (x_1, x_2, ..., x_n)
 
     def __init__(self, inv_scale, dof, exp_scatter):
         m, n = inv_scale.shape
@@ -278,6 +313,13 @@ class BinghamWishartModel(object):
         inv_scale = self._inv_scale + self._exp_scatter * n
         return BinghamWishartModel(inv_scale, dof, self._exp_scatter)
 
+    def single_obs_posterior(self, x, success):
+        data = x.reshape((1,) + x.shape)
+        if success:
+            return self.posterior(successes=data)
+        else:
+            return self.posterior(failures=data)
+
     def posterior(self, successes=None, failures=None):
         """Returns the posterior distribution given samples from the Bingham.
 
@@ -291,12 +333,12 @@ class BinghamWishartModel(object):
         dof = self._dof
 
         if successes is not None:
-            success_scatter = numpy.dot(successes.T, successes)
+            success_scatter = np.dot(successes.T, successes)
             inv_scale = inv_scale + success_scatter
             dof += len(successes)
 
         if failures is not None:
-            failure_scatter = numpy.dot(failures, failures.T)
+            failure_scatter = np.dot(failures, failures.T)
             inv_scale = inv_scale - failure_scatter
             dof += len(failures)
 
@@ -310,10 +352,10 @@ class BinghamWishartModel(object):
 
         Based on: Smith and Hocking. Wishart Variate Generator. 1972.
         """
-        scale = numpy.linalg.inv(self._inv_scale)
-        L = numpy.linalg.cholesky(scale)
+        scale = np.linalg.inv(self._inv_scale)
+        L = np.linalg.cholesky(scale)
         m, n = scale.shape
-        A = numpy.zeros((m, n))
+        A = np.zeros((m, n))
         for i in range(m):
             # The Chi-squared distribution is a special case of the Gamma
             # distribution.  Note that Python uses the scale parameterization
@@ -322,8 +364,8 @@ class BinghamWishartModel(object):
         for i in range(1, m):
             for j in range(i):
                 A[i, j] = rand.normalvariate(0, 1)
-        LA = numpy.dot(L, A)
-        return numpy.dot(LA, LA.T)
+        LA = np.dot(L, A)
+        return np.dot(LA, LA.T)
 
     def sample_success(self, rand):
         """Sample from the success Bingham distribution."""
@@ -334,7 +376,7 @@ class BinghamWishartModel(object):
 def make_bingham_wishart_model(dims, kappa, rand):
     """Construct a new BinghamWishartModel with the given dimensions."""
 
-    inv_scale = numpy.zeros((dims, dims))
+    inv_scale = np.zeros((dims, dims))
     dof = 0
 
     exp_scatter = expected_mf_scatter(dims, kappa, rand)
@@ -350,16 +392,16 @@ def sample_von_mises_fisher(dims, kappa, rand):
     Householder transformation.
     """
     theta = rand.vonmisesvariate(0, kappa)
-    head = numpy.array([math.cos(theta)])
+    head = np.array([math.cos(theta)])
     tail = math.sin(theta) * rand_norm_array(dims - 1, rand)
-    return numpy.concatenate((head, tail))
+    return np.concatenate((head, tail))
 
 def sample_mf_scatter(dims, kappa, num_samples, rand):
     """Sample from the scatter matrix of a set of von Mises Fisher samples.
     """
-    samples = numpy.vstack([sample_von_mises_fisher(dims, kappa, rand)
+    samples = np.vstack([sample_von_mises_fisher(dims, kappa, rand)
             for _ in range(num_samples)])
-    A = numpy.dot(samples.T, samples)
+    A = np.dot(samples.T, samples)
     return A
 
 def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
@@ -380,7 +422,7 @@ def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
     """
     assert samples % step == 0
 
-    E = numpy.zeros((dims, dims))
+    E = np.zeros((dims, dims))
     for _ in range(0, samples, step):
         A = sample_mf_scatter(dims, kappa, step, rand)
 
@@ -389,26 +431,26 @@ def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
     # Average to reduce the total # of required samples.
 
     # Set indices for the diagonal (except the first entry).
-    subdiag_rows, subdiag_cols = numpy.diag_indices(dims)
+    subdiag_rows, subdiag_cols = np.diag_indices(dims)
     subdiag_rows = subdiag_rows[1:]
     subdiag_cols = subdiag_cols[1:]
 
     # Set indices for the lower subtriangular entries (except the first col).
-    subtril_rows, subtril_cols = numpy.tril_indices(dims - 2)
+    subtril_rows, subtril_cols = np.tril_indices(dims - 2)
     subtril_rows = subtril_rows + 2
     subtril_cols = subtril_cols + 1
     subtriu_rows = dims - subtril_rows
     subtriu_cols = dims - subtril_cols
 
     # Average the first column (except the first entry).
-    subcol1_mean = numpy.mean(E[1:, 0])
+    subcol1_mean = np.mean(E[1:, 0])
     E[1:, 0] = subcol1_mean
     E[0, 1:] = subcol1_mean
     # Average the diagonal (except the first entry).
-    subdiag_mean = numpy.mean(E[subdiag_rows, subdiag_cols])
+    subdiag_mean = np.mean(E[subdiag_rows, subdiag_cols])
     E[subdiag_rows, subdiag_cols] = subdiag_mean
     # Average everything else.
-    subtri_mean = numpy.mean(E[subtril_rows, subtril_cols])
+    subtri_mean = np.mean(E[subtril_rows, subtril_cols])
     E[subtril_rows, subtril_cols] = subtri_mean
     E[subtriu_rows, subtriu_cols] = subtri_mean
     return E
