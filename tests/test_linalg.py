@@ -192,20 +192,20 @@ def test_chol_update():
         x /= np.linalg.norm(x)
         A += np.outer(x, x)
 
-    # Find the upper-triangular Cholesky decomposition of A.
-    R_orig = np.linalg.cholesky(A).T
+    # Find the lower-triangular Cholesky decomposition of A.
+    L_orig = np.linalg.cholesky(A)
 
     # Create a new data point.
     y = np.array([rand.normalvariate(0, 1) for _ in range(4)])
     y /= np.linalg.norm(y)
     scatter = np.outer(y, y)
 
-    R_boring = np.linalg.cholesky(A + scatter).T
+    L_boring = np.linalg.cholesky(A + scatter)
 
-    R_fancy = R_orig.copy()
-    chol_upper_update(R_fancy, y)
-    assert np.allclose(R_fancy, R_boring)
+    L_fancy = L_orig.copy()
+    chol_update(L_fancy, y)
+    assert np.allclose(L_fancy, L_boring)
 
-    chol_upper_downdate(R_fancy, y)
-    assert np.allclose(R_fancy, R_orig)
+    chol_downdate(L_fancy, y)
+    assert np.allclose(L_fancy, L_orig)
 

@@ -137,33 +137,37 @@ def orthogonalize(x, A):
     v /= np.sqrt(np.dot(v, v))
     return v
 
-def chol_upper_update(R, x):
-    """Rank 1 update of the upper-triangular Cholesky factor R.
+def chol_update(L, x):
+    """Rank 1 update of the lower-triangular Cholesky factor L.
 
-    R is modified in-place.
+    L is modified in-place.
     """
     x = x.copy()
     for k in range(len(x)):
-        r = (R[k, k] ** 2 + x[k] ** 2) ** 0.5
-        c = r / R[k, k]
-        s = x[k] / R[k, k]
-        R[k, k] = r
-        R[k, k+1:] = (R[k, k+1:] + s * x[k+1:]) / c
-        x[k+1:] = c * x[k+1:] - s * R[k, k+1:]
+        r = (L[k, k] ** 2 + x[k] ** 2) ** 0.5
+        c = r / L[k, k]
+        s = x[k] / L[k, k]
+        L[k, k] = r
+        L[k+1:, k] = (L[k+1:, k] + s * x[k+1:]) / c
+        x[k+1:] = c * x[k+1:] - s * L[k+1:, k]
 
-def chol_upper_downdate(R, x):
-    """Rank 1 downdate of the upper-triangular Cholesky factor R.
+def chol_downdate(L, x):
+    """Rank 1 downdate of the lower-triangular Cholesky factor L.
 
-    R is modified in-place.
+    L is modified in-place.
     """
     x = x.copy()
     for k in range(len(x)):
-        r = (R[k, k] ** 2 - x[k] ** 2) ** 0.5
-        c = r / R[k, k]
-        s = x[k] / R[k, k]
-        R[k, k] = r
-        R[k, k+1:] = (R[k, k+1:] - s * x[k+1:]) / c
-        x[k+1:] = c * x[k+1:] - s * R[k, k+1:]
+        r_squared = L[k, k] ** 2 - x[k] ** 2
+        # TODO: or should this be `r_squared <= 0.0`?
+        if r_squared < 0.0:
+            raise RuntimeError('need a better exception here')
+        r = r_squared ** 0.5
+        c = r / L[k, k]
+        s = x[k] / L[k, k]
+        L[k, k] = r
+        L[k+1:, k] = (L[k+1:, k] - s * x[k+1:]) / c
+        x[k+1:] = c * x[k+1:] - s * L[k+1:, k]
 
 class BinghamSampler(object):
     """Sample from a Bingham distribution.
@@ -282,23 +286,16 @@ class BinghamWishartModel(object):
     of the Wishart prior.
 
     Attributes:
-        inv_scale: the inverse of the scale matrix of the Wishart distribution
+        inv_scale_L: the lower-triangular component of the Cholesky
+            decomposition of the inverse of the scale matrix of the Wishart
+            distribution
         dof: the degrees of freedom of the Wishart distribution
     """
-    # TODO: Use rank-one Cholesky updates and downdates.
-    # We should then also be able to find a fairly fast way to do matrix
-    # inversion that preserves the Cholesky decomposition.  For example, see:
-    # http://arxiv.org/abs/1111.4144
-    # A simple approach (but not the most efficient) is to solve for:
-    # A x_i = e_i where e_i is the i^th column of the identity matrix
-    # From a sequence of these solutions, we get the inverse:
-    # X = (x_1, x_2, ..., x_n)
-
-    def __init__(self, inv_scale, dof, exp_scatter):
-        m, n = inv_scale.shape
+    def __init__(self, inv_scale_L, dof, exp_scatter):
+        m, n = inv_scale_L.shape
         assert m == n
 
-        self._inv_scale = inv_scale
+        self._inv_scale_L = inv_scale_L
         self._dims = n
         self._dof = dof
         self._exp_scatter = exp_scatter
@@ -310,39 +307,26 @@ class BinghamWishartModel(object):
         and the prior scatter matrix is increased accordingly.
         """
         dof = self._dof + n
-        inv_scale = self._inv_scale + self._exp_scatter * n
-        return BinghamWishartModel(inv_scale, dof, self._exp_scatter)
+        old_inv_scale = np.dot(self._inv_scale_L, self._inv_scale_L.T)
+        inv_scale = old_inv_scale + self._exp_scatter * n
+        inv_scale_L = np.linalg.cholesky(inv_scale)
+        return BinghamWishartModel(inv_scale_L, dof, self._exp_scatter)
 
-    def single_obs_posterior(self, x, success):
-        data = x.reshape((1,) + x.shape)
-        if success:
-            return self.posterior(successes=data)
-        else:
-            return self.posterior(failures=data)
+    def posterior_success(self, x):
+        """Find the posterior given a sample from the success Bingham."""
+        inv_scale_L = self._inv_scale_L.copy()
+        dof = self._dof + 1
 
-    def posterior(self, successes=None, failures=None):
-        """Returns the posterior distribution given samples from the Bingham.
+        chol_update(inv_scale_L, x)
+        return BinghamWishartModel(inv_scale_L, dof, self._exp_scatter)
 
-        The `successes` are data from the success Bingham distribution, and
-        the `failures` are data from the failure Bingham distribution.  Both
-        are of the form of two-dimensional arrays of row vectors (data[0] is
-        the first data vector, data[1] is the second data vector, etc.).
-        Combine individual arrays using vstack.
-        """
-        inv_scale = self._inv_scale
-        dof = self._dof
+    def posterior_failure(self, x):
+        """Find the posterior given a sample from the success Bingham."""
+        inv_scale_L = self._inv_scale_L.copy()
+        dof = self._dof + 1
 
-        if successes is not None:
-            success_scatter = np.dot(successes.T, successes)
-            inv_scale = inv_scale + success_scatter
-            dof += len(successes)
-
-        if failures is not None:
-            failure_scatter = np.dot(failures, failures.T)
-            inv_scale = inv_scale - failure_scatter
-            dof += len(failures)
-
-        return BinghamWishartModel(inv_scale, dof, self._exp_scatter)
+        chol_downdate(inv_scale_L, x)
+        return BinghamWishartModel(inv_scale_L, dof, self._exp_scatter)
 
     def sample_wishart(self, rand):
         """Sample from a Wishart with the given scale and degrees of freedom.
@@ -352,9 +336,11 @@ class BinghamWishartModel(object):
 
         Based on: Smith and Hocking. Wishart Variate Generator. 1972.
         """
-        scale = np.linalg.inv(self._inv_scale)
-        L = np.linalg.cholesky(scale)
-        m, n = scale.shape
+        # Note that it's slightly faster for large (larger than 40x40)
+        # matrices to use this instead:
+        #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
+        scale_L = np.linalg.inv(self._inv_scale_L)
+        m, n = scale_L.shape
         A = np.zeros((m, n))
         for i in range(m):
             # The Chi-squared distribution is a special case of the Gamma
@@ -364,7 +350,7 @@ class BinghamWishartModel(object):
         for i in range(1, m):
             for j in range(i):
                 A[i, j] = rand.normalvariate(0, 1)
-        LA = np.dot(L, A)
+        LA = np.dot(scale_L, A)
         return np.dot(LA, LA.T)
 
     def sample_success(self, rand):
