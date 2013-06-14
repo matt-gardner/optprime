@@ -159,15 +159,17 @@ def chol_downdate(L, x):
     x = x.copy()
     for k in range(len(x)):
         r_squared = L[k, k] ** 2 - x[k] ** 2
-        # TODO: or should this be `r_squared <= 0.0`?
-        if r_squared < 0.0:
-            raise RuntimeError('need a better exception here')
+        if r_squared <= 0.0:
+            raise NonPosDefError()
         r = r_squared ** 0.5
         c = r / L[k, k]
         s = x[k] / L[k, k]
         L[k, k] = r
         L[k+1:, k] = (L[k+1:, k] - s * x[k+1:]) / c
         x[k+1:] = c * x[k+1:] - s * L[k+1:, k]
+
+class NonPosDefError(Exception):
+    pass
 
 class BinghamSampler(object):
     """Sample from a Bingham distribution.
