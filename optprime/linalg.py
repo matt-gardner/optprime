@@ -341,6 +341,7 @@ class BinghamWishartModel(object):
         # Note that it's slightly faster for large (larger than 40x40)
         # matrices to use this instead:
         #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
+        # or even better: scipy.linalg.get_lapack_funcs('trtri') or something
         scale_L = np.linalg.inv(self._inv_scale_L)
         m, n = scale_L.shape
         A = np.zeros((m, n))
