@@ -300,9 +300,8 @@ class BinghamWishartModel(object):
         self._inv_scale_L = inv_scale_L
         self._dims = n
         self._dof = dof
-        self._exp_scatter = exp_scatter
 
-    def incremented_dof(self, n=1):
+    def incremented_dof(self, exp_scatter, n=1):
         """Create a new BinghamWishartModel with an incremented dof.
 
         The number of degrees of freedom is incremented by the given amount,
@@ -310,9 +309,9 @@ class BinghamWishartModel(object):
         """
         dof = self._dof + n
         old_inv_scale = np.dot(self._inv_scale_L, self._inv_scale_L.T)
-        inv_scale = old_inv_scale + self._exp_scatter * n
+        inv_scale = old_inv_scale + exp_scatter * n
         inv_scale_L = np.linalg.cholesky(inv_scale)
-        return BinghamWishartModel(inv_scale_L, dof, self._exp_scatter)
+        return BinghamWishartModel(inv_scale_L, dof, exp_scatter)
 
     def posterior_success(self, x):
         """Find the posterior given a sample from the success Bingham."""
@@ -320,7 +319,7 @@ class BinghamWishartModel(object):
         dof = self._dof + 1
 
         chol_update(inv_scale_L, x)
-        return BinghamWishartModel(inv_scale_L, dof, self._exp_scatter)
+        return BinghamWishartModel(inv_scale_L, dof)
 
     def posterior_failure(self, x):
         """Find the posterior given a sample from the success Bingham."""
@@ -328,7 +327,7 @@ class BinghamWishartModel(object):
         dof = self._dof + 1
 
         chol_downdate(inv_scale_L, x)
-        return BinghamWishartModel(inv_scale_L, dof, self._exp_scatter)
+        return BinghamWishartModel(inv_scale_L, dof)
 
     def sample_wishart(self, rand):
         """Sample from a Wishart with the given scale and degrees of freedom.
@@ -369,10 +368,89 @@ def make_bingham_wishart_model(dims, kappa, rand):
     dof = 0
 
     exp_scatter = expected_mf_scatter(dims, kappa, rand)
-    empty_model = BinghamWishartModel(inv_scale, dof, exp_scatter)
-    model = empty_model.incremented_dof(dims)
+    empty_model = BinghamWishartModel(inv_scale, dof)
+    model = empty_model.incremented_dof(exp_scatter, dims)
 
     return model
+
+class UnobservedBinghamWishartModel(object):
+    """Bingham-Wishart Model without fully observed success/failure data.
+    """
+    def __init__(self, bingham_wishart, p_s, p_t_1, p_t_0):
+        self._bingham_wishart = bingham_wishart
+
+        self.log_p_s = math.log(p_s)
+        self.log_q_s = math.log(1 - p_s)
+        self.log_p_t_1 = math.log(p_t_1)
+        self.log_q_t_1 = math.log(1 - p_t_1)
+        self.log_p_t_0 = math.log(p_t_0)
+        self.log_q_t_0 = math.log(1 - p_t_0)
+
+        # Outcomes of imperfect success/failure tests: (x, t) pairs.
+        self._observations = []
+        # Current guesses of latent success/failure state.
+        self._successes = []
+        # Current sample from Wishart distribution
+        self._A_sample = None
+
+    def sample_success(self, rand):
+        return self._bingham_wishart.sample_success(rand)
+
+    def record(self, x, t):
+        """Record the outcome t of a test at direction x.
+
+        Initially assumes that the latent state is `success`, since an invalid
+        failure would cause inconsistency.  Thus, the `gibbs_successes`
+        function should be called subsequently.
+        """
+        self._observations.append((x, t))
+        self._successes.append(True)
+        self._bingham_wishart = self._bingham_wishart.posterior_success(x)
+
+    def gibbs_wishart(self, rand):
+        """Sample from the Wishart distribution of node A."""
+        self._A_sample = self._bingham_wishart.sample_wishart(rand)
+
+    def gibbs_successes(self, rand, n=None):
+        """Sample from the complete conditional of a latent success state node.
+
+        If an observation number `n` is not given, a random one is chosen.
+        """
+        if n is None:
+            n = rand.randrange(len(self._observations))
+        x, t = self._observations[n]
+
+        xT_A_x = np.dot(x, np.dot(A, x))
+
+        log_p = self.log_p_s - 0.5 * xT_A_x
+        log_q = self._log_q_s + 0.5 * xT_A_x
+        if t:
+            log_p += self._log_p_t_1
+            log_q += self._log_q_t_1
+        else:
+            log_p += self._log_p_t_0
+            log_q += self._log_q_t_0
+
+        p = math.exp(log_p)
+        q = math.exp(log_q)
+
+        success = (rand.uniform(0, p + q) < p)
+        if success == self._successes[n]:
+            return
+
+        inv_scale_L = self._bingham_wishart._inv_scale_L.copy()
+        dof = self._bingham_wishart._dof
+
+        if success:
+            chol_update(inv_scale_L, 2 * x)
+        else:
+            try:
+                chol_downdate(inv_scale_L, 2 * x)
+            except NonPosDefError:
+                return
+
+        self._bingham_wishart = BinghamWishartModel(inv_scale_L, dof)
+        self._successes[n] = success
 
 def sample_von_mises_fisher(dims, kappa, rand):
     """Samples from a von Mises Fisher distribution centered at [1, 0, ..., 0].
