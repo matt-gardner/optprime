@@ -293,7 +293,7 @@ class BinghamWishartModel(object):
             distribution
         dof: the degrees of freedom of the Wishart distribution
     """
-    def __init__(self, inv_scale_L, dof, exp_scatter):
+    def __init__(self, inv_scale_L, dof):
         m, n = inv_scale_L.shape
         assert m == n
 
@@ -311,7 +311,7 @@ class BinghamWishartModel(object):
         old_inv_scale = np.dot(self._inv_scale_L, self._inv_scale_L.T)
         inv_scale = old_inv_scale + exp_scatter * n
         inv_scale_L = np.linalg.cholesky(inv_scale)
-        return BinghamWishartModel(inv_scale_L, dof, exp_scatter)
+        return BinghamWishartModel(inv_scale_L, dof)
 
     def posterior_success(self, x):
         """Find the posterior given a sample from the success Bingham."""
@@ -371,7 +371,7 @@ def make_bingham_wishart_model(dims, kappa, rand):
     empty_model = BinghamWishartModel(inv_scale, dof)
     model = empty_model.incremented_dof(exp_scatter, dims)
 
-    return model
+    return model, exp_scatter
 
 class UnobservedBinghamWishartModel(object):
     """Bingham-Wishart Model without fully observed success/failure data.
@@ -379,12 +379,12 @@ class UnobservedBinghamWishartModel(object):
     def __init__(self, bingham_wishart, p_s, p_t_1, p_t_0):
         self._bingham_wishart = bingham_wishart
 
-        self.log_p_s = math.log(p_s)
-        self.log_q_s = math.log(1 - p_s)
-        self.log_p_t_1 = math.log(p_t_1)
-        self.log_q_t_1 = math.log(1 - p_t_1)
-        self.log_p_t_0 = math.log(p_t_0)
-        self.log_q_t_0 = math.log(1 - p_t_0)
+        self._log_p_s = math.log(p_s)
+        self._log_q_s = math.log(1 - p_s)
+        self._log_p_t_1 = math.log(p_t_1)
+        self._log_q_t_1 = math.log(1 - p_t_1)
+        self._log_p_t_0 = math.log(p_t_0)
+        self._log_q_t_0 = math.log(1 - p_t_0)
 
         # Outcomes of imperfect success/failure tests: (x, t) pairs.
         self._observations = []
@@ -420,9 +420,10 @@ class UnobservedBinghamWishartModel(object):
             n = rand.randrange(len(self._observations))
         x, t = self._observations[n]
 
+        A = np.linalg.inv(self._bingham_wishart._inv_scale_L)
         xT_A_x = np.dot(x, np.dot(A, x))
 
-        log_p = self.log_p_s - 0.5 * xT_A_x
+        log_p = self._log_p_s - 0.5 * xT_A_x
         log_q = self._log_q_s + 0.5 * xT_A_x
         if t:
             log_p += self._log_p_t_1
