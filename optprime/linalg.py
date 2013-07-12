@@ -137,6 +137,16 @@ def orthogonalize(x, A):
     v /= np.sqrt(np.dot(v, v))
     return v
 
+def ladd(log_x, log_y):
+    """Add two numbers in log space."""
+
+    if log_y > log_x:
+        # log_x smaller gives more precision
+        log_x, log_y = log_y, log_x
+    if math.isinf(log_x):
+        return log_x
+    return log_x + math.log(1 + math.exp(log_y - log_x))
+
 def chol_update(L, x):
     """Rank 1 update of the lower-triangular Cholesky factor L.
 
@@ -355,11 +365,25 @@ class BinghamWishartModel(object):
         LA = np.dot(scale_L, A)
         return np.dot(LA, LA.T)
 
-    def sample_success(self, rand):
+    def sample_success(self, rand, A=None):
         """Sample from the success Bingham distribution."""
-        A = self.sample_wishart(rand)
+        if A is None:
+            A = self.sample_wishart(rand)
         bs = BinghamSampler(-A/2)
         return bs.sample(rand)
+
+    def wishart_mean(self):
+        """Expected Value of the Wishart distribution."""
+        scale_L = np.linalg.inv(self._inv_scale_L)
+        V = np.dot(scale_L, scale_L.T)
+        return self._dof * V
+
+    def wishart_mode(self):
+        """Mode of the Wishart distribution."""
+        assert self._dof >= self._dims + 1
+        scale_L = np.linalg.inv(self._inv_scale_L)
+        V = np.dot(scale_L, scale_L.T)
+        return (self._dof - self._dims - 1) * V
 
 def make_bingham_wishart_model(dims, kappa, rand):
     """Construct a new BinghamWishartModel with the given dimensions."""
@@ -394,7 +418,8 @@ class UnobservedBinghamWishartModel(object):
         self._A_sample = None
 
     def sample_success(self, rand):
-        return self._bingham_wishart.sample_success(rand)
+        self.gibbs_wishart(rand)
+        return self._bingham_wishart.sample_success(rand, self._A_sample)
 
     def record(self, x, t):
         """Record the outcome t of a test at direction x.
@@ -420,11 +445,12 @@ class UnobservedBinghamWishartModel(object):
             n = rand.randrange(len(self._observations))
         x, t = self._observations[n]
 
-        A = np.linalg.inv(self._bingham_wishart._inv_scale_L)
+        A = self._A_sample
         xT_A_x = np.dot(x, np.dot(A, x))
 
-        log_p = self._log_p_s - 0.5 * xT_A_x
-        log_q = self._log_q_s + 0.5 * xT_A_x
+        log_p = self._log_p_s - xT_A_x / 2
+        log_q = self._log_q_s + xT_A_x / 2
+        #print(' ', xT_A_x)
         if t:
             log_p += self._log_p_t_1
             log_q += self._log_q_t_1
@@ -432,12 +458,18 @@ class UnobservedBinghamWishartModel(object):
             log_p += self._log_p_t_0
             log_q += self._log_q_t_0
 
-        p = math.exp(log_p)
-        q = math.exp(log_q)
+        log_C = ladd(log_p, log_q)
+        log_p -= log_C
+        log_q -= log_C
+        #print(' ', math.exp(log_p), math.exp(log_q))
 
-        success = (rand.uniform(0, p + q) < p)
-        if success == self._successes[n]:
-            return
+        success = (math.log(rand.random()) < log_p)
+        #if success == self._successes[n]:
+        #    if success:
+        #        print('.', end='')
+        #    else:
+        #        print('_', end='')
+        #    return
 
         inv_scale_L = self._bingham_wishart._inv_scale_L.copy()
         dof = self._bingham_wishart._dof
