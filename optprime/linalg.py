@@ -555,5 +555,29 @@ def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
     E[subtriu_rows, subtriu_cols] = subtri_mean
     return E
 
+def kume_walker_w(l, a):
+    log_w = math.lgamma(0.5)
+    log_w -= math.lgamma(0.5 + sum((l_i + 0.5) for l_i in l))
+    for l_i, a_i in zip(l, a):
+        log_w += l_i * math.log(a_i) + math.lgamma(l_i + 0.5)
+        log_w -= math.lgamma(l_i + 1)
+    return math.exp(log_w)
+
+def kume_walker_norm(a, N):
+    """Sum up all of the w(l) terms with \sum l_i < N."""
+    indices = range(len(a))
+    total = 0
+    for sum_l in range(N):
+        for combos in itertools.combinations_with_replacement(indices, sum_l):
+            l = [0] * len(a)
+            for i in combos:
+                l[i] += 1
+            total += kume_walker_w(l, a)
+    return total
+
+def area(n):
+    """Surface area of an n-1 sphere (a sphere in an n-dimensional space)."""
+    log_s = math.log(math.pi) * n / 2 - math.lgamma(n / 2)
+    return 2 * math.exp(log_s)
 
 # vim: et sw=4 sts=4
