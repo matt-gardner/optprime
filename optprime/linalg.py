@@ -200,17 +200,26 @@ class BinghamSampler(object):
         lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
             be 0 and is not included in the list).
     """
-    def __init__(self, A=None, lambdas=None):
-        assert lambdas is None or A is None
+    def __init__(self, A=None, lambdas=None, eigvecs=None):
+        assert A is None or (lambdas is None and eigvecs is None)
 
         self._sampler = None
-        self._eigvecs = None
+        self._eigvecs = eigvecs
 
         if A is not None:
             eigvals, self._eigvecs = eigh_sorted(-A)
             smallest_eig = eigvals[-1]
             lambdas = eigvals[:-1] - smallest_eig
         self._lambdas = lambdas
+
+    def dual(self):
+        """Return the Bingham(-A) sampler."""
+        # Eigenvalues of -A sorted largest to smallest.
+        eigvals = np.append(-self._lambdas, 0.0)[::-1]
+        smallest_eig = eigvals[-1]
+        lambdas = eigvals[:-1] - smallest_eig
+        eigvecs = np.array(self._eigvecs[::-1])
+        return BinghamSampler(lambdas=lambdas, eigvecs=eigvecs)
 
     def _pick_sampler(self):
         if any(l == 0 for l in self._lambdas):

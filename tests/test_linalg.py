@@ -112,6 +112,17 @@ def test_bingham_sampler_init():
     bs = BinghamSampler(A)
     assert list(bs._lambdas) == [4, 2]
 
+def test_bingham_sampler_dual():
+    # Note that this test array is symmetric.
+    A = np.array([[5, 0, 0], [0, 3, 0], [0, 0, 1]])
+
+    bs = BinghamSampler(A)
+    bs_dual1 = BinghamSampler(-A)
+    bs_dual2 = bs.dual()
+
+    assert np.allclose(bs_dual1._lambdas, bs_dual2._lambdas)
+    assert np.allclose(bs_dual1._eigvecs, bs_dual2._eigvecs)
+
 def test_bingham_sampler_init_neg():
     # Note that this test array is symmetric.
     A = np.array([[-3, 0, 0], [0, 5, 0], [0, 0, -1]])
