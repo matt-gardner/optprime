@@ -182,13 +182,84 @@ class NonPosDefError(Exception):
     pass
 
 class BinghamSampler(object):
-    """Sample from a Bingham distribution.
+    """Sample from a real-valued Bingham distribution.
 
     The pdf is of the form:
-        f(z) = c(A)^{-1} exp(z^T A z), z \in S^{k-1}
+        f(z) = c(A)^{-1} exp(x^T A x), x \in S^{k-1}
 
     where A is a k*k symmetric matrix, c(A) is a normalizing constant, and
     S^{k-1} is the unit sphere in R^k.
+
+    Method from: Kume and Walker. Sampling from compositional and
+    directional distributions.  Statistics and Computing, 2006.
+
+    Parameters (either A or lambdas must be specified, but not both):
+        A: the parameter matrix of the Bingham distribution
+        lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
+            be 0 and is not included in the list).
+    """
+    def __init__(self, A=None, lambdas=None, eigvecs=None):
+        assert A is None or (lambdas is None and eigvecs is None)
+
+        self._sampler = None
+        self._eigvecs = eigvecs
+
+        if A is not None:
+            eigvals, self._eigvecs = eigh_sorted(-A)
+            smallest_eig = eigvals[-1]
+            lambdas = eigvals[:-1] - smallest_eig
+        self._lambdas = lambdas
+
+        self._v = None
+        self._w = None
+        self._s = np.zeroes(len(self._lambdas))
+
+    def dual(self):
+        """Return the Bingham(-A) sampler."""
+        # Eigenvalues of -A sorted largest to smallest.
+        eigvals = np.append(-self._lambdas, 0.0)[::-1]
+        smallest_eig = eigvals[-1]
+        lambdas = eigvals[:-1] - smallest_eig
+        eigvecs = np.array(self._eigvecs[::-1])
+        return BinghamSampler(lambdas=lambdas, eigvecs=eigvecs)
+
+    def sample(self, rand, thin=10):
+        """Gibbs sampler iterator.
+
+        Samples are thinned according to the given parameter.
+        """
+        # Note: we follow the Kent notation for indexing eigenvalues.
+        # s_k = 1 - sum(s) and s_k corresponds to s_0 in the Kume paper.
+        # Also, unlike the Kume paper, we assume all eigenvalues are unique.
+        # The algorithm is much simpler without worrying about multiplicities.
+
+        s = self._s
+
+        for _ in range(thin):
+            self._v = rand.uniform(0, math.exp(-sum(self._lambdas * s)))
+            self._w = rand.uniform(0, (1 - sum(s)) ** (-0.5))
+
+            for i, lambda_i in enumerate(self._lambdas):
+                product_sum = (self._lambdas[:i] * s[:i] +
+                        self._lambdas[i+1:] * s[i+1:])
+                c = max(-product_sum / lambda_i,
+                        1 - self._w ** (-2) - (s[:i] + s[i+1:]))
+                d = (-math.log(self._v) - product_sum) / lambda_i
+
+                u = rand.uniform(c ** 2, d ** 2)
+                s[i] = u ** 2
+
+        return np.array(s)
+
+
+class ComplexBinghamSampler(object):
+    """Sample from a Complex Bingham distribution.
+
+    The pdf is of the form:
+        f(z) = c(A)^{-1} exp(z^T A z), z \in CS^{k-1}
+
+    where A is a k*k symmetric matrix, c(A) is a normalizing constant, and
+    CS^{k-1} is the unit sphere in C^k.
 
     Methods based on: Kent, Constable, and Er.  Simulation for the complex
     Bingham distribution.  Statistics and Computing, 2004.  We skip Method 3,
@@ -219,7 +290,7 @@ class BinghamSampler(object):
         smallest_eig = eigvals[-1]
         lambdas = eigvals[:-1] - smallest_eig
         eigvecs = np.array(self._eigvecs[::-1])
-        return BinghamSampler(lambdas=lambdas, eigvecs=eigvecs)
+        return ComplexBinghamSampler(lambdas=lambdas, eigvecs=eigvecs)
 
     def _pick_sampler(self):
         if any(l == 0 for l in self._lambdas):
@@ -286,6 +357,45 @@ class BinghamSampler(object):
         if self._eigvecs is not None:
             z = self._eigvecs.dot(z)
         return z
+
+    def log_norm_const(self):
+        """Find the normalizing constant (from Kent et al., 2004).
+
+        Returns d(A) such that f(x) = (2\pi^k d(A))^{-1} e^{x^T A x}.
+        """
+        log_p_T
+
+    def truncation_probability(self, rand):
+        """Equation (3.8) from (Kent et al., 2004).
+
+        The technique assumes that none of the lambdas are equal!  We work
+        around this with some inaccuracy that hopefully doesn't matter.
+        """
+        if len(set(self.lambdas)) == len(self.lambdas):
+            lambdas = self.lambdas
+        else:
+            counter = collections.Counter()
+            counter.update(self.lambdas)
+            lambdas = []
+            for lambda_i in self.lambdas:
+                if counter[lambda_i] > 1:
+                    r = rand.normalvariate(1, 0.005)
+                    lambda_i *= r
+                lambdas.append(lambda_i)
+
+        log_p_T = None
+        p_T = 0
+        for j, lambda_j in enumerate(self.lambdas):
+            term = math.log(1 - math.exp(-lambda_j))
+            for i, lambda_i in enumerate(self.lambdas):
+                if i != j:
+                    term += math.log(lambda_i) - math.log(lambda_i - lambda_j)
+            if log_p_T is None:
+                log_p_T = term
+            else:
+                log_p_T = ladd(log_p_T, term)
+            p_T += product
+        return p_T
 
 class BinghamWishartModel(object):
     """A Wishart random variable with Bingham-distributed observations.
@@ -378,7 +488,7 @@ class BinghamWishartModel(object):
         """Sample from the success Bingham distribution."""
         if A is None:
             A = self.sample_wishart(rand)
-        bs = BinghamSampler(-A/2)
+        bs = ComplexBinghamSampler(-A/2)
         return bs.sample(rand)
 
     def wishart_mean(self):
