@@ -23,7 +23,7 @@ def eigh_sorted(A):
     Note that sorting is from large to small.
     """
     eigvals, eigvecs = np.linalg.eigh(A)
-    idx = np.argsort(eigvals[::-1])
+    idx = np.argsort(eigvals)[::-1]
     return eigvals[idx], eigvecs[:, idx]
 
 def rand_o_matrix(n, rand=None):

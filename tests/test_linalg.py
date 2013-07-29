@@ -105,6 +105,14 @@ def test_eigh_sorted():
     actual_eigvec3 = np.array([-0.73697623, -0.32798528, 0.59100905])
     assert np.allclose(eigvecs[:, 2], actual_eigvec3, TOLERANCE)
 
+def test_eigh_sorted_neg():
+    # Note that this test array is symmetric.
+    A = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])
+    eigvals, eigvecs = eigh_sorted(A)
+
+    actual_eigvals = np.array([1, 1, -1])
+    assert np.allclose(eigvals, actual_eigvals, TOLERANCE)
+
 def test_bingham_sampler_init():
     # Note that this test array is symmetric.
     A = np.array([[5, 0, 0], [0, 3, 0], [0, 0, 1]])
