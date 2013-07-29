@@ -258,6 +258,7 @@ class BinghamSampler(object):
     def _convert_s_to_z(self, s):
         """Convert a list of values on the simplex to values on the sphere."""
         z = np.empty(len(s) + 1)
+        z[:-1] = s
         z[-1] = 1 - sum(s)
         z **= 0.5
 
