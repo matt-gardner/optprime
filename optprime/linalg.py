@@ -212,7 +212,7 @@ class BinghamSampler(object):
 
         self._v = None
         self._w = None
-        self._s = np.zeroes(len(self._lambdas))
+        self._s = np.zeros(len(self._lambdas))
 
     def dual(self):
         """Return the Bingham(-A) sampler."""
@@ -226,12 +226,14 @@ class BinghamSampler(object):
     def sample(self, rand, thin=10):
         """Gibbs sampler iterator.
 
-        Samples are thinned according to the given parameter.
+        Samples are thinned according to the given `thin` parameter.
         """
         # Note: we follow the Kent notation for indexing eigenvalues.
         # s_k = 1 - sum(s) and s_k corresponds to s_0 in the Kume paper.
         # Also, unlike the Kume paper, we assume all eigenvalues are unique.
         # The algorithm is much simpler without worrying about multiplicities.
+        # Also note that the Kume paper is an awful paper (with a good idea),
+        # so the formulas here look very different from their misleading junk.
 
         s = self._s
 
@@ -240,16 +242,28 @@ class BinghamSampler(object):
             self._w = rand.uniform(0, (1 - sum(s)) ** (-0.5))
 
             for i, lambda_i in enumerate(self._lambdas):
-                product_sum = (self._lambdas[:i] * s[:i] +
-                        self._lambdas[i+1:] * s[i+1:])
-                c = max(-product_sum / lambda_i,
-                        1 - self._w ** (-2) - (s[:i] + s[i+1:]))
-                d = (-math.log(self._v) - product_sum) / lambda_i
+                sum_of_others = sum(s[:i]) + sum(s[i+1:])
+                c = max(0, 1 - self._w ** (-2) - sum_of_others)
+
+                product_sum = (sum(self._lambdas[:i] * s[:i]) +
+                        sum(self._lambdas[i+1:] * s[i+1:]))
+                d = min((-math.log(self._v) - product_sum) / lambda_i,
+                        1 - sum_of_others)
 
                 u = rand.uniform(c ** 2, d ** 2)
                 s[i] = u ** 2
 
-        return np.array(s)
+        return self._convert_s_to_z(s)
+
+    def _convert_s_to_z(self, s):
+        """Convert a list of values on the simplex to values on the sphere."""
+        z = np.empty(len(s) + 1)
+        z[-1] = 1 - sum(s)
+        z **= 0.5
+
+        if self._eigvecs is not None:
+            z = self._eigvecs.dot(z)
+        return z
 
 
 class ComplexBinghamSampler(object):
@@ -488,7 +502,7 @@ class BinghamWishartModel(object):
         """Sample from the success Bingham distribution."""
         if A is None:
             A = self.sample_wishart(rand)
-        bs = ComplexBinghamSampler(-A/2)
+        bs = BinghamSampler(-A/2)
         return bs.sample(rand)
 
     def wishart_mean(self):
