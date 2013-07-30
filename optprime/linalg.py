@@ -247,10 +247,14 @@ class BinghamSampler(object):
 
                 product_sum = (sum(self._lambdas[:i] * s[:i]) +
                         sum(self._lambdas[i+1:] * s[i+1:]))
+                # Note: if lambda_i = 0, then the first term is float('inf'),
+                # so in the end, d = 1 - sum_of_others.
                 d = min((-math.log(self._v) - product_sum) / lambda_i,
                         1 - sum_of_others)
 
-                u = rand.uniform(c ** 2, d ** 2)
+                # Note: there's an error in the Kume paper, which incorrectly
+                # says to sample from: u = rand.uniform(c ** 2, d ** 2)
+                u = rand.uniform(c ** 0.5, d ** 0.5)
                 s[i] = u ** 2
 
         return self._convert_s_to_z(s)
