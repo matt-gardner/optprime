@@ -182,6 +182,7 @@ def chol_downdate(L, x):
 class NonPosDefError(Exception):
     pass
 
+
 class BinghamSampler(object):
     """Sample from a real-valued Bingham distribution.
 
@@ -440,44 +441,6 @@ class ComplexBinghamSampler(object):
             z = self._eigvecs.dot(z)
         return z
 
-    def log_norm_const(self):
-        """Find the normalizing constant (from Kent et al., 2004).
-
-        Returns d(A) such that f(x) = (2\pi^k d(A))^{-1} e^{x^T A x}.
-        """
-        log_p_T
-
-    def truncation_probability(self, rand):
-        """Equation (3.8) from (Kent et al., 2004).
-
-        The technique assumes that none of the lambdas are equal!  We work
-        around this with some inaccuracy that hopefully doesn't matter.
-        """
-        if len(set(self.lambdas)) == len(self.lambdas):
-            lambdas = self.lambdas
-        else:
-            counter = collections.Counter()
-            counter.update(self.lambdas)
-            lambdas = []
-            for lambda_i in self.lambdas:
-                if counter[lambda_i] > 1:
-                    r = rand.normalvariate(1, 0.005)
-                    lambda_i *= r
-                lambdas.append(lambda_i)
-
-        log_p_T = None
-        p_T = 0
-        for j, lambda_j in enumerate(self.lambdas):
-            term = math.log(1 - math.exp(-lambda_j))
-            for i, lambda_i in enumerate(self.lambdas):
-                if i != j:
-                    term += math.log(lambda_i) - math.log(lambda_i - lambda_j)
-            if log_p_T is None:
-                log_p_T = term
-            else:
-                log_p_T = ladd(log_p_T, term)
-            p_T += product
-        return p_T
 
 class BinghamWishartModel(object):
     """A Wishart random variable with Bingham-distributed observations.
