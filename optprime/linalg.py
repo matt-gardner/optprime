@@ -11,6 +11,7 @@ import collections
 import itertools
 import math
 import random
+import scipy.optimize
 
 try:
     import numpy as np
@@ -269,6 +270,66 @@ class BinghamSampler(object):
         if self._eigvecs is not None:
             z = self._eigvecs.dot(z)
         return z
+
+    def cgf_prime_minus1(self, t):
+        """First derivative of the cumulant generating function.
+
+        See: Kume and Wood. Saddlepoint approximations for the Bingham and
+        Fisher-Bingham normalising constants. Biometrika, 2005.
+        """
+        # Term for lambda_0 = 0:
+        total = -0.5 / t
+        for lambda_i in self._lambdas:
+            total += 0.5 / (lambda_i - t)
+        return total - 1
+
+    def cgf_prime2(self, t):
+        """Second derivative of the cumulant generating function.
+
+        See: Kume and Wood. Saddlepoint approximations for the Bingham and
+        Fisher-Bingham normalising constants. Biometrika, 2005.
+        """
+        # Term for lambda_0 = 0:
+        total = 0.5 / t ** 2
+        for lambda_i in self._lambdas:
+            total += 0.5 / (lambda_i - t) ** 2
+        return total
+
+    def constish(self):
+        """Approximate the constant of integration.
+
+        For the sake of computational efficiency, omits a few unnecessary
+        terms that are independent of the parameters of the distribution.
+
+        See: Kume and Wood. Saddlepoint approximations for the Bingham and
+        Fisher-Bingham normalising constants. Biometrika, 2005.
+        """
+        # Find the solution to the saddlepoint equation K'_theta(t_hat)=1.
+        p = len(self._lambdas + 1)
+        x0 = -(p + 1) / 4
+        t_hat = scipy.optimize.newton(self.cgf_prime_minus1, x0,
+                fprime=self.cgf_prime2)
+        assert t_hat < 0
+
+        # Find various derivatives of the cumulant generating function at the
+        # point t_hat.
+        K_2_hat = self.cgf_prime2(t_hat)
+        K_3_hat = -t_hat ** -3
+        K_4_hat = 3 / t_hat ** 4
+        for lambda_i in self._lambdas:
+            K_3_hat += (lambda_i - t_hat) ** -3
+            K_4_hat += 3 / (lambda_i - t_hat) ** 4
+
+        # Find T, which appears in the formulas for the second-order
+        # saddlepoint density approximations.
+        rho_3_hat = K_3_hat / K_2_hat ** 1.5
+        rho_4_hat = K_4_hat / K_2_hat ** 2
+        T = rho_4_hat / 8 - (5 / 24) * rho_3_hat ** 2
+
+        c_3_ish = (K_2_hat ** -0.5) * math.exp(T - t_hat) / (-t_hat) ** 0.5
+        for lambda_i in self._lambdas:
+            c_3_ish /= (lambda_i - t_hat) ** 0.5
+        return c_3_ish
 
 
 class ComplexBinghamSampler(object):
