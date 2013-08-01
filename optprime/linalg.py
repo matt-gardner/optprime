@@ -644,12 +644,8 @@ class UnobservedBinghamWishartModel(object):
         #print(' ', math.exp(log_p), math.exp(log_q))
 
         success = (math.log(rand.random()) < log_p)
-        #if success == self._successes[n]:
-        #    if success:
-        #        print('.', end='')
-        #    else:
-        #        print('_', end='')
-        #    return
+        if success == self._successes[n]:
+            return
 
         inv_scale_L = self._bingham_wishart._inv_scale_L.copy()
         dof = self._bingham_wishart._dof
