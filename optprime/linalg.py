@@ -588,6 +588,8 @@ class UnobservedBinghamWishartModel(object):
         self._successes = []
         # Current sample from Wishart distribution
         self._A_sample = None
+        self._A_sample_log_const = None
+        self._A_sample_dual_log_const = None
 
     def sample_success(self, rand):
         self.gibbs_wishart(rand)
@@ -607,6 +609,9 @@ class UnobservedBinghamWishartModel(object):
     def gibbs_wishart(self, rand):
         """Sample from the Wishart distribution of node A."""
         self._A_sample = self._bingham_wishart.sample_wishart(rand)
+        bs = BinghamSampler(-self._A_sample / 2)
+        self._A_sample_log_const = bs.log_const()
+        self._A_sample_dual_log_const = bs.dual().log_const()
 
     def gibbs_successes(self, rand, n=None):
         """Sample from the complete conditional of a latent success state node.
@@ -629,6 +634,9 @@ class UnobservedBinghamWishartModel(object):
         else:
             log_p += self._log_p_t_0
             log_q += self._log_q_t_0
+
+        log_p -= self._A_sample_log_const
+        log_q -= self._A_sample_dual_log_const
 
         log_C = ladd(log_p, log_q)
         log_p -= log_C
