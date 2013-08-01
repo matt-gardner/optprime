@@ -221,9 +221,9 @@ def test_von_mises_fisher_uniform():
 
 def test_von_mises_fisher_nonuniform():
     """Ensure that samples are biased towards the mean."""
-    for i in range(10, 100):
+    for kappa in (20, 25, 30, 40):
         for _ in range(10):
-            z = sample_von_mises_fisher(5, i, random)
+            z = sample_von_mises_fisher(5, kappa, random)
             assert np.all(abs(z) <= z[0])
 
 def test_chol_update():
