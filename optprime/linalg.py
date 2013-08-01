@@ -307,11 +307,6 @@ class BinghamSampler(object):
     def log_const(self):
         """Approximate the constant of integration.
 
-        For the sake of computational efficiency, omits a few unnecessary
-        terms that are independent of the parameters of the distribution.
-        The actual constant is:
-            constish * (2 ** 0.5) * pi ** (len(_lambdas) / 2)
-
         See: Kume and Wood. Saddlepoint approximations for the Bingham and
         Fisher-Bingham normalising constants. Biometrika, 2005.
         """
