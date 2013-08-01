@@ -256,6 +256,6 @@ def test_chol_update():
 def test_bingham_uniform_constant():
     A = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     bs = BinghamSampler(A)
-    # Note: c * pi represents the area of the unit 2-sphere (4 pi).
-    c = (2 ** 0.5) * bs.constish()
-    assert abs(c - 4) < 0.01
+    # Note: c represents the area of the unit 2-sphere (4 pi).
+    c = math.exp(bs.log_const())
+    assert abs(c - 4 * math.pi) < 0.01

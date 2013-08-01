@@ -296,20 +296,19 @@ class BinghamSampler(object):
             total += 0.5 / (lambda_i - t) ** 2
         return total
 
-    def constish(self):
+    def log_const(self):
         """Approximate the constant of integration.
 
         For the sake of computational efficiency, omits a few unnecessary
         terms that are independent of the parameters of the distribution.
         The actual constant is:
-            constish() * (2 ** 0.5) * pi ** (len(_lambdas) / 2)
+            constish * (2 ** 0.5) * pi ** (len(_lambdas) / 2)
 
         See: Kume and Wood. Saddlepoint approximations for the Bingham and
         Fisher-Bingham normalising constants. Biometrika, 2005.
         """
         # Find the solution to the saddlepoint equation K'_theta(t_hat)=1.
-        p = len(self._lambdas + 1)
-        x0 = -(p + 1) / 4
+        x0 = -1 / 2
         t_hat = scipy.optimize.newton(self.cgf_prime_minus1, x0,
                 fprime=self.cgf_prime2)
         assert t_hat < 0
@@ -329,10 +328,15 @@ class BinghamSampler(object):
         rho_4_hat = K_4_hat / K_2_hat ** 2
         T = rho_4_hat / 8 - (5 / 24) * rho_3_hat ** 2
 
-        c_3_ish = (K_2_hat ** -0.5) * math.exp(T - t_hat) / (-t_hat) ** 0.5
+        # Note that the (non-logspace) term for lambda_0 = 0 is (-t_hat)**-0.5.
+        log_c_3 = (0.5 * (math.log(2) + len(self._lambdas) * math.log(math.pi))
+                - 0.5 * math.log(-t_hat * K_2_hat)
+                + T - t_hat)
         for lambda_i in self._lambdas:
-            c_3_ish /= (lambda_i - t_hat) ** 0.5
-        return c_3_ish
+            log_c_3 -= 0.5 * math.log(lambda_i - t_hat)
+
+        # Note c(lambdas + h) = e^{-h} c(lambdas)
+        return log_c_3
 
 
 class ComplexBinghamSampler(object):
