@@ -199,17 +199,21 @@ class BinghamSampler(object):
         A: the parameter matrix of the Bingham distribution
         lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
             be 0 and is not included in the list).
+        smallest_eig: the smallest eigenvalue of -A before normalization
+            (along with lambdas, this can be used to reconstruct the full list
+            of eigenvalues).
     """
-    def __init__(self, A=None, lambdas=None, eigvecs=None):
+    def __init__(self, A=None, lambdas=None, eigvecs=None, smallest_eig=0):
         assert A is None or (lambdas is None and eigvecs is None)
 
         self._sampler = None
         self._eigvecs = eigvecs
+        self.smallest_eig = smallest_eig
 
         if A is not None:
             eigvals, self._eigvecs = eigh_sorted(-A)
-            smallest_eig = eigvals[-1]
-            lambdas = eigvals[:-1] - smallest_eig
+            self.smallest_eig = eigvals[-1]
+            lambdas = eigvals[:-1] - self.smallest_eig
         self._lambdas = lambdas
 
         self._v = None
@@ -218,12 +222,16 @@ class BinghamSampler(object):
 
     def dual(self):
         """Return the Bingham(-A) sampler."""
-        # Eigenvalues of -A sorted largest to smallest.
-        eigvals = np.append(-self._lambdas, 0.0)[::-1]
-        smallest_eig = eigvals[-1]
-        lambdas = eigvals[:-1] - smallest_eig
+        old_biggest_normalized = self._lambdas[0]
+        smallest_eig = -(old_biggest_normalized + self.smallest_eig)
+
+        lambdas = np.empty_like(self._lambdas)
+        lambdas[0] = old_biggest_normalized
+        lambdas[1:] = old_biggest_normalized - self._lambdas[:0:-1]
+
         eigvecs = np.array(self._eigvecs[::-1])
-        return BinghamSampler(lambdas=lambdas, eigvecs=eigvecs)
+        return BinghamSampler(lambdas=lambdas, eigvecs=eigvecs,
+                smallest_eig=smallest_eig)
 
     def sample(self, rand, thin=10):
         """Gibbs sampler iterator.
@@ -336,6 +344,7 @@ class BinghamSampler(object):
             log_c_3 -= 0.5 * math.log(lambda_i - t_hat)
 
         # Note c(lambdas + h) = e^{-h} c(lambdas)
+        log_c_3 -= self.smallest_eig
         return log_c_3
 
 
