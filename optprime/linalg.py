@@ -493,6 +493,29 @@ class BinghamWishartModel(object):
         """Give the inverse scale matrix parameter of the Wishart."""
         return np.dot(self._inv_scale_L, self._inv_scale_L.T)
 
+    def dual_inv(self):
+        """Create a "dual" BinghamWishartModel.
+
+        Note that there are many possible ways to define a dual.
+        This finds the distribution whose scale parameter is the inverse of
+        the current distribution's scale.
+        """
+        inv_scale_L = np.linalg.inv(self._inv_scale_L)
+        return BinghamWishartModel(inv_scale_L, self._dof)
+
+    def dual_reverse(self):
+        """Create a "dual" BinghamWishartModel.
+
+        Note that there are many possible ways to define a dual.
+        This finds the distribution whose inv_scale matrix parameter's
+        eigenvalues are "reversed".
+        """
+        old_eigvals, eigvecs = eigh_sorted(self.inv_scale())
+        new_eigvals = old_eigvals[0] + old_eigvals[-1] - old_eigvals
+        inv_scale = eigvecs.dot(np.diagflat(new_eigvals)).dot(eigvecs.T)
+        inv_scale_L = np.linalg.cholesky(inv_scale)
+        return BinghamWishartModel(inv_scale_L, self._dof)
+
     def incremented_dof(self, exp_scatter, n=1):
         """Create a new BinghamWishartModel with an incremented dof.
 
@@ -565,11 +588,11 @@ class BinghamWishartModel(object):
 def make_bingham_wishart_model(dims, kappa, rand):
     """Construct a new BinghamWishartModel with the given dimensions."""
 
-    inv_scale = np.zeros((dims, dims))
+    inv_scale_L = np.zeros((dims, dims))
     dof = 0
 
     exp_scatter = expected_mf_scatter(dims, kappa, rand)
-    empty_model = BinghamWishartModel(inv_scale, dof)
+    empty_model = BinghamWishartModel(inv_scale_L, dof)
     model = empty_model.incremented_dof(exp_scatter, dims)
 
     return model, exp_scatter
@@ -579,6 +602,7 @@ class UnobservedBinghamWishartModel(object):
     """
     def __init__(self, bingham_wishart, p_s, p_t_1, p_t_0):
         self._bingham_wishart = bingham_wishart
+        self._bingham_wishart_dual = bingham_wishart.dual_reverse()
 
         self._log_p_s = math.log(p_s)
         self._log_q_s = math.log(1 - p_s)
@@ -593,8 +617,9 @@ class UnobservedBinghamWishartModel(object):
         self._successes = []
         # Current sample from Wishart distribution
         self._A_sample = None
+        self._A_dual_sample = None
         self._A_sample_log_const = None
-        self._A_sample_dual_log_const = None
+        self._A_dual_sample_log_const = None
 
     def sample_success(self, rand):
         self.gibbs_wishart(rand)
@@ -614,9 +639,15 @@ class UnobservedBinghamWishartModel(object):
     def gibbs_wishart(self, rand):
         """Sample from the Wishart distribution of node A."""
         self._A_sample = self._bingham_wishart.sample_wishart(rand)
+        self._A_dual_sample = self._bingham_wishart_dual.sample_wishart(rand)
         bs = BinghamSampler(-self._A_sample / 2)
+        bs_dual = BinghamSampler(-self._A_dual_sample / 2)
         self._A_sample_log_const = bs.log_const()
-        self._A_sample_dual_log_const = bs.dual().log_const()
+        self._A_dual_sample_log_const = bs_dual.log_const()
+        print('lambdas:', bs._lambdas)
+        print('smallest_eig:', bs.smallest_eig)
+        print('dual lambdas:', bs_dual._lambdas)
+        print('dual smallest_eig:', bs_dual.smallest_eig)
 
     def gibbs_successes(self, rand, n=None):
         """Sample from the complete conditional of a latent success state node.
@@ -628,42 +659,65 @@ class UnobservedBinghamWishartModel(object):
         x, t = self._observations[n]
 
         A = self._A_sample
+        A_dual = self._A_dual_sample
         xT_A_x = np.dot(x, np.dot(A, x))
+        xT_A_dual_x = np.dot(x, np.dot(A_dual, x))
 
         log_p = self._log_p_s - xT_A_x / 2
-        log_q = self._log_q_s + xT_A_x / 2
-        #print(' ', xT_A_x)
+        log_q = self._log_q_s - xT_A_dual_x / 2
+        print()
+        print()
         if t:
+            print('T', end='')
             log_p += self._log_p_t_1
             log_q += self._log_q_t_1
         else:
+            print('F', end='')
             log_p += self._log_p_t_0
             log_q += self._log_q_t_0
+        print()
+        print('x:', x)
+        print('P_Bingham+:', math.exp(-xT_A_x / 2 - self._A_sample_log_const))
+        print('P_Bingham-:', math.exp(xT_A_x / 2 - self._A_dual_sample_log_const))
 
         log_p -= self._A_sample_log_const
-        log_q -= self._A_sample_dual_log_const
+        log_q -= self._A_dual_sample_log_const
 
         log_C = ladd(log_p, log_q)
         log_p -= log_C
         log_q -= log_C
-        #print(' ', math.exp(log_p), math.exp(log_q))
+        print('P(+):', math.exp(log_p))
+        print('P(-):', math.exp(log_q))
 
         success = (math.log(rand.random()) < log_p)
         if success == self._successes[n]:
+            if success:
+                print('(.)', end='')
+            else:
+                print('(_)', end='')
             return
 
         inv_scale_L = self._bingham_wishart._inv_scale_L.copy()
+        dual_inv_scale_L = self._bingham_wishart_dual._inv_scale_L.copy()
         dof = self._bingham_wishart._dof
+        dual_dof = self._bingham_wishart_dual._dof
 
         if success:
-            chol_update(inv_scale_L, 2 * x)
+            chol_update(inv_scale_L, x)
+            chol_downdate(dual_inv_scale_L, x)
+            dof += 1
+            dual_dof -= 1
+            print('.', end='')
         else:
-            try:
-                chol_downdate(inv_scale_L, 2 * x)
-            except NonPosDefError:
-                return
+            chol_downdate(inv_scale_L, x)
+            chol_update(dual_inv_scale_L, x)
+            dof -= 1
+            dual_dof += 1
+            print('_', end='')
 
         self._bingham_wishart = BinghamWishartModel(inv_scale_L, dof)
+        self._bingham_wishart_dual = BinghamWishartModel(dual_inv_scale_L,
+                dual_dof)
         self._successes[n] = success
 
 def sample_von_mises_fisher(dims, kappa, rand):
