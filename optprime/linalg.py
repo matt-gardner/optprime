@@ -483,6 +483,12 @@ class BinghamWishartModel(object):
         self._dims = n
         self._dof = dof
 
+    def scale(self):
+        """Give the scale matrix parameter of the Wishart distribution."""
+        scale_L = np.linalg.inv(self._inv_scale_L)
+        V = np.dot(scale_L, scale_L.T)
+        return V
+
     def incremented_dof(self, exp_scatter, n=1):
         """Create a new BinghamWishartModel with an incremented dof.
 
@@ -546,16 +552,12 @@ class BinghamWishartModel(object):
 
     def wishart_mean(self):
         """Expected Value of the Wishart distribution."""
-        scale_L = np.linalg.inv(self._inv_scale_L)
-        V = np.dot(scale_L, scale_L.T)
-        return self._dof * V
+        return self._dof * self.scale()
 
     def wishart_mode(self):
         """Mode of the Wishart distribution."""
         assert self._dof >= self._dims + 1
-        scale_L = np.linalg.inv(self._inv_scale_L)
-        V = np.dot(scale_L, scale_L.T)
-        return (self._dof - self._dims - 1) * V
+        return (self._dof - self._dims - 1) * self.scale()
 
 def make_bingham_wishart_model(dims, kappa, rand):
     """Construct a new BinghamWishartModel with the given dimensions."""
