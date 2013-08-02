@@ -489,6 +489,10 @@ class BinghamWishartModel(object):
         V = np.dot(scale_L, scale_L.T)
         return V
 
+    def inv_scale(self):
+        """Give the inverse scale matrix parameter of the Wishart."""
+        return np.dot(self._inv_scale_L, self._inv_scale_L.T)
+
     def incremented_dof(self, exp_scatter, n=1):
         """Create a new BinghamWishartModel with an incremented dof.
 
@@ -496,8 +500,7 @@ class BinghamWishartModel(object):
         and the prior scatter matrix is increased accordingly.
         """
         dof = self._dof + n
-        old_inv_scale = np.dot(self._inv_scale_L, self._inv_scale_L.T)
-        inv_scale = old_inv_scale + exp_scatter * n
+        inv_scale = self.inv_scale() + exp_scatter * n
         inv_scale_L = np.linalg.cholesky(inv_scale)
         return BinghamWishartModel(inv_scale_L, dof)
 
