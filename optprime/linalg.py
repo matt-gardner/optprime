@@ -33,8 +33,8 @@ def eigh_swapped(A):
     Rearrange the eigenvectors accordingly.
     """
     eigvals, eigvecs = np.linalg.eigh(A)
-    sorted_indices = np.argsort(eigvals)[::-1]
-    smallest_index = sorted_indices[-1]
+    sorted_indices = np.argsort(eigvals)
+    smallest_index = sorted_indices[0]
     length = len(eigvals)
     swapped_indices = np.array([i for i in xrange(length)])
     swapped_indices[-1] = smallest_index
