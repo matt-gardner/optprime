@@ -27,6 +27,20 @@ def eigh_sorted(A):
     idx = np.argsort(eigvals)[::-1]
     return eigvals[idx], eigvecs[:, idx]
 
+def eigh_swapped(A):
+    """Perform numpy.linalg.eigh; swap the smallest eigenvalue with the last.
+
+    Rearrange the eigenvectors accordingly.
+    """
+    eigvals, eigvecs = np.linalg.eigh(A)
+    sorted_indices = np.argsort(eigvals)[::-1]
+    smallest_index = sorted_indices[-1]
+    length = len(eigvals)
+    swapped_indices = np.array([i for i in xrange(length)])
+    swapped_indices[-1] = smallest_index
+    swapped_indices[smallest_index] = length - 1
+    return eigvals[swapped_indices], eigvecs[:, swapped_indices]
+
 def rand_o_matrix(n, rand=None):
     """Creates a random Haar-distributed orthonormal matrix.
 
@@ -211,7 +225,7 @@ class BinghamSampler(object):
         self.smallest_eig = smallest_eig
 
         if A is not None:
-            eigvals, self._eigvecs = eigh_sorted(-A)
+            eigvals, self._eigvecs = eigh_swapped(-A)
             self.smallest_eig = eigvals[-1]
             lambdas = eigvals[:-1] - self.smallest_eig
         self._lambdas = lambdas
@@ -369,7 +383,7 @@ class ComplexBinghamSampler(object):
         self._eigvecs = eigvecs
 
         if A is not None:
-            eigvals, self._eigvecs = eigh_sorted(-A)
+            eigvals, self._eigvecs = eigh_swapped(-A)
             smallest_eig = eigvals[-1]
             lambdas = eigvals[:-1] - smallest_eig
         self._lambdas = lambdas
@@ -510,7 +524,7 @@ class BinghamWishartModel(object):
         This finds the distribution whose inv_scale matrix parameter's
         eigenvalues are "reversed".
         """
-        old_eigvals, eigvecs = eigh_sorted(self.inv_scale())
+        old_eigvals, eigvecs = eigh_swapped(self.inv_scale())
         new_eigvals = old_eigvals[0] + old_eigvals[-1] - old_eigvals
         inv_scale = eigvecs.dot(np.diagflat(new_eigvals)).dot(eigvecs.T)
         inv_scale_L = np.linalg.cholesky(inv_scale)
