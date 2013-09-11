@@ -544,30 +544,14 @@ class BinghamWishartModel(object):
         return BinghamWishartModel(inv_scale_L, dof)
 
     def sample_wishart(self, rand):
-        """Sample from a Wishart with the given scale and degrees of freedom.
+        """Sample from the Wishart distribution."""
 
-        The scale matrix must be a positive definite.  If the scale matrix has
-        dimension p, then the degrees of freedom must satisfy dof > p-1.
-
-        Based on: Smith and Hocking. Wishart Variate Generator. 1972.
-        """
         # Note that it's slightly faster for large (larger than 40x40)
         # matrices to use this instead:
         #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
         # or even better: scipy.linalg.get_lapack_funcs('trtri') or something
         scale_L = np.linalg.inv(self._inv_scale_L)
-        m, n = scale_L.shape
-        A = np.zeros((m, n))
-        for i in range(m):
-            # The Chi-squared distribution is a special case of the Gamma
-            # distribution.  Note that Python uses the scale parameterization
-            # and that the paper uses 1-based instead of 0-based indexing.
-            A[i, i] = rand.gammavariate((self._dof - i) / 2, 2) ** 0.5
-        for i in range(1, m):
-            for j in range(i):
-                A[i, j] = rand.normalvariate(0, 1)
-        LA = np.dot(scale_L, A)
-        return np.dot(LA, LA.T)
+        return sample_wishart(scale_L, rand)
 
     def sample_success(self, rand, A=None):
         """Sample from the success Bingham distribution."""
@@ -719,6 +703,28 @@ class UnobservedBinghamWishartModel(object):
         self._bingham_wishart_dual = BinghamWishartModel(dual_inv_scale_L,
                 dual_dof)
         self._successes[n] = success
+
+
+def sample_wishart(scale_L, rand):
+    """Sample from a Wishart with the given scale and degrees of freedom.
+
+    The scale matrix must be a positive definite.  If the scale matrix has
+    dimension p, then the degrees of freedom must satisfy dof > p-1.
+
+    Based on: Smith and Hocking. Wishart Variate Generator. 1972.
+    """
+    m, n = scale_L.shape
+    A = np.zeros((m, n))
+    for i in range(m):
+        # The Chi-squared distribution is a special case of the Gamma
+        # distribution.  Note that Python uses the scale parameterization
+        # and that the paper uses 1-based instead of 0-based indexing.
+        A[i, i] = rand.gammavariate((self._dof - i) / 2, 2) ** 0.5
+    for i in range(1, m):
+        for j in range(i):
+            A[i, j] = rand.normalvariate(0, 1)
+    LA = np.dot(scale_L, A)
+    return np.dot(LA, LA.T)
 
 def sample_von_mises_fisher(dims, kappa, rand):
     """Samples from a von Mises Fisher distribution centered at [1, 0, ..., 0].
