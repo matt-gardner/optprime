@@ -12,15 +12,15 @@ def test_bingham_sampler_init():
     # Note that this test array is symmetric.
     A = np.array([[5, 0, 0], [0, 3, 0], [0, 0, 1]])
 
-    bs = BinghamSampler(A)
+    bs = bingham_sampler_from_matrix(A)
     assert list(bs._lambdas) == [4, 2]
 
 def test_bingham_sampler_dual():
     # Note that this test array is symmetric.
     A = np.array([[5, 0, 0], [0, 3, 0], [0, 0, 1]])
 
-    bs = BinghamSampler(A)
-    bs_dual1 = BinghamSampler(-A)
+    bs = bingham_sampler_from_matrix(A)
+    bs_dual1 = bingham_sampler_from_matrix(-A)
     bs_dual2 = bs.dual()
 
     assert np.allclose(bs_dual1._lambdas, bs_dual2._lambdas)
@@ -30,7 +30,7 @@ def test_bingham_sampler_init_neg():
     # Note that this test array is symmetric.
     A = np.array([[-3, 0, 0], [0, 5, 0], [0, 0, -1]])
 
-    bs = BinghamSampler(A)
+    bs = bingham_sampler_from_matrix(A)
     assert list(bs._lambdas) == [8, 6]
 
 def test_complex_bingham_sampler_init():
@@ -123,7 +123,7 @@ def test_von_mises_fisher_nonuniform():
 
 def test_bingham_uniform_constant():
     A = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    bs = BinghamSampler(A)
+    bs = bingham_sampler_from_matrix(A)
     # Note: c represents the area of the unit 2-sphere (4 pi).
     # The -1 term in exp is because of the exp(x^T A x) term where x^T A x = 1.
     c = math.exp(bs.log_const() - 1)
