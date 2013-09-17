@@ -41,12 +41,10 @@ def eigh_swapped(A):
     Rearrange the eigenvectors accordingly.
     """
     eigvals, eigvecs = np.linalg.eigh(A)
-    smallest_index = eigvals.argmin()
-    length = eigvals.size
-    swapped_indices = np.array([i for i in xrange(length)])
-    swapped_indices[-1] = smallest_index
-    swapped_indices[smallest_index] = length - 1
-    return eigvals[swapped_indices], eigvecs[:, swapped_indices]
+    argmin = eigvals.argmin()
+    eigvals[argmin], eigvals[-1] = eigvals[-1], eigvals[argmin]
+    eigvecs[argmin], eigvecs[-1] = eigvecs[-1], eigvecs[argmin]
+    return eigvals, eigvecs
 
 def rand_o_matrix(n, rand=None):
     """Creates a random Haar-distributed orthonormal matrix.
