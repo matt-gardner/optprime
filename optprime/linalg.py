@@ -14,6 +14,18 @@ except ImportError:
     import numpypy as np
 
 
+def product_trace(A, B):
+    """Find the trace of the matrix product of A and B.
+
+    This is much faster than finding `numpy.linalg.trace(A.dot(B))`.
+    See the following for more information about ways to compute this:
+    http://stackoverflow.com/questions/18854425/what-is-the-best-way-to-compute-the-trace-of-a-matrix-product-in-numpy
+    """
+    A = np.asarray(A)
+    B = np.asarray(B)
+    #return (A * B.T).sum()
+    return np.einsum('ij,ji->', A, B)
+
 def eigh_sorted(A):
     """Performs numpy.linalg.eigh and sorts the resulting eigenvalues/vectors.
 
