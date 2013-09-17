@@ -599,8 +599,8 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             L = np.array(M_cand)
             bing_last = log_bingham_const_eigvals(L)
         else:
-            cand_term = Q_cand.dot(M_cand - L).dot(Q_cand.T)
-            last_term = Q.dot(M - L).dot(Q.T)
+            cand_term = (Q_cand * (M_cand - L)).dot(Q_cand.T)
+            last_term = (Q * (M - L)).dot(Q.T)
             log_prob = linalg.product_trace(
                     inv_scale_L.dot(inv_scale_L.T),
                     cand_term - last_term)
