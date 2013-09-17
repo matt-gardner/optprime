@@ -571,8 +571,78 @@ class UnobservedBinghamWishartModel(object):
         self._successes[n] = success
 
 
-wisham_loops = 0
 def wisham_binghart_sampler(inv_scale_L, dof, rand):
+    """Sample from the conjugate prior of the Bingham distribution.
+
+    Sampling technique uses Gibbs sampling.  Note that burn is not performed.
+    """
+    # Note that it's slightly faster for large (larger than 40x40)
+    # matrices to use this instead:
+    #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
+    # or even better: scipy.linalg.get_lapack_funcs('trtri') or something
+    scale_L = np.linalg.inv(inv_scale_L)
+    p, p2 = scale_L.shape
+    assert p == p2
+
+    # Note that L and M are shaped as a 1-D arrays instead of as matrices.
+    L = None
+    Q = None
+    M = None
+
+    bing_last = None
+    while True:
+        # Simulate from the eigenvectors.
+        wish = sample_wishart(2 * scale_L, p + 1, rand)
+        M_cand, Q_cand = linalg.eigh_sorted(wish)
+        if M is None:
+            accept = True
+            L = np.array(M_cand)
+            bing_last = log_bingham_const_eigvals(L)
+        else:
+            cand_term = Q_cand.dot(M_cand - L).dot(Q_cand.T)
+            last_term = Q.dot(M - L).dot(Q.T)
+            log_prob = linalg.product_trace(
+                    inv_scale_L.dot(inv_scale_L.T),
+                    cand_term - last_term)
+            for j in range(len(M)):
+                for k in range(len(M)):
+                    if k >= j:
+                        break
+                    log_prob += math.log(abs(M[j] - M[k]))
+                    log_prob -= math.log(abs(M_cand[j] - M_cand[k]))
+
+            accept = (math.log(rand.random()) < log_prob)
+
+        if accept:
+            M = M_cand
+            Q = Q_cand
+
+        # Simulate from each of the eigenvalues.
+        for i, eig_last in enumerate(L):
+            cand_sd = 1.0
+            eig_cand = rand.normalvariate(eig_last, cand_sd)
+
+            L_cand = np.array(L)
+            L_cand[i] = eig_cand
+            bing_cand = log_bingham_const_eigvals(L_cand)
+
+            log_prob = dof * (bing_last - bing_cand)
+            for j, other_eig in enumerate(L):
+                if j != i:
+                    log_prob += math.log(abs(eig_cand - other_eig))
+                    log_prob -= math.log(abs(eig_last - other_eig))
+            #tmp = inv_scale_L.T.dot(Q[:, i])
+            tmp = Q[i].dot(inv_scale_L)
+            log_prob -= (eig_cand - eig_last) * tmp.dot(tmp)
+
+            if math.log(rand.random()) < log_prob:
+                bing_last = bing_cand
+                L[i] = eig_cand
+
+        yield np.array(L), np.array(Q)
+
+
+def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
     """Sample from the conjugate prior of the Bingham distribution.
 
     Sampling technique uses Independent Metropolis Hastings with a Wishart
