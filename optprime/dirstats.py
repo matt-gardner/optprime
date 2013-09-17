@@ -126,11 +126,14 @@ def bingham_sampler_from_matrix(A):
     return BinghamSampler(lambdas, eigvecs, smallest_eig)
 
 
-def log_bingham_const(eigvals):
+def log_bingham_const(lambdas):
     """Approximate the constant of integration of the Bingham density.
 
-    Note that scaling the eigenvalues results in only a minor change to
-    the Bingham constant: c(lambdas + h) = e^{-h} c(lambdas).
+    The `lambdas` parameter refers to the shifted eigenvalues of -A, where A
+    is the parameter of the Bingham distribution.  The smallest eigenvalue is
+    assumed to be 0 and omitted.  Note that shifting the eigenvalues results
+    in only a minor change to the Bingham constant: c(lambdas + h) = e^{-h}
+    c(lambdas).
 
     See: Kume and Wood. Saddlepoint approximations for the Bingham and
     Fisher-Bingham normalising constants. Biometrika, 2005.
@@ -143,7 +146,7 @@ def log_bingham_const(eigvals):
         """
         # Term for lambda_0 = 0:
         total = -0.5 / t
-        for lambda_i in eigvals:
+        for lambda_i in lambdas:
             total += 0.5 / (lambda_i - t)
         return total - 1
 
@@ -155,7 +158,7 @@ def log_bingham_const(eigvals):
         """
         # Term for lambda_0 = 0:
         total = 0.5 / t ** 2
-        for lambda_i in eigvals:
+        for lambda_i in lambdas:
             total += 0.5 / (lambda_i - t) ** 2
         return total
 
@@ -169,7 +172,7 @@ def log_bingham_const(eigvals):
     K_2_hat = cgf_prime2(t_hat)
     K_3_hat = -t_hat ** -3
     K_4_hat = 3 / t_hat ** 4
-    for lambda_i in eigvals:
+    for lambda_i in lambdas:
         K_3_hat += (lambda_i - t_hat) ** -3
         K_4_hat += 3 / (lambda_i - t_hat) ** 4
 
@@ -180,12 +183,24 @@ def log_bingham_const(eigvals):
     T = rho_4_hat / 8 - (5 / 24) * rho_3_hat ** 2
 
     # Note that the (non-logspace) term for lambda_0 = 0 is (-t_hat)**-0.5.
-    log_c_3 = (0.5 * (math.log(2) + len(eigvals) * math.log(math.pi))
+    log_c_3 = (0.5 * (math.log(2) + len(lambdas) * math.log(math.pi))
             - 0.5 * math.log(-t_hat * K_2_hat)
             + T - t_hat)
-    for lambda_i in eigvals:
+    for lambda_i in lambdas:
         log_c_3 -= 0.5 * math.log(lambda_i - t_hat)
     return log_c_3
+
+def log_bingham_const_eigvals(eigvals):
+    """Approximate the constant of integration of the Bingham density."""
+    argmin = eigvals.argmin()
+    smallest_eig = eigvals[argmin]
+    lambdas = eigvals[:-1] - smallest_eig
+    if argmin != len(eigvals) - 1:
+        lambdas[argmin] = eigvals[argmin] - smallest_eig
+
+    # Note c(lambdas + h) = e^{-h} c(lambdas)
+    log_c = log_bingham_const(lambdas) - smallest_eig
+    return log_c
 
 
 class ComplexBinghamSampler(object):
@@ -418,6 +433,7 @@ class BinghamWishartModel(object):
         assert self._dof >= self._dims + 1
         return (self._dof - self._dims - 1) * self.scale()
 
+
 def make_bingham_wishart_model(dims, kappa, rand):
     """Construct a new BinghamWishartModel with the given dimensions."""
 
@@ -429,6 +445,7 @@ def make_bingham_wishart_model(dims, kappa, rand):
     model = empty_model.incremented_dof(exp_scatter, dims)
 
     return model, exp_scatter
+
 
 class UnobservedBinghamWishartModel(object):
     """Bingham-Wishart Model without fully observed success/failure data.
@@ -577,13 +594,12 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
     while True:
         wisham_loops += 1
         cand = sample_wishart(2 * scale_L, dof, rand)
-        bs = BinghamSampler(-cand)
 
         det = math.log(bs.smallest_eig)
         for l in bs._lambdas:
             det += math.log(l + bs.smallest_eig)
 
-        b_const = bs.log_const()
+        b_const = log_bingham_const(cand)
 
         if last is None:
             accept = True
