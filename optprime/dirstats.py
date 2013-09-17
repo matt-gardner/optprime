@@ -17,6 +17,9 @@ except ImportError:
 from . import linalg
 
 
+##############################################################################
+# Bingham Distribution
+
 class BinghamSampler(object):
     """Sample from a real-valued Bingham distribution.
 
@@ -29,25 +32,19 @@ class BinghamSampler(object):
     Method from: Kume and Walker. Sampling from compositional and
     directional distributions.  Statistics and Computing, 2006.
 
-    Parameters (either A or lambdas must be specified, but not both):
-        A: the parameter matrix of the Bingham distribution
+    Parameters:
         lambdas: the first k-1 eigenvalues of -A (the smallest is assumed to
             be 0 and is not included in the list).
         smallest_eig: the smallest eigenvalue of -A before normalization
             (along with lambdas, this can be used to reconstruct the full list
             of eigenvalues).
     """
-    def __init__(self, A=None, lambdas=None, eigvecs=None, smallest_eig=0):
-        assert A is None or (lambdas is None and eigvecs is None)
+    def __init__(self, lambdas=None, eigvecs=None, smallest_eig=0):
+        assert lambdas is not None and eigvecs is not None
 
         self._sampler = None
         self._eigvecs = eigvecs
         self.smallest_eig = smallest_eig
-
-        if A is not None:
-            eigvals, self._eigvecs = linalg.eigh_swapped(-A)
-            self.smallest_eig = eigvals[-1]
-            lambdas = eigvals[:-1] - self.smallest_eig
         self._lambdas = lambdas
 
         self._v = None
@@ -114,7 +111,31 @@ class BinghamSampler(object):
             z = self._eigvecs.dot(z)
         return z
 
-    def cgf_prime_minus1(self, t):
+    def log_const(self):
+        log_c = log_bingham_const(self._lambdas)
+
+        # Note c(lambdas + h) = e^{-h} c(lambdas)
+        log_c -= self.smallest_eig
+        return log_c
+
+
+def bingham_sampler_from_matrix(A):
+    eigvals, eigvecs = linalg.eigh_swapped(-A)
+    smallest_eig = eigvals[-1]
+    lambdas = eigvals[:-1] - smallest_eig
+    return BinghamSampler(lambdas, eigvecs, smallest_eig)
+
+
+def log_bingham_const(eigvals):
+    """Approximate the constant of integration of the Bingham density.
+
+    Note that scaling the eigenvalues results in only a minor change to
+    the Bingham constant: c(lambdas + h) = e^{-h} c(lambdas).
+
+    See: Kume and Wood. Saddlepoint approximations for the Bingham and
+    Fisher-Bingham normalising constants. Biometrika, 2005.
+    """
+    def cgf_prime_minus1(t):
         """First derivative of the cumulant generating function.
 
         See: Kume and Wood. Saddlepoint approximations for the Bingham and
@@ -122,11 +143,11 @@ class BinghamSampler(object):
         """
         # Term for lambda_0 = 0:
         total = -0.5 / t
-        for lambda_i in self._lambdas:
+        for lambda_i in eigvals:
             total += 0.5 / (lambda_i - t)
         return total - 1
 
-    def cgf_prime2(self, t):
+    def cgf_prime2(t):
         """Second derivative of the cumulant generating function.
 
         See: Kume and Wood. Saddlepoint approximations for the Bingham and
@@ -134,47 +155,37 @@ class BinghamSampler(object):
         """
         # Term for lambda_0 = 0:
         total = 0.5 / t ** 2
-        for lambda_i in self._lambdas:
+        for lambda_i in eigvals:
             total += 0.5 / (lambda_i - t) ** 2
         return total
 
-    def log_const(self):
-        """Approximate the constant of integration.
+    # Find the solution to the saddlepoint equation K'_theta(t_hat)=1.
+    x0 = -1 / 2
+    t_hat = scipy.optimize.newton(cgf_prime_minus1, x0, fprime=cgf_prime2)
+    assert t_hat < 0
 
-        See: Kume and Wood. Saddlepoint approximations for the Bingham and
-        Fisher-Bingham normalising constants. Biometrika, 2005.
-        """
-        # Find the solution to the saddlepoint equation K'_theta(t_hat)=1.
-        x0 = -1 / 2
-        t_hat = scipy.optimize.newton(self.cgf_prime_minus1, x0,
-                fprime=self.cgf_prime2)
-        assert t_hat < 0
+    # Find various derivatives of the cumulant generating function at the
+    # point t_hat.
+    K_2_hat = cgf_prime2(t_hat)
+    K_3_hat = -t_hat ** -3
+    K_4_hat = 3 / t_hat ** 4
+    for lambda_i in eigvals:
+        K_3_hat += (lambda_i - t_hat) ** -3
+        K_4_hat += 3 / (lambda_i - t_hat) ** 4
 
-        # Find various derivatives of the cumulant generating function at the
-        # point t_hat.
-        K_2_hat = self.cgf_prime2(t_hat)
-        K_3_hat = -t_hat ** -3
-        K_4_hat = 3 / t_hat ** 4
-        for lambda_i in self._lambdas:
-            K_3_hat += (lambda_i - t_hat) ** -3
-            K_4_hat += 3 / (lambda_i - t_hat) ** 4
+    # Find T, which appears in the formulas for the second-order
+    # saddlepoint density approximations.
+    rho_3_hat = K_3_hat / K_2_hat ** 1.5
+    rho_4_hat = K_4_hat / K_2_hat ** 2
+    T = rho_4_hat / 8 - (5 / 24) * rho_3_hat ** 2
 
-        # Find T, which appears in the formulas for the second-order
-        # saddlepoint density approximations.
-        rho_3_hat = K_3_hat / K_2_hat ** 1.5
-        rho_4_hat = K_4_hat / K_2_hat ** 2
-        T = rho_4_hat / 8 - (5 / 24) * rho_3_hat ** 2
-
-        # Note that the (non-logspace) term for lambda_0 = 0 is (-t_hat)**-0.5.
-        log_c_3 = (0.5 * (math.log(2) + len(self._lambdas) * math.log(math.pi))
-                - 0.5 * math.log(-t_hat * K_2_hat)
-                + T - t_hat)
-        for lambda_i in self._lambdas:
-            log_c_3 -= 0.5 * math.log(lambda_i - t_hat)
-
-        # Note c(lambdas + h) = e^{-h} c(lambdas)
-        log_c_3 -= self.smallest_eig
-        return log_c_3
+    # Note that the (non-logspace) term for lambda_0 = 0 is (-t_hat)**-0.5.
+    log_c_3 = (0.5 * (math.log(2) + len(eigvals) * math.log(math.pi))
+            - 0.5 * math.log(-t_hat * K_2_hat)
+            + T - t_hat)
+    for lambda_i in eigvals:
+        log_c_3 -= 0.5 * math.log(lambda_i - t_hat)
+    return log_c_3
 
 
 class ComplexBinghamSampler(object):
@@ -284,6 +295,10 @@ class ComplexBinghamSampler(object):
         return z
 
 
+##############################################################################
+# Other Stuff
+
+
 class BinghamWishartModel(object):
     """A Wishart random variable with Bingham-distributed observations.
 
@@ -391,7 +406,7 @@ class BinghamWishartModel(object):
         """Sample from the success Bingham distribution."""
         if A is None:
             A = self.sample_wishart(rand)
-        bs = BinghamSampler(-A/2)
+        bs = bingham_sampler_from_matrix(-A/2)
         return bs.sample(rand)
 
     def wishart_mean(self):
@@ -458,8 +473,8 @@ class UnobservedBinghamWishartModel(object):
         """Sample from the Wishart distribution of node A."""
         self._A_sample = self._bingham_wishart.sample_wishart(rand)
         self._A_dual_sample = self._bingham_wishart_dual.sample_wishart(rand)
-        bs = BinghamSampler(-self._A_sample / 2)
-        bs_dual = BinghamSampler(-self._A_dual_sample / 2)
+        bs = bingham_sampler_from_matrix(-self._A_sample / 2)
+        bs_dual = bingham_sampler_from_matrix(-self._A_dual_sample / 2)
         self._A_sample_log_const = bs.log_const()
         self._A_dual_sample_log_const = bs_dual.log_const()
         print('lambdas:', bs._lambdas)
