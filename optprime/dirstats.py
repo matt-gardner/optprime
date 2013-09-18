@@ -576,6 +576,7 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
 
     Sampling technique uses Gibbs sampling.  Note that burn is not performed.
     """
+    V = inv_scale_L.dot(inv_scale_L.T)
     # Note that it's slightly faster for large (larger than 40x40)
     # matrices to use this instead:
     #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
@@ -601,13 +602,9 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
         else:
             cand_term = (Q_cand * (M_cand - L)).dot(Q_cand.T)
             last_term = (Q * (M - L)).dot(Q.T)
-            log_prob = linalg.product_trace(
-                    inv_scale_L.dot(inv_scale_L.T),
-                    cand_term - last_term)
-            for j in range(len(M)):
-                for k in range(len(M)):
-                    if k >= j:
-                        break
+            log_prob = linalg.product_trace(V, cand_term - last_term)
+            for k in range(1, len(M)):
+                for j in range(k):
                     log_prob += math.log(abs(M[j] - M[k]))
                     log_prob -= math.log(abs(M_cand[j] - M_cand[k]))
 
@@ -619,7 +616,7 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
 
         # Simulate from each of the eigenvalues.
         for i, eig_last in enumerate(L):
-            cand_sd = 1.0
+            cand_sd = 40.0
             eig_cand = rand.normalvariate(eig_last, cand_sd)
 
             L_cand = np.array(L)
@@ -631,7 +628,9 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
                 if j != i:
                     log_prob += math.log(abs(eig_cand - other_eig))
                     log_prob -= math.log(abs(eig_last - other_eig))
-            #tmp = inv_scale_L.T.dot(Q[:, i])
+            # Note: q_i^T (L L^T) q_i = (q_i^T L) (q_i^T L)^T
+            # By the way, Q[i] and tmp are 1-D arrays, so they don't need to
+            # be transposed before matrix multiplying.
             tmp = Q[i].dot(inv_scale_L)
             log_prob -= (eig_cand - eig_last) * tmp.dot(tmp)
 
