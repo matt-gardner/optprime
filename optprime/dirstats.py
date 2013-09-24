@@ -790,4 +790,24 @@ def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
     E[subtriu_rows, subtriu_cols] = subtri_mean
     return E
 
+
+##############################################################################
+# Truncated Exponential Distribution
+
+def sample_trunc_exp(rate, a, b, rand):
+    r"""Sample from a Left- and Right-truncated Exponential Distribution.
+
+    The interval (a, b) bounds the distribution.  Note that due to the
+    memorylessness of the distribution, setting a=0 is equivalent to a
+    non-left-truncated distribution.
+
+    f(x) = \frac{\lambda}{exp(-\lambda a) - exp(-\lambda b)} exp(-\lambda x)
+    F(x) = (1 - exp(-\lambda (b - a))^{-1} (1 - exp(-\lambda (x - a)))
+    F^{-1}(y) = a - \frac{1}{\lambda} log[1 - y (1 - exp(-\lambda (b - a)))]
+    """
+    u = rand.random()
+    c = 1 - math.exp(-rate * (b - a))
+    return a - math.log(1 - c * u) / rate
+
+
 # vim: et sw=4 sts=4
