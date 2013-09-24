@@ -852,7 +852,7 @@ def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
 # Truncated Exponential Distribution
 
 def sample_trunc_exp(rate, a, b, rand):
-    r"""Sample from a Left- and Right-truncated Exponential Distribution.
+    r"""Sample from a Left- and Right-truncated Exponential distribution.
 
     The interval (a, b) bounds the distribution.  Note that due to the
     memorylessness of the distribution, setting a=0 is equivalent to a
@@ -866,5 +866,25 @@ def sample_trunc_exp(rate, a, b, rand):
     c = 1 - math.exp(-rate * (b - a))
     return a - math.log(1 - c * u) / rate
 
+def sample_exp_intervals(rate, intervals, rand):
+    """Sample from an exponential that is constrained to a set of intervals."""
+    pmf = []
+    total = 0
+    for a, b in intervals:
+        mass = math.exp(-rate * a) - math.exp(-rate * b)
+        pmf.append((mass, (a, b)))
+        total += mass
+
+    u = rand.uniform(0, total)
+    for mass, (a, b) in pmf:
+        u -= mass
+        if u < 0:
+            break
+
+    assert a > 0
+    if b == float('inf'):
+        return a + rand.expovariate(rate)
+    else:
+        return sample_trunc_exp(rate, a, b, rand)
 
 # vim: et sw=4 sts=4
