@@ -43,7 +43,12 @@ def eigh_swapped(A):
     eigvals, eigvecs = np.linalg.eigh(A)
     argmin = eigvals.argmin()
     eigvals[argmin], eigvals[-1] = eigvals[-1], eigvals[argmin]
-    eigvecs[argmin], eigvecs[-1] = eigvecs[-1], eigvecs[argmin]
+
+    # We can't do this all on one line because numpy slices are views.
+    last_eigvec = np.array(eigvecs[:, -1])
+    smallest_eigvec = np.array(eigvecs[:, argmin])
+    eigvecs[:, argmin] = last_eigvec
+    eigvecs[:, -1] = smallest_eigvec
     return eigvals, eigvecs
 
 def rand_o_matrix(n, rand=None):

@@ -110,14 +110,9 @@ def test_eigh_swapped():
     A = np.array([[1, 2, 3], [2, 4, 5], [3, 5, 6]])
     eigvals, eigvecs = eigh_swapped(A)
 
-    actual_eigvals = np.array([11.34481428, 0.17091519, -0.51572947])
-    assert np.allclose(eigvals, actual_eigvals, TOLERANCE)
-    actual_eigvec1 = np.array([-0.32798528, -0.59100905, -0.73697623])
-    assert np.allclose(eigvecs[:, 0], actual_eigvec1, TOLERANCE)
-    actual_eigvec2 = np.array([0.59100905, -0.73697623, 0.32798528])
-    assert np.allclose(eigvecs[:, 1], actual_eigvec2, TOLERANCE)
+    assert np.allclose(eigvals[-1], -0.51572947, TOLERANCE)
     actual_eigvec3 = np.array([-0.73697623, -0.32798528, 0.59100905])
-    assert np.allclose(eigvecs[:, 2], actual_eigvec3, TOLERANCE)
+    assert np.allclose(eigvecs[:, -1], actual_eigvec3, TOLERANCE)
 
 def test_eigh_sorted_neg():
     # Note that this test array is symmetric.
