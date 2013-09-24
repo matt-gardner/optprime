@@ -600,8 +600,9 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
     L = None
     Q = None
     M = None
+    v = np.empty((p, p))
 
-    bing_last = None
+    log_bing = None
     while True:
         # Simulate from the eigenvectors.
         wish = sample_wishart(2 * scale_L, p + 1, rand)
@@ -609,15 +610,11 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
         if M is None:
             accept = True
             L = np.array(M_cand)
-            bing_last = log_bingham_const_eigvals(L)
+            log_bing = log_bingham_const_eigvals(L)
         else:
             cand_term = (Q_cand * (M_cand - L)).dot(Q_cand.T)
             last_term = (Q * (M - L)).dot(Q.T)
             log_prob = linalg.product_trace(V, cand_term - last_term)
-            #for k in range(1, len(M)):
-            #    for j in range(k):
-            #        log_prob += math.log(abs(M[j] - M[k]))
-            #        log_prob -= math.log(abs(M_cand[j] - M_cand[k]))
 
             accept = (math.log(rand.random()) < log_prob)
 
@@ -625,30 +622,44 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             M = M_cand
             Q = Q_cand
 
+        # Sample from the auxiliary variables.
+        u = rand.uniform(0, math.exp(-dof * log_bing))
+        log_u = math.log(u)
+        for i, eig_i in enumerate(L):
+            for j, eig_j in enumerate(L):
+                if j >= i:
+                    break
+                # Keeping v symmetric makes subsequent lookup easier.
+                v[i, j] = v[j, i] = rand.uniform(0, abs(eig_i - eig_j))
+
         # Simulate from each of the eigenvalues.
-        for i, eig_last in enumerate(L):
-            cand_sd = 40.0
-            eig_cand = rand.normalvariate(eig_last, cand_sd)
-
-            L_cand = np.array(L)
-            L_cand[i] = eig_cand
-            bing_cand = log_bingham_const_eigvals(L_cand)
-
-            log_prob = dof * (bing_last - bing_cand)
-            for j, other_eig in enumerate(L):
-                if j != i:
-                    log_prob += math.log(abs(eig_cand - other_eig))
-                    log_prob -= math.log(abs(eig_last - other_eig))
+        for i, _ in enumerate(L):
+            # Calculate the rate parameter of the exponential distribution.
             # Note: q_i^T (L L^T) q_i = (q_i^T L) (q_i^T L)^T
             # By the way, Q[i] and tmp are 1-D arrays, so they don't need to
             # be transposed before matrix multiplying.
             tmp = Q[i].dot(inv_scale_L)
-            log_prob += (eig_last - eig_cand) * tmp.dot(tmp)
+            rate = tmp.dot(tmp)
 
-            if math.log(rand.random()) < log_prob:
-                bing_last = bing_cand
-                L[i] = eig_cand
+            # Calculate the constraints on the support which are imposed by
+            # the auxiliary variables.  The list of intervals represents
+            # "banned" regions.
+            inv_min = inverse_log_bingham_const(L, log_u, i)
+            banned_intervals = [(-float('inf'), inv_min)]
+            for j, eig_other in enumerate(L):
+                if j == i:
+                    continue
+                radius = v[i, j]
+                # The sampler is constrained to pick outside this interval.
+                interval = [eig_other - radius, eig_other + radius]
+                banned_intervals.append(interval)
+            allowed_intervals = complement(banned_intervals)
 
+            # Sample the eigenvalue from its full conditional.
+            L[i] = sample_exp_intervals(rate, allowed_intervals, rand)
+
+        log_bing = log_bingham_const_eigvals(L)
+        assert u < math.exp(-dof * log_bing)
         yield np.array(L), np.array(Q)
 
 
