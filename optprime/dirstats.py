@@ -603,10 +603,10 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             cand_term = (Q_cand * (M_cand - L)).dot(Q_cand.T)
             last_term = (Q * (M - L)).dot(Q.T)
             log_prob = linalg.product_trace(V, cand_term - last_term)
-            for k in range(1, len(M)):
-                for j in range(k):
-                    log_prob += math.log(abs(M[j] - M[k]))
-                    log_prob -= math.log(abs(M_cand[j] - M_cand[k]))
+            #for k in range(1, len(M)):
+            #    for j in range(k):
+            #        log_prob += math.log(abs(M[j] - M[k]))
+            #        log_prob -= math.log(abs(M_cand[j] - M_cand[k]))
 
             accept = (math.log(rand.random()) < log_prob)
 
@@ -632,7 +632,7 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             # By the way, Q[i] and tmp are 1-D arrays, so they don't need to
             # be transposed before matrix multiplying.
             tmp = Q[i].dot(inv_scale_L)
-            log_prob -= (eig_cand - eig_last) * tmp.dot(tmp)
+            log_prob += (eig_last - eig_cand) * tmp.dot(tmp)
 
             if math.log(rand.random()) < log_prob:
                 bing_last = bing_cand
