@@ -100,6 +100,17 @@ def test_complex_bingham_pick_sampler7():
     bs = ComplexBinghamSampler(lambdas=lambdas)
     assert bs._pick_sampler() == bs.sample_m1
 
+def test_inverse_log_bingham_const():
+    eigvals = np.array([5.0, 4.0, 3.0, 2.0, 1.0])
+    lc = log_bingham_const_eigvals(eigvals)
+
+    target = lc + 5
+    index = 3
+    inv = inverse_log_bingham_const(eigvals, target, index)
+
+    eigvals[index] = inv
+    assert np.allclose(log_bingham_const_eigvals(eigvals), target)
+
 def test_von_mises_fisher_norm():
     """Ensure that samples are on the unit sphere."""
     for i in range(10):

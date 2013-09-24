@@ -202,6 +202,15 @@ def log_bingham_const_eigvals(eigvals):
     log_c = log_bingham_const(lambdas) - smallest_eig
     return log_c
 
+def inverse_log_bingham_const(eigvals, target, index):
+    eigvals = np.array(eigvals)
+    def f(x):
+        eigvals[index] = x
+        return log_bingham_const_eigvals(eigvals) - target
+
+    start = eigvals[index]
+    return scipy.optimize.newton(f, start)
+
 
 class ComplexBinghamSampler(object):
     """Sample from a Complex Bingham distribution.
