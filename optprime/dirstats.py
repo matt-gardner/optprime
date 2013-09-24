@@ -311,8 +311,7 @@ class ComplexBinghamSampler(object):
 
 
 ##############################################################################
-# Other Stuff
-
+# Directional Models
 
 class BinghamWishartModel(object):
     """A Wishart random variable with Bingham-distributed observations.
@@ -571,6 +570,9 @@ class UnobservedBinghamWishartModel(object):
         self._successes[n] = success
 
 
+##############################################################################
+# Wisham/Binghart/McNabb Distribution
+
 def wisham_binghart_sampler(inv_scale_L, dof, rand):
     """Sample from the conjugate prior of the Bingham distribution.
 
@@ -690,6 +692,9 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
             last_det = det
 
 
+##############################################################################
+# Wishart Distribution
+
 def sample_wishart(scale_L, dof, rand):
     """Sample from a Wishart with the given scale and degrees of freedom.
 
@@ -710,6 +715,10 @@ def sample_wishart(scale_L, dof, rand):
             A[i, j] = rand.normalvariate(0, 1)
     LA = np.dot(scale_L, A)
     return np.dot(LA, LA.T)
+
+
+##############################################################################
+# Von Mises--Fisher Distribution
 
 def sample_von_mises_fisher(dims, kappa, rand):
     """Samples from a von Mises Fisher distribution centered at [1, 0, ..., 0].
