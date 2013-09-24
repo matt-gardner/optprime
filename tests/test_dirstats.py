@@ -128,3 +128,11 @@ def test_bingham_uniform_constant():
     # The -1 term in exp is because of the exp(x^T A x) term where x^T A x = 1.
     c = math.exp(bs.log_const() - 1)
     assert abs(c - 4 * math.pi) < 0.01
+
+def test_unionate():
+    intervals = [(0, 4), (3, 5), (6, 8), (7.9, 10), (11, 12)]
+    assert unionate(intervals) == [(0, 5), (6, 10), (11, 12)]
+
+def test_unionate_unsorted():
+    intervals = [(7.9, 10), (3, 5), (6, 8), (11, 12), (0, 4)]
+    assert unionate(intervals) == [(0, 5), (6, 10), (11, 12)]

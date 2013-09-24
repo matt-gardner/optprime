@@ -692,6 +692,31 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
             last_det = det
 
 
+def unionate(intervals):
+    """Find the union of a set of closed intervals.
+
+    A set of intervals is represented as a list of pairs.
+    """
+    if not intervals:
+        return []
+    intervals = list(intervals)
+    intervals.sort()
+
+    union = []
+    a = b = None
+    for next_a, next_b in intervals:
+        if b is None:
+            a, b = next_a, next_b
+        elif next_a <= b:
+            a, b = a, next_b
+        else:
+            union.append((a, b))
+            a, b = next_a, next_b
+    union.append((a, b))
+
+    return union
+
+
 ##############################################################################
 # Wishart Distribution
 
