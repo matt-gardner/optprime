@@ -147,3 +147,18 @@ def test_unionate():
 def test_unionate_unsorted():
     intervals = [(7.9, 10), (3, 5), (6, 8), (11, 12), (0, 4)]
     assert unionate(intervals) == [(0, 5), (6, 10), (11, 12)]
+
+def test_complement():
+    inf = float('inf')
+    intervals = [(0, 4), (3, 5), (6, 8), (7.9, 10), (11, 12)]
+    assert complement(intervals) == [(-inf, 0), (5, 6), (10, 11), (12, inf)]
+
+def test_complement_neg_inf():
+    inf = float('inf')
+    intervals = [(-inf, 5), (7, 30)]
+    assert complement(intervals) == [(5, 7), (30, inf)]
+
+def test_complement_pos_inf():
+    inf = float('inf')
+    intervals = [(13, 14), (15, 20), (23, inf)]
+    assert complement(intervals) == [(-inf, 13), (14, 15), (20, 23)]

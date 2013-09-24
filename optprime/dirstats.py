@@ -726,6 +726,29 @@ def unionate(intervals):
     return union
 
 
+def complement(intervals):
+    """Find a list of intervals that are the complement of the given intervals.
+    """
+    inf = float('inf')
+    if not intervals:
+        return [(-inf, inf)]
+    banned_intervals = unionate(intervals)
+
+    allowed_intervals = []
+    # Flatten the list of intervals.
+    points = list(itertools.chain.from_iterable(banned_intervals))
+
+    if points[0] > -inf:
+        allowed_intervals.append((-inf, points[0]))
+    allowed_intervals.extend(zip(points[1::2], points[2::2]))
+    print(points[1::2])
+    print(points[2::2])
+    if points[-1] < inf:
+        allowed_intervals.append((points[-1], inf))
+
+    return allowed_intervals
+
+
 ##############################################################################
 # Wishart Distribution
 
