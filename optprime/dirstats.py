@@ -644,14 +644,14 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             # Calculate the constraints on the support which are imposed by
             # the auxiliary variables.  The list of intervals represents
             # "banned" regions.
-            inv_min = inverse_log_bingham_const(L, log_u, i)
+            inv_min = inverse_log_bingham_const(L, -log_u / dof, i)
             banned_intervals = [(-float('inf'), inv_min)]
             for j, eig_other in enumerate(L):
                 if j == i:
                     continue
                 radius = v[i, j]
                 # The sampler is constrained to pick outside this interval.
-                interval = [eig_other - radius, eig_other + radius]
+                interval = (eig_other - radius, eig_other + radius)
                 banned_intervals.append(interval)
             allowed_intervals = complement(banned_intervals)
 
