@@ -190,6 +190,7 @@ def log_bingham_const(lambdas):
         log_c_3 -= 0.5 * math.log(lambda_i - t_hat)
     return log_c_3
 
+
 def log_bingham_const_eigvals(eigvals):
     """Approximate the constant of integration of the Bingham density."""
     argmin = eigvals.argmin()
@@ -202,14 +203,30 @@ def log_bingham_const_eigvals(eigvals):
     log_c = log_bingham_const(lambdas) - smallest_eig
     return log_c
 
+
 def inverse_log_bingham_const(eigvals, target, index):
+    """Find the inverse of the Bingham constant with respect to one element.
+
+    Assumes that each eigenvalue will be positive.  In other words, it returns
+    0 if the inverse is less than 0.
+
+    The `index` parameter identifies the element.  The `target` parameter
+    specifies the value of the Bingham constant.
+    """
+    # Note that the Bingham constant is monotone decreasing.
     eigvals = np.array(eigvals)
     def f(x):
         eigvals[index] = x
         return log_bingham_const_eigvals(eigvals) - target
 
-    start = eigvals[index]
-    return scipy.optimize.newton(f, start)
+    b = eigvals[index]
+    if f(0) < 0:
+        return 0
+
+    while f(b) > 0:
+        b *= 2
+
+    return scipy.optimize.brentq(f, 0, b)
 
 
 class ComplexBinghamSampler(object):
@@ -648,7 +665,7 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             # the auxiliary variables.  The list of intervals represents
             # "banned" regions.
             inv_min = inverse_log_bingham_const(L, -log_u / dof, i)
-            banned_intervals = [(-float('inf'), inv_min)]
+            banned_intervals = [(-float('inf'), max(0, inv_min))]
             for j, eig_other in enumerate(L):
                 if j == i:
                     continue
@@ -898,7 +915,7 @@ def sample_exp_intervals(rate, intervals, rand):
         if u < 0:
             break
 
-    assert a > 0
+    assert a >= 0
     if b == float('inf'):
         return a + rand.expovariate(rate)
     else:
