@@ -148,6 +148,10 @@ def test_unionate_unsorted():
     intervals = [(7.9, 10), (3, 5), (6, 8), (11, 12), (0, 4)]
     assert unionate(intervals) == [(0, 5), (6, 10), (11, 12)]
 
+def test_unionate_unstaggered():
+    intervals = [(0, 4), (2, 3), (6, 10), (7, 9), (8, 11)]
+    assert unionate(intervals) == [(0, 4), (6, 11)]
+
 def test_complement():
     inf = float('inf')
     intervals = [(0, 4), (3, 5), (6, 8), (7.9, 10), (11, 12)]

@@ -728,7 +728,7 @@ def unionate(intervals):
         if b is None:
             a, b = next_a, next_b
         elif next_a <= b:
-            a, b = a, next_b
+            a, b = a, max(b, next_b)
         else:
             union.append((a, b))
             a, b = next_a, next_b
