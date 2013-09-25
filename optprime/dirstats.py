@@ -752,8 +752,6 @@ def complement(intervals):
     if points[0] > -inf:
         allowed_intervals.append((-inf, points[0]))
     allowed_intervals.extend(zip(points[1::2], points[2::2]))
-    print(points[1::2])
-    print(points[2::2])
     if points[-1] < inf:
         allowed_intervals.append((points[-1], inf))
 
