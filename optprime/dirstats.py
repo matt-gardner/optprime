@@ -623,8 +623,11 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             Q = Q_cand
 
         # Sample from the auxiliary variables.
-        u = rand.uniform(0, math.exp(-dof * log_bing))
-        log_u = math.log(u)
+
+        # If U' ~ Uniform(0, B^{-n}) and if U = log(U'),
+        # then U ~ -Exponential(1) - n log B
+        #u = rand.uniform(0, math.exp(-dof * log_bing))
+        log_u = -rand.expovariate(1) - dof * log_bing
         for i, eig_i in enumerate(L):
             for j, eig_j in enumerate(L):
                 if j >= i:
@@ -659,7 +662,12 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
             L[i] = sample_exp_intervals(rate, allowed_intervals, rand)
 
         log_bing = log_bingham_const_eigvals(L)
-        assert u < math.exp(-dof * log_bing)
+        for i, eig_i in enumerate(L):
+            for j, eig_j in enumerate(L):
+                if j >= i:
+                    break
+                assert abs(eig_i - eig_j) > v[i, j]
+        assert log_u < -dof * log_bing
         yield np.array(L), np.array(Q)
 
 
