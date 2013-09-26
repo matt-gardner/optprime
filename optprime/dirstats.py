@@ -226,7 +226,7 @@ def inverse_log_bingham_const(eigvals, target, index):
     while f(b) > 0:
         b *= 2
 
-    return scipy.optimize.brentq(f, 0, b)
+    return scipy.optimize.brentq(f, 0, b, xtol=1e-6)
 
 
 class ComplexBinghamSampler(object):
