@@ -219,14 +219,16 @@ def inverse_log_bingham_const(eigvals, target, index):
         eigvals[index] = x
         return log_bingham_const_eigvals(eigvals) - target
 
+    a = 0
     b = eigvals[index]
     if f(0) < 0:
         return 0
 
     while f(b) > 0:
+        a = b
         b *= 2
 
-    return scipy.optimize.brentq(f, 0, b, xtol=1e-6)
+    return scipy.optimize.brentq(f, a, b, xtol=1e-6)
 
 
 class ComplexBinghamSampler(object):
