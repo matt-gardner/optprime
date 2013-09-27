@@ -711,7 +711,7 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
     global wisham_loops
     while True:
         wisham_loops += 1
-        cand = sample_wishart(2 * scale_L, dof, rand)
+        cand = sample_wishart(2 * scale_L, m + 1, rand)
 
         det = math.log(bs.smallest_eig)
         for l in bs._lambdas:
@@ -722,8 +722,7 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
         if last is None:
             accept = True
         else:
-            log_prob = (dof * (last_b_const - b_const) +
-                    (dof - (m + 1) / 2) * (det - last_det))
+            log_prob = (dof * (last_b_const - b_const)
             print('p=', math.exp(log_prob))
             print('  b_const: last=%s, new=%s', math.exp(last_b_const),
                     math.exp(b_const))
