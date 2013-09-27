@@ -898,9 +898,8 @@ def sample_trunc_exp(rate, a, b, rand):
     F(x) = (1 - exp(-\lambda (b - a))^{-1} (1 - exp(-\lambda (x - a)))
     F^{-1}(y) = a - \frac{1}{\lambda} log[1 - y (1 - exp(-\lambda (b - a)))]
     """
-    u = rand.random()
-    c = 1 - math.exp(-rate * (b - a))
-    return a - math.log(1 - c * u) / rate
+    c = math.exp(-rate * (b - a))
+    return a - math.log(rand.uniform(c, 1)) / rate
 
 def sample_exp_intervals(rate, intervals, rand):
     """Sample from an exponential that is constrained to a set of intervals."""
