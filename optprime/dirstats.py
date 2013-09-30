@@ -904,7 +904,11 @@ def sample_exp_intervals(rate, intervals, rand):
     """Sample from an exponential that is constrained to a set of intervals."""
     pmf = []
     total = 0
+    # Renormalize by the lowest value to avoid underflow issues.
+    lowest = intervals[0][0]
     for a, b in intervals:
+        a = a - lowest
+        b = b - lowest
         mass = math.exp(-rate * a) - math.exp(-rate * b)
         pmf.append((mass, (a, b)))
         total += mass
@@ -917,8 +921,8 @@ def sample_exp_intervals(rate, intervals, rand):
 
     assert a >= 0
     if b == float('inf'):
-        return a + rand.expovariate(rate)
+        return lowest + a + rand.expovariate(rate)
     else:
-        return sample_trunc_exp(rate, a, b, rand)
+        return lowest + sample_trunc_exp(rate, a, b, rand)
 
 # vim: et sw=4 sts=4
