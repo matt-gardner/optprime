@@ -722,7 +722,7 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
         if last is None:
             accept = True
         else:
-            log_prob = (dof * (last_b_const - b_const)
+            log_prob = dof * (last_b_const - b_const)
             print('p=', math.exp(log_prob))
             print('  b_const: last=%s, new=%s', math.exp(last_b_const),
                     math.exp(b_const))
