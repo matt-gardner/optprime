@@ -132,7 +132,13 @@ def test_von_mises_fisher_nonuniform():
             z = sample_von_mises_fisher(5, kappa, random)
             assert np.all(abs(z) <= z[0])
 
-def test_bingham_uniform_constant():
+def test_bingham_uniform_eigvals_constant():
+    log_const = log_bingham_const_eigvals(np.array([0.0, 0.0, 0.0]))
+    # Note: c represents the area of the unit 2-sphere (4 pi).
+    c = math.exp(log_const)
+    assert abs(c - 4 * math.pi) < 0.01
+
+def test_bingham_uniform_matrix_constant():
     A = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     bs = bingham_sampler_from_matrix(A)
     # Note: c represents the area of the unit 2-sphere (4 pi).
