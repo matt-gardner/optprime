@@ -102,9 +102,9 @@ def test_complex_bingham_pick_sampler7():
 
 def test_inverse_log_bingham_const():
     eigvals = np.array([5.0, 4.0, 3.0, 2.0, 1.0])
-    lc = log_bingham_const_eigvals(eigvals)
+    log_const = log_bingham_const_eigvals(eigvals)
 
-    target = lc + 5
+    target = log_const - 5
     index = 3
     inv = inverse_log_bingham_const(eigvals, target, index)
 
