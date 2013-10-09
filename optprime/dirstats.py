@@ -197,7 +197,7 @@ def log_bingham_const_eigvals(eigvals):
     smallest_eig = eigvals[argmin]
     lambdas = eigvals[:-1] - smallest_eig
     if argmin != len(eigvals) - 1:
-        lambdas[argmin] = eigvals[argmin] - smallest_eig
+        lambdas[argmin] = eigvals[-1] - smallest_eig
 
     # Note c(lambdas + h) = e^{-h} c(lambdas)
     log_c = log_bingham_const(lambdas) - smallest_eig

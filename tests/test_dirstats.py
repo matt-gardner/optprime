@@ -111,6 +111,15 @@ def test_inverse_log_bingham_const():
     eigvals[index] = inv
     assert np.allclose(log_bingham_const_eigvals(eigvals), target)
 
+def test_log_bingham_const_swap():
+    eigvals = np.array([10.0, 0.0, 0.0])
+    log_const_1 = log_bingham_const_eigvals(eigvals)
+
+    eigvals = np.array([0.0, 0.0, 10.0])
+    log_const_2 = log_bingham_const_eigvals(eigvals)
+
+    assert np.allclose(log_const_1, log_const_2)
+
 def test_von_mises_fisher_norm():
     """Ensure that samples are on the unit sphere."""
     for i in range(10):

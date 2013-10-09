@@ -212,4 +212,8 @@ def area(n):
     log_s = math.log(math.pi) * n / 2 - math.lgamma(n / 2)
     return 2 * math.exp(log_s)
 
+def log_area(n):
+    """Log of surface area of an n-1 sphere (a sphere in an n-D space)."""
+    return math.log(2) + math.log(math.pi) * n / 2 - math.lgamma(n / 2)
+
 # vim: et sw=4 sts=4
