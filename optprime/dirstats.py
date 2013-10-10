@@ -724,6 +724,8 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
             yield cand
             last = cand
             last_b_const = b_const
+        else:
+            yield last
 
 
 def unionate(intervals):
