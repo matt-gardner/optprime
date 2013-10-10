@@ -925,4 +925,24 @@ def sample_exp_intervals(rate, intervals, rand):
     else:
         return lowest + sample_trunc_exp(rate, a, b, rand)
 
+##############################################################################
+# Miscellaneous
+
+def autocorr(samples):
+    """Find the autocorrelation of a sequence of samples.
+
+    This assumes that the samples are from a second-order stationary process.
+
+    See the following links for more information:
+    http://en.wikipedia.org/wiki/Autocorrelation
+    http://stackoverflow.com/questions/12269834/is-there-any-numpy-autocorrellation-function-with-standardized-output
+    http://stackoverflow.com/questions/643699/how-can-i-use-numpy-correlate-to-do-autocorrelation
+    """
+    samples = np.asarray(samples)
+    centered = samples - np.mean(samples)
+    full_corr = np.correlate(centered, centered, mode='full')
+    center = full_corr.size / 2
+    variance = full_corr[center]
+    return full_corr[center:] / variance
+
 # vim: et sw=4 sts=4
