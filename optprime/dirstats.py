@@ -706,28 +706,17 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
 
     last = None
     last_b_const = None
-    last_det = None
 
-    global wisham_loops
     while True:
-        wisham_loops += 1
         cand = sample_wishart(2 * scale_L, m + 1, rand)
 
-        det = math.log(bs.smallest_eig)
-        for l in bs._lambdas:
-            det += math.log(l + bs.smallest_eig)
-
-        b_const = log_bingham_const(cand)
+        eigvals, _ = np.linalg.eigh(cand)
+        b_const = log_bingham_const_eigvals(eigvals)
 
         if last is None:
             accept = True
         else:
             log_prob = dof * (last_b_const - b_const)
-            print('p=', math.exp(log_prob))
-            print('  b_const: last=%s, new=%s', math.exp(last_b_const),
-                    math.exp(b_const))
-            print('  det: last=%s, new=%s', math.exp(last_det),
-                    math.exp(det))
             u = math.log(rand.random())
             accept = u < log_prob
 
@@ -735,7 +724,6 @@ def wisham_binghart_sampler_bad(inv_scale_L, dof, rand):
             yield cand
             last = cand
             last_b_const = b_const
-            last_det = det
 
 
 def unionate(intervals):
