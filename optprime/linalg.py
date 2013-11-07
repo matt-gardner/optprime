@@ -7,6 +7,7 @@ For numpy arrays vs. matrices, see:
 from __future__ import division, print_function
 
 import math
+import random
 
 try:
     import numpy as np
