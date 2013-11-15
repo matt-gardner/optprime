@@ -607,6 +607,7 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
     Sampling technique uses Gibbs sampling.  Note that burn is not performed.
     """
     V = inv_scale_L.dot(inv_scale_L.T)
+    V_eigs, _ = linalg.eigh_sorted(V)
     # Note that it's slightly faster for large (larger than 40x40)
     # matrices to use this instead:
     #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
@@ -615,31 +616,51 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
     p, p2 = scale_L.shape
     assert p == p2
 
-    # Note that L and M are shaped as a 1-D arrays instead of as matrices.
-    L = None
-    Q = None
-    M = None
     v = np.empty((p, p))
 
-    log_bing = None
+    # Initialize the eigenvalues and eigenvectors.
+    # Note that L is shaped as a 1-D array instead of as a matrix.
+    L = None
+    wish = sample_wishart(2 * scale_L, p + 1, rand)
+    L, Q = linalg.eigh_sorted(wish)
+    log_bing = log_bingham_const_eigvals(L)
+
     while True:
         # Simulate from the eigenvectors.
-        wish = sample_wishart(2 * scale_L, p + 1, rand)
-        M_cand, Q_cand = linalg.eigh_sorted(wish)
-        if M is None:
-            accept = True
-            L = np.array(M_cand)
-            log_bing = log_bingham_const_eigvals(L)
-        else:
-            cand_term = (Q_cand * (M_cand - L)).dot(Q_cand.T)
-            last_term = (Q * (M - L)).dot(Q.T)
-            log_prob = linalg.product_trace(V, cand_term - last_term)
+        # TODO: it probably makes sense to randomize the ordering.
+        for i, eig_i in enumerate(L):
+            for j, eig_j in enumerate(L):
+                if j >= i:
+                    break
 
-            accept = (math.log(rand.random()) < log_prob)
+                # TODO(?): try using sqrt(V_eigs[i] * V_eigs[j]) ???
+                candsd = abs((eig_i - eig_j) * (V_eigs[i] - V_eigs[j])) ** -0.5
+                # WARNING: MAGIC NUMBER
+                candsd *= 0.5
 
-        if accept:
-            M = M_cand
-            Q = Q_cand
+                theta = rand.normalvariate(0, candsd)
+
+                q_i = Q[i]
+                q_j = Q[j]
+                candq_i = math.cos(theta) * q_i + math.sin(theta) * q_j
+                candq_j = -math.sin(theta) * q_i + math.cos(theta) * q_j
+
+                # Note: 1-D arrays don't need to be transposed before matrix
+                # multiplying.
+                ratio = math.exp(
+                    eig_i *
+                        (q_i.dot(V).dot(q_i) - candq_i.dot(V).dot(candq_i))
+                    - eig_j *
+                        (q_j.dot(V).dot(q_j) - candq_j.dot(V).dot(candq_j))
+                    )
+
+                if rand.random() < ratio:
+                    Q[i] = candq_i
+                    Q[j] = candq_j
+                #    print('A%s%s' % (i, j), end=' ')
+                #else:
+                #    print('R%s%s' % (i, j), end=' ')
+        #print()
 
         # Sample from the auxiliary variables.
 
@@ -655,6 +676,7 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
                 v[i, j] = v[j, i] = rand.uniform(0, abs(eig_i - eig_j))
 
         # Simulate from each of the eigenvalues.
+        # TODO: it probably makes sense to randomize the ordering.
         for i, _ in enumerate(L):
             # Calculate the rate parameter of the exponential distribution.
             # Note: q_i^T (L L^T) q_i = (q_i^T L) (q_i^T L)^T
