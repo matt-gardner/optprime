@@ -601,6 +601,9 @@ class UnobservedBinghamWishartModel(object):
 ##############################################################################
 # Wisham/Binghart/McNabb Distribution
 
+from collections import defaultdict
+accepts = defaultdict(int)
+totals = defaultdict(int)
 def wisham_binghart_sampler(inv_scale_L, dof, rand):
     """Sample from the conjugate prior of the Bingham distribution.
 
@@ -621,47 +624,10 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
     # Initialize the eigenvalues and eigenvectors.
     # Note that L is shaped as a 1-D array instead of as a matrix.
     L = None
-    wish = sample_wishart(2 * scale_L, p + 1, rand)
-    L, Q = linalg.eigh_sorted(wish)
+    L, Q = linalg.eigh_sorted(scale_L.dot(scale_L.T))
     log_bing = log_bingham_const_eigvals(L)
 
     while True:
-        # Simulate from the eigenvectors.
-        # TODO: it probably makes sense to randomize the ordering.
-        for i, eig_i in enumerate(L):
-            for j, eig_j in enumerate(L):
-                if j >= i:
-                    break
-
-                # TODO(?): try using sqrt(V_eigs[i] * V_eigs[j]) ???
-                candsd = abs((eig_i - eig_j) * (V_eigs[i] - V_eigs[j])) ** -0.5
-                # WARNING: MAGIC NUMBER
-                candsd *= 0.5
-
-                theta = rand.normalvariate(0, candsd)
-
-                q_i = Q[i]
-                q_j = Q[j]
-                candq_i = math.cos(theta) * q_i + math.sin(theta) * q_j
-                candq_j = -math.sin(theta) * q_i + math.cos(theta) * q_j
-
-                # Note: 1-D arrays don't need to be transposed before matrix
-                # multiplying.
-                ratio = math.exp(
-                    eig_i *
-                        (q_i.dot(V).dot(q_i) - candq_i.dot(V).dot(candq_i))
-                    - eig_j *
-                        (q_j.dot(V).dot(q_j) - candq_j.dot(V).dot(candq_j))
-                    )
-
-                if rand.random() < ratio:
-                    Q[i] = candq_i
-                    Q[j] = candq_j
-                #    print('A%s%s' % (i, j), end=' ')
-                #else:
-                #    print('R%s%s' % (i, j), end=' ')
-        #print()
-
         # Sample from the auxiliary variables.
 
         # If U' ~ Uniform(0, B^{-n}) and if U = log(U'),
@@ -709,6 +675,46 @@ def wisham_binghart_sampler(inv_scale_L, dof, rand):
                     break
                 assert abs(eig_i - eig_j) > v[i, j]
         assert log_u < -dof * log_bing
+
+        # Simulate from the eigenvectors.
+        # TODO: it probably makes sense to randomize the ordering.
+        for i, eig_i in enumerate(L):
+            for j, eig_j in enumerate(L):
+                if j >= i:
+                    break
+
+                # TODO(?): try using sqrt(V_eigs[i] * V_eigs[j]) ???
+                candsd = abs((eig_i - eig_j) * (V_eigs[i] - V_eigs[j])) ** -0.5
+                # WARNING: MAGIC NUMBER
+                #candsd *= 0.5
+                candsd *= 2.0
+
+                theta = rand.normalvariate(0, candsd)
+
+                q_i = Q[i]
+                q_j = Q[j]
+                candq_i = math.cos(theta) * q_i + math.sin(theta) * q_j
+                candq_j = -math.sin(theta) * q_i + math.cos(theta) * q_j
+
+                # Note: 1-D arrays don't need to be transposed before matrix
+                # multiplying.
+                ratio = math.exp(
+                    eig_i *
+                        (q_i.dot(V).dot(q_i) - candq_i.dot(V).dot(candq_i))
+                    - eig_j *
+                        (q_j.dot(V).dot(q_j) - candq_j.dot(V).dot(candq_j))
+                    )
+
+                if rand.random() < ratio:
+                    Q[i] = candq_i
+                    Q[j] = candq_j
+                    accepts[i, j] += 1
+                totals[i, j] += 1
+                #    print('A%s%s' % (i, j), end=' ')
+                #else:
+                #    print('R%s%s' % (i, j), end=' ')
+        #print()
+
         yield np.array(L), np.array(Q)
 
 
