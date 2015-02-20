@@ -218,7 +218,24 @@ def log_area(n):
     return math.log(2) + math.log(math.pi) * n / 2 - math.lgamma(n / 2)
 
 def degrees_between(u, v):
-    """Return the angle between the two vectors, in degrees."""
+    """Return the angle between the input vectors.
+
+    The result is in degrees (0 to 180).
+
+    Note:
+    degrees_between_unsigned(u, v) == degrees_between_unsigned(v, u)
+    """
     return math.acos(np.dot(u, v)) * 180 / math.pi
+
+def degrees_between_unsigned(u, v):
+    """Return the angle between the lines defined by the input vectors.
+
+    The result is in degrees (0 to 90).
+
+    Note:
+    degrees_between_unsigned(u, v) == degrees_between_unsigned(v, u)
+    degrees_between_unsigned(u, v) == degrees_between_unsigned(u, -v)
+    """
+    return math.acos(abs(np.dot(u, v))) * 180 / math.pi
 
 # vim: et sw=4 sts=4
