@@ -341,6 +341,7 @@ class ComplexBinghamSampler(object):
 ##############################################################################
 # Directional Models
 
+# NOTE: This model has problems.
 class BinghamWishartModel(object):
     """A Wishart random variable with Bingham-distributed observations.
 
@@ -474,6 +475,7 @@ def make_bingham_wishart_model(dims, kappa, rand):
     return model, exp_scatter
 
 
+# NOTE: This model has problems.
 class UnobservedBinghamWishartModel(object):
     """Bingham-Wishart Model without fully observed success/failure data.
     """
@@ -596,6 +598,113 @@ class UnobservedBinghamWishartModel(object):
         self._bingham_wishart_dual = BinghamWishartModel(dual_inv_scale_L,
                 dual_dof)
         self._successes[n] = success
+
+
+class BasicBinghamWishartModel(object):
+    """The basic Bingham-Wishart Model (simple conjugate prior).
+
+    A Wishart random variable with Bingham-distributed observations.
+
+    The distribution of A is a Wishart parameterized by its inverse-scale
+    matrix.  The inverse-scale parameter is constrained such that it must be
+    positive definite and the angle of its first eigenvector from the x-axis
+    must be less than pi/4.
+
+    The prior distribution of A is...
+
+    Note that k has an extremely skewed distribution, such that it makes more
+    sense to use the maximum likelihood estimate of k than to sample from it
+    (the probability of the second most likely value is 5 to 6 orders of
+    magnitude smaller in some quick experiments).
+
+    The Bingham distribution's parameter matrix is the negative of the Wishart
+    prior.
+
+    Attributes:
+        inv_scale_L: the lower-triangular component of the Cholesky
+            decomposition of the inverse of the scale matrix of the Wishart
+            distribution
+        dof: the degrees of freedom of the Wishart distribution
+    """
+    def __init__(self, inv_scale_L, dof):
+        m, n = inv_scale_L.shape
+        assert m == n
+
+        self._inv_scale_L = inv_scale_L
+        self._dims = n
+        self._dof = dof
+
+    def scale(self):
+        """Give the scale matrix parameter of the Wishart distribution."""
+        scale_L = np.linalg.inv(self._inv_scale_L)
+        V = np.dot(scale_L, scale_L.T)
+        return V
+
+    def inv_scale(self):
+        """Give the inverse scale matrix parameter of the Wishart."""
+        return np.dot(self._inv_scale_L, self._inv_scale_L.T)
+
+    def incremented_dof(self, exp_scatter, n=1):
+        """Create a new BinghamWishartModel with an incremented dof.
+
+        The number of degrees of freedom is incremented by the given amount,
+        and the prior scatter matrix is increased accordingly.
+        """
+        dof = self._dof + n
+        inv_scale = self.inv_scale() + exp_scatter * n
+        inv_scale_L = np.linalg.cholesky(inv_scale)
+        return BasicBinghamWishartModel(inv_scale_L, dof)
+
+    def posterior_success(self, x):
+        """Find the posterior given a sample from the success Bingham."""
+        inv_scale_L = self._inv_scale_L.copy()
+        dof = self._dof + 1
+
+        linalg.chol_update(inv_scale_L, x)
+        return BasicBinghamWishartModel(inv_scale_L, dof)
+
+    def sample_wishart(self, rand):
+        """Sample from the Wishart distribution."""
+
+        # Note that it's slightly faster for large (larger than 40x40)
+        # matrices to use this instead:
+        #   scipy.linalg.solve_triangular(R, np.identity(len(R)))
+        # or even better: scipy.linalg.get_lapack_funcs('trtri') or something
+        scale_L = np.linalg.inv(self._inv_scale_L)
+        return sample_wishart(scale_L, self._dof, rand)
+
+    def sample_success(self, rand, A=None):
+        """Sample from the success Bingham distribution."""
+        if A is None:
+            A = self.sample_wishart(rand)
+        bs = bingham_sampler_from_matrix(-A/2)
+        return bs.sample(rand)
+
+    def wishart_mean(self):
+        """Expected Value of the Wishart distribution."""
+        return self._dof * self.scale()
+
+    def wishart_mode(self):
+        """Mode of the Wishart distribution."""
+        assert self._dof >= self._dims + 1
+        return (self._dof - self._dims - 1) * self.scale()
+
+
+def make_basic_bingham_wishart_model(dims, kappa, dof, rand):
+    """Construct a new BasicBinghamWishartModel with the given dimensions.
+
+    The prior distribution is generated from the expected scatter matrix of a
+    von Mises Fisher distribution centered at [1, 0, ..., 0] with
+    concentration parameter `kappa` (the distribution tends to uniform as
+    `kappa` approaches 0).  The `dof` parameter determines the number of
+    pseudo-samples in the prior.
+    """
+    assert dof >= dims
+    exp_scatter = expected_mf_scatter(dims, kappa, rand)
+    empty_model = BasicBinghamWishartModel(np.zeros((dims, dims)), 0)
+    model = empty_model.incremented_dof(exp_scatter, dof)
+
+    return model
 
 
 ##############################################################################
@@ -849,8 +958,12 @@ def sample_mf_scatter(dims, kappa, num_samples, rand):
     A = np.dot(samples.T, samples)
     return A
 
-def expected_mf_scatter(dims, kappa, rand, samples=100000, step=10):
+def expected_mf_scatter(dims, kappa, rand, samples=100000, step=1000):
     """Find the expected value of the scatter matrix of a von Mises Fisher.
+
+    The von Mises Fisher distribution is centered at [1, 0, ..., 0] with
+    concentration parameter `kappa` (the distribution tends to uniform as
+    kappa approaches 0).
 
     The `rtol` parameter is the relative tolerance used in the stopping
     criterion.  The `step` parameter signifies how many von Mises Fisher

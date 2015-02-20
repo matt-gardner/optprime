@@ -217,4 +217,8 @@ def log_area(n):
     """Log of surface area of an n-1 sphere (a sphere in an n-D space)."""
     return math.log(2) + math.log(math.pi) * n / 2 - math.lgamma(n / 2)
 
+def degrees_between(u, v):
+    """Return the angle between the two vectors, in degrees."""
+    return math.acos(np.dot(u, v)) * 180 / math.pi
+
 # vim: et sw=4 sts=4
