@@ -12,7 +12,7 @@ import mrs
 from mrs import param
 
 import cli
-from particle import Particle, Message
+from optprime.particle import Particle, Message
 
 try:
     range = xrange
