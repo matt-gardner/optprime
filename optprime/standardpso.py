@@ -11,8 +11,8 @@ import time
 import mrs
 from mrs import param
 
-from . import cli
-from .particle import Particle, Message
+import cli
+from particle import Particle, Message
 
 try:
     range = xrange

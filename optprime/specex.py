@@ -6,8 +6,8 @@ import sys, operator
 import mrs
 from mrs import param
 
-from . import standardpso
-from .particle import *
+import standardpso
+from particle import *
 
 try:
     range = xrange
@@ -306,7 +306,7 @@ class SpecExPSO(standardpso.StandardPSO):
 def update_parser(parser):
     """Adds PSO options to an OptionParser instance."""
 
-    parser = standardpso.update_parser(parser)
+    parser = standardpso.StandardPSO.update_parser(parser)
     parser.set_default('mrs', 'Serial')
     parser.usage = parser.usage.replace('Bypass', 'Serial')
 
@@ -343,5 +343,7 @@ def update_parser(parser):
 
     return parser
 
+if __name__ == '__main__':
+    mrs.main(SpecExPSO, update_parser=update_parser)
 
 # vim: et sw=4 sts=4
